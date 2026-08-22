@@ -6,6 +6,10 @@
 An update to the [Phidgets Plugin](https://www.indigodomo.com/pluginstore/76/)
 for [Indigo](https://www.indigodomo.com/).
 
+Originally created by [Eric Perlman (@perlman)](https://github.com/perlman).
+This version is based on his original
+[phidgets-indigo](https://github.com/perlman/phidgets-indigo) project.
+
 ## Download and install
 
 Download the latest `Phidgets22-*.zip` file from

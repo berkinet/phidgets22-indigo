@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+# Originally created by Eric Perlman (@perlman):
+# https://github.com/perlman/phidgets-indigo
+
 import indigo
 import logging
 import threading

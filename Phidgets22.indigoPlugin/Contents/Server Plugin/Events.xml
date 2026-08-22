@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <Events>
-    <SupportURL>https://github.com/perlman/phidgets-indigo</SupportURL>
+    <SupportURL>https://github.com/berkinet/phidgets22-indigo</SupportURL>
     <Event id="deviceDetached" deviceFilter="self">
         <Name>Phidget device detached</Name>
         <Label>An Indigo Phidget device has been detached</Label>
