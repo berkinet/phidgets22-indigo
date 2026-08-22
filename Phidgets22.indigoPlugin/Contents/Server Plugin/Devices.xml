@@ -210,7 +210,7 @@
 					<Option value="SensorOn">generic sensor on (green circle)</Option>
 					<Option value="SensorTripped">generic sensor tripped (red circle)</Option>
 					<Option value="SprinklerOff">sprinkler off</Option>
-					<Option value="SprinklerOn">sprinkler off</Option>
+					<Option value="SprinklerOn">sprinkler on</Option>
 					<Option value="TemperatureSensor">temperature sensor</Option>
 					<Option value="TemperatureSensorOn">temperature sensor on</Option>
 					<Option value="TimerOff">timer off</Option>
@@ -280,7 +280,7 @@
 					<Option value="SensorOn">generic sensor on (green circle)</Option>
 					<Option value="SensorTripped">generic sensor tripped (red circle)</Option>
 					<Option value="SprinklerOff">sprinkler off</Option>
-					<Option value="SprinklerOn">sprinkler off</Option>
+					<Option value="SprinklerOn">sprinkler on</Option>
 					<Option value="TemperatureSensor">temperature sensor</Option>
 					<Option value="TemperatureSensorOn">temperature sensor on</Option>
 					<Option value="TimerOff">timer off</Option>
@@ -357,7 +357,7 @@
 			<Field id="dataInterval" type="textfield" defaultValue="1000">
 					<Label>Data interval (ms):</Label>
 			</Field>
-			<Field id="displayTempUnit" type="menu" defualtValue="C">
+			<Field id="displayTempUnit" type="menu" defaultValue="C">
 					<Label>Temperature scale to display</Label>
 					<List>
 						<Option value="F">Fahrenheit</Option>
@@ -451,7 +451,7 @@
 				<Label>Filter type:</Label>
 				<List class="self" method="getPhidgetTypeMenu" filter="FilterType"/>
 			</Field>
-			<Field id="displayStateName" type="menu" defualtValue="frequency">
+			<Field id="displayStateName" type="menu" defaultValue="frequency">
 					<Label>State to display</Label>
 					<List>
 						<Option value="count">count</Option>

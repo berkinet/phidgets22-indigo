@@ -21,6 +21,7 @@ class FrequencyCounterPhidget(PhidgetBase):
         self.phidget.setOnAttachHandler(self.onAttachHandler)
         self.phidget.setOnDetachHandler(self.onDetachHandler)
         self.phidget.setOnFrequencyChangeHandler(self.onFrequencyChangeHandler)
+        self.phidget.setOnCountChangeHandler(self.onCountChangeHandler)
 
     def configureAttachedPhidget(self, ph):
         newDataInterval = self.checkValueRange("dataInterval", value=self.dataInterval, minValue=self.phidget.getMinDataInterval(),  maxValue=self.phidget.getMaxDataInterval())

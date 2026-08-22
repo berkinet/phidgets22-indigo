@@ -28,6 +28,8 @@ class DigitalOutputPhidget(PhidgetBase):
 
     def onAttachHandler(self, ph):
         super(DigitalOutputPhidget, self).onAttachHandler(ph)
+        if self._state == "attached":
+            self.updateIndigoStatus()
 
     def getDeviceStateList(self):
         # Currently support the minimal states used by all phidget DigitalOutput devices

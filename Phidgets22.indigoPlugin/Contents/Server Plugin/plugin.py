@@ -101,7 +101,16 @@ class Plugin(indigo.PluginBase):
     #
 
     def validatePrefsConfigUi(self, valuesDict):
-        # TODO
+        try:
+            attach_timeout = int(valuesDict.get('attachTimeout', '5'))
+            if attach_timeout <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            errors = indigo.Dict()
+            errors['attachTimeout'] = "Enter a whole number greater than zero."
+            return False, valuesDict, errors
+
+        valuesDict['attachTimeout'] = str(attach_timeout)
         return True
 
     def getDeviceConfigUiValues(self, pluginProps, typeId, devId):

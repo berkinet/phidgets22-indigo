@@ -55,5 +55,4 @@ class DigitalInputPhidget(PhidgetBase):
         return newStatesList
 
     def getDeviceDisplayStateId(self):
-        return "onState"
-
+        return "onOffState"

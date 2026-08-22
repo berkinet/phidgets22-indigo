@@ -6,7 +6,7 @@
         <Label>An Indigo Phidget device has been detached</Label>
            <ConfigUI>
             <Field id="indigoDevice" type="menu">
-              <Label>Phdget Device</Label>
+              <Label>Phidget Device</Label>
                 <List class="self" method="getAttachCapableList"/>
             </Field>
           </ConfigUI>
@@ -16,7 +16,7 @@
         <Label>An Indigo Phidget device has been attached</Label>
         <ConfigUI>
             <Field id="indigoDevice" type="menu">
-              <Label>Phdget Device</Label>
+              <Label>Phidget Device</Label>
                 <List class="self" method="getAttachCapableList"/>
             </Field>
         </ConfigUI>
