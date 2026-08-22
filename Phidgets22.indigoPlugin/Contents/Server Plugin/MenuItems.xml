@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<MenuItems>
+	<MenuItem id="printPhidgetsNetworkDiagram">
+		<Name>Print Phidgets network diagram to log</Name>
+		<CallbackMethod>printPhidgetsNetworkDiagram</CallbackMethod>
+	</MenuItem>
+</MenuItems>

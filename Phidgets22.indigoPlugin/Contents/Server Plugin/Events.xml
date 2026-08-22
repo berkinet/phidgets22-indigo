@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<Events>
+    <SupportURL>https://github.com/perlman/phidgets-indigo</SupportURL>
+    <Event id="deviceDetached" deviceFilter="self">
+        <Name>Phidget device detached</Name>
+        <Label>An Indigo Phidget device has been detached</Label>
+           <ConfigUI>
+            <Field id="indigoDevice" type="menu">
+              <Label>Phdget Device</Label>
+                <List class="self" method="getAttachCapableList"/>
+            </Field>
+          </ConfigUI>
+    </Event>
+    <Event id="deviceAttached" deviceFilter="self">
+        <Name>Phidget device attached</Name>
+        <Label>An Indigo Phidget device has been attached</Label>
+        <ConfigUI>
+            <Field id="indigoDevice" type="menu">
+              <Label>Phdget Device</Label>
+                <List class="self" method="getAttachCapableList"/>
+            </Field>
+        </ConfigUI>
+    </Event>
+</Events>

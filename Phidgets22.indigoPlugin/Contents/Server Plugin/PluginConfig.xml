@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<PluginConfig>
+
+    <Field type="checkbox" id="networkPhidgets" defaultValue="true" readonly="true">
+        <Label>Network phidgets:</Label>
+		<Description>(Required)</Description>
+    </Field>
+
+    <Field type="checkbox" id="enableServerDiscovery" defaultValue="true" readonly="true">
+        <Label>Enable server discovery:</Label>
+		<Description>(Required)</Description>
+    </Field>
+
+	<Field type="textfield" id="attachTimeout" defaultValue="5" readonly="false">
+        <Label>Timeout for Phidget attachment (seconds):</Label>
+    </Field>
+
+	<Field type="checkbox"  id="suppressErrors" defaultValue="False">
+		<Label>Suppress interfaceKit sample overrun and lost packet errors?</Label>
+	</Field>
+
+	<Field id="simpleSeparator1" type="separator"/>
+
+	<Field id="phidgetPluginLoggingLevel" type="menu" defaultValue="0">
+		<Label>Phidget plugin logging level</Label>
+		<List>
+			<Option value="10">Debug</Option>
+			<Option value="20">Info</Option>
+			<Option value="30">Warning</Option>
+			<Option value="40">Error</Option>
+			<Option value="50">Critical</Option>
+		</List>
+	</Field>
+
+	<Field id="simpleSeparator2" type="separator"/>
+
+	<Field id="phidgetApiLogging" type="checkbox" defaultValue="false">
+		<Label>Enable low-level Phidgets API logging</Label>
+	</Field>
+
+	<Field id="phidgetApiLogfile" type="textfield" visibleBindingId="phidgetApiLogging" visibleBindingValue="true" defaultValue="/tmp/phidgets.log">
+        <Label>Logfile</Label>
+    </Field>
+
+	<Field id="phidgetApiLogLevel" type="menu" defaultValue="1" visibleBindingId="phidgetApiLogging" visibleBindingValue="true">
+		<Label>Logging level</Label>
+		<List>
+			<Option value="1">Critical</Option>
+			<Option value="2">Error</Option>
+			<Option value="3">Warning</Option>
+			<Option value="4">Debug</Option>
+			<Option value="5">Info</Option>
+			<Option value="6">Verbose</Option>
+		</List>
+	</Field>
+
+</PluginConfig>

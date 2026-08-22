@@ -1,0 +1,2738 @@
+{
+    "BridgeGain": [
+        {
+            "description": "1x Amplificaion",
+            "enum": "BRIDGE_GAIN_1",
+            "value": 1
+        },
+        {
+            "description": "2x Amplification",
+            "enum": "BRIDGE_GAIN_2",
+            "value": 2
+        },
+        {
+            "description": "4x Amplification",
+            "enum": "BRIDGE_GAIN_4",
+            "value": 3
+        },
+        {
+            "description": "8x Amplification",
+            "enum": "BRIDGE_GAIN_8",
+            "value": 4
+        },
+        {
+            "description": "16x Amplification",
+            "enum": "BRIDGE_GAIN_16",
+            "value": 5
+        },
+        {
+            "description": "32x Amplification",
+            "enum": "BRIDGE_GAIN_32",
+            "value": 6
+        },
+        {
+            "description": "64x Amplification",
+            "enum": "BRIDGE_GAIN_64",
+            "value": 7
+        },
+        {
+            "description": "128x Amplification",
+            "enum": "BRIDGE_GAIN_128",
+            "value": 8
+        }
+    ],
+    "ChannelClass": [
+        {
+            "description": "Accelerometer channel",
+            "enum": "PHIDCHCLASS_ACCELEROMETER",
+            "value": 1
+        },
+        {
+            "description": "Brushless DC motor channel",
+            "enum": "PHIDCHCLASS_BLDCMOTOR",
+            "value": 35
+        },
+        {
+            "description": "Capacitive Touch channel",
+            "enum": "PHIDCHCLASS_CAPACITIVETOUCH",
+            "value": 14
+        },
+        {
+            "description": "Current input channel",
+            "enum": "PHIDCHCLASS_CURRENTINPUT",
+            "value": 2
+        },
+        {
+            "description": "DC motor channel",
+            "enum": "PHIDCHCLASS_DCMOTOR",
+            "value": 4
+        },
+        {
+            "description": "Dictionary",
+            "enum": "PHIDCHCLASS_DICTIONARY",
+            "value": 36
+        },
+        {
+            "description": "Digital input channel",
+            "enum": "PHIDCHCLASS_DIGITALINPUT",
+            "value": 5
+        },
+        {
+            "description": "Digital output channel",
+            "enum": "PHIDCHCLASS_DIGITALOUTPUT",
+            "value": 6
+        },
+        {
+            "description": "Distance sensor channel",
+            "enum": "PHIDCHCLASS_DISTANCESENSOR",
+            "value": 7
+        },
+        {
+            "description": "Encoder channel",
+            "enum": "PHIDCHCLASS_ENCODER",
+            "value": 8
+        },
+        {
+            "description": "Frequency counter channel",
+            "enum": "PHIDCHCLASS_FREQUENCYCOUNTER",
+            "value": 9
+        },
+        {
+            "description": "GPS channel",
+            "enum": "PHIDCHCLASS_GPS",
+            "value": 10
+        },
+        {
+            "description": "Gyroscope channel",
+            "enum": "PHIDCHCLASS_GYROSCOPE",
+            "value": 12
+        },
+        {
+            "description": "VINT Hub channel",
+            "enum": "PHIDCHCLASS_HUB",
+            "value": 13
+        },
+        {
+            "description": "Humidity sensor channel",
+            "enum": "PHIDCHCLASS_HUMIDITYSENSOR",
+            "value": 15
+        },
+        {
+            "description": "IR channel",
+            "enum": "PHIDCHCLASS_IR",
+            "value": 16
+        },
+        {
+            "description": "LCD channel",
+            "enum": "PHIDCHCLASS_LCD",
+            "value": 11
+        },
+        {
+            "description": "Light sensor channel",
+            "enum": "PHIDCHCLASS_LIGHTSENSOR",
+            "value": 17
+        },
+        {
+            "description": "Magnetometer channel",
+            "enum": "PHIDCHCLASS_MAGNETOMETER",
+            "value": 18
+        },
+        {
+            "description": "Motor position control channel.",
+            "enum": "PHIDCHCLASS_MOTORPOSITIONCONTROLLER",
+            "value": 34
+        },
+        {
+            "description": "Motor velocity control channel.",
+            "enum": "PHIDCHCLASS_MOTORVELOCITYCONTROLLER",
+            "value": 39
+        },
+        {
+            "description": "pH sensor channel",
+            "enum": "PHIDCHCLASS_PHSENSOR",
+            "value": 37
+        },
+        {
+            "description": "Power guard channel",
+            "enum": "PHIDCHCLASS_POWERGUARD",
+            "value": 20
+        },
+        {
+            "description": "Pressure sensor channel",
+            "enum": "PHIDCHCLASS_PRESSURESENSOR",
+            "value": 21
+        },
+        {
+            "description": "RC Servo channel",
+            "enum": "PHIDCHCLASS_RCSERVO",
+            "value": 22
+        },
+        {
+            "description": "Resistance input channel",
+            "enum": "PHIDCHCLASS_RESISTANCEINPUT",
+            "value": 23
+        },
+        {
+            "description": "RFID channel",
+            "enum": "PHIDCHCLASS_RFID",
+            "value": 24
+        },
+        {
+            "description": "Sound sensor channel",
+            "enum": "PHIDCHCLASS_SOUNDSENSOR",
+            "value": 25
+        },
+        {
+            "description": "Spatial channel",
+            "enum": "PHIDCHCLASS_SPATIAL",
+            "value": 26
+        },
+        {
+            "description": "Stepper channel",
+            "enum": "PHIDCHCLASS_STEPPER",
+            "value": 27
+        },
+        {
+            "description": "Temperature sensor channel",
+            "enum": "PHIDCHCLASS_TEMPERATURESENSOR",
+            "value": 28
+        },
+        {
+            "description": "Voltage input channel",
+            "enum": "PHIDCHCLASS_VOLTAGEINPUT",
+            "value": 29
+        },
+        {
+            "description": "Voltage output channel",
+            "enum": "PHIDCHCLASS_VOLTAGEOUTPUT",
+            "value": 30
+        },
+        {
+            "description": "Voltage ratio input channel",
+            "enum": "PHIDCHCLASS_VOLTAGERATIOINPUT",
+            "value": 31
+        }
+    ],
+    "ChannelSubclass": [
+        {
+            "description": "No subclass",
+            "enum": "PHIDCHSUBCLASS_NONE",
+            "value": 1
+        },
+        {
+            "description": "Digital output duty cycle",
+            "enum": "PHIDCHSUBCLASS_DIGITALOUTPUT_DUTY_CYCLE",
+            "value": 16
+        },
+        {
+            "description": "Digital output frequency",
+            "enum": "PHIDCHSUBCLASS_DIGITALOUTPUT_FREQUENCY",
+            "value": 18
+        },
+        {
+            "description": "Digital output LED driver",
+            "enum": "PHIDCHSUBCLASS_DIGITALOUTPUT_LED_DRIVER",
+            "value": 17
+        },
+        {
+            "description": "Encoder IO mode settable",
+            "enum": "PHIDCHSUBCLASS_ENCODER_MODE_SETTABLE",
+            "value": 96
+        },
+        {
+            "description": "Graphic LCD",
+            "enum": "PHIDCHSUBCLASS_LCD_GRAPHIC",
+            "value": 80
+        },
+        {
+            "description": "Text LCD",
+            "enum": "PHIDCHSUBCLASS_LCD_TEXT",
+            "value": 81
+        },
+        {
+            "description": "Spatial AHRS/IMU",
+            "enum": "PHIDCHSUBCLASS_SPATIAL_AHRS",
+            "value": 112
+        },
+        {
+            "description": "Temperature sensor RTD",
+            "enum": "PHIDCHSUBCLASS_TEMPERATURESENSOR_RTD",
+            "value": 32
+        },
+        {
+            "description": "Temperature sensor thermocouple",
+            "enum": "PHIDCHSUBCLASS_TEMPERATURESENSOR_THERMOCOUPLE",
+            "value": 33
+        },
+        {
+            "description": "Voltage sensor port",
+            "enum": "PHIDCHSUBCLASS_VOLTAGEINPUT_SENSOR_PORT",
+            "value": 48
+        },
+        {
+            "description": "Voltage ratio bridge input",
+            "enum": "PHIDCHSUBCLASS_VOLTAGERATIOINPUT_BRIDGE",
+            "value": 65
+        },
+        {
+            "description": "Voltage ratio sensor port",
+            "enum": "PHIDCHSUBCLASS_VOLTAGERATIOINPUT_SENSOR_PORT",
+            "value": 64
+        }
+    ],
+    "ControlMode": [
+        {
+            "description": "Control the motor by setting a target position.",
+            "enum": "CONTROL_MODE_STEP",
+            "value": 0
+        },
+        {
+            "description": "Control the motor by selecting a target velocity (sign indicates direction). The motor will rotate continuously in the chosen direction.",
+            "enum": "CONTROL_MODE_RUN",
+            "value": 1
+        }
+    ],
+    "DataAdapterEndianness": [
+        {
+            "description": "MSB First",
+            "enum": "ENDIANNESS_MSB_FIRST",
+            "value": 1
+        },
+        {
+            "description": "LSB First",
+            "enum": "ENDIANNESS_LSB_FIRST",
+            "value": 2
+        }
+    ],
+    "DataAdapterSPIChipSelect": [
+        {
+            "description": "CS normally HIGH, Automatically goes LOW during transmission",
+            "enum": "SPI_CHIP_SELECT_ACTIVE_LOW",
+            "value": 1
+        },
+        {
+            "description": "CS normally LOW, Automatically goes HIGH during transmission",
+            "enum": "SPI_CHIP_SELECT_ACTIVE_HIGH",
+            "value": 2
+        },
+        {
+            "description": "CS is held LOW as long as this is set",
+            "enum": "SPI_CHIP_SELECT_LOW",
+            "value": 3
+        },
+        {
+            "description": "CS is held HIGH as long as this is set",
+            "enum": "SPI_CHIP_SELECT_HIGH",
+            "value": 4
+        }
+    ],
+    "DataAdapterSPIMode": [
+        {
+            "description": "CPOL = 0 CPHA = 0",
+            "enum": "SPI_MODE_0",
+            "value": 1
+        },
+        {
+            "description": "CPOL = 0 CPHA = 1",
+            "enum": "SPI_MODE_1",
+            "value": 2
+        },
+        {
+            "description": "CPOL = 1 CPHA = 0",
+            "enum": "SPI_MODE_2",
+            "value": 3
+        },
+        {
+            "description": "CPOL = 1 CPHA = 1",
+            "enum": "SPI_MODE_3",
+            "value": 4
+        }
+    ],
+    "DataAdapterVoltage": [
+        {
+            "description": "Voltage supplied by external device",
+            "enum": "DATAADAPTER_VOLTAGE_EXTERN",
+            "value": 1
+        },
+        {
+            "description": "2.5V",
+            "enum": "DATAADAPTER_VOLTAGE_2_5V",
+            "value": 3
+        },
+        {
+            "description": "3.3V",
+            "enum": "DATAADAPTER_VOLTAGE_3_3V",
+            "value": 4
+        },
+        {
+            "description": "5.0V",
+            "enum": "DATAADAPTER_VOLTAGE_5_0V",
+            "value": 5
+        }
+    ],
+    "DeviceClass": [
+        {
+            "description": "PhidgetAccelerometer device",
+            "enum": "PHIDCLASS_ACCELEROMETER",
+            "value": 1
+        },
+        {
+            "description": "PhidgetAdvancedServo device",
+            "enum": "PHIDCLASS_ADVANCEDSERVO",
+            "value": 2
+        },
+        {
+            "description": "PhidgetAnalog device",
+            "enum": "PHIDCLASS_ANALOG",
+            "value": 3
+        },
+        {
+            "description": "PhidgetBridge device",
+            "enum": "PHIDCLASS_BRIDGE",
+            "value": 4
+        },
+        {
+            "description": "Dictionary device",
+            "enum": "PHIDCLASS_DICTIONARY",
+            "value": 24
+        },
+        {
+            "description": "PhidgetEncoder device",
+            "enum": "PHIDCLASS_ENCODER",
+            "value": 5
+        },
+        {
+            "description": "PhidgetFrequencyCounter device",
+            "enum": "PHIDCLASS_FREQUENCYCOUNTER",
+            "value": 6
+        },
+        {
+            "description": "PhidgetGPS device",
+            "enum": "PHIDCLASS_GPS",
+            "value": 7
+        },
+        {
+            "description": "Phidget VINT Hub device",
+            "enum": "PHIDCLASS_HUB",
+            "value": 8
+        },
+        {
+            "description": "PhidgetInterfaceKit device",
+            "enum": "PHIDCLASS_INTERFACEKIT",
+            "value": 9
+        },
+        {
+            "description": "PhidgetIR device",
+            "enum": "PHIDCLASS_IR",
+            "value": 10
+        },
+        {
+            "description": "PhidgetLED device",
+            "enum": "PHIDCLASS_LED",
+            "value": 11
+        },
+        {
+            "description": "PhidgetMotorControl device",
+            "enum": "PHIDCLASS_MOTORCONTROL",
+            "value": 13
+        },
+        {
+            "description": "PhidgetPHSensor device",
+            "enum": "PHIDCLASS_PHSENSOR",
+            "value": 14
+        },
+        {
+            "description": "PhidgetRFID device",
+            "enum": "PHIDCLASS_RFID",
+            "value": 15
+        },
+        {
+            "description": "PhidgetServo device",
+            "enum": "PHIDCLASS_SERVO",
+            "value": 16
+        },
+        {
+            "description": "PhidgetSpatial device",
+            "enum": "PHIDCLASS_SPATIAL",
+            "value": 17
+        },
+        {
+            "description": "PhidgetStepper device",
+            "enum": "PHIDCLASS_STEPPER",
+            "value": 18
+        },
+        {
+            "description": "PhidgetTemperatureSensor device",
+            "enum": "PHIDCLASS_TEMPERATURESENSOR",
+            "value": 19
+        },
+        {
+            "description": "PhidgetTextLCD device",
+            "enum": "PHIDCLASS_TEXTLCD",
+            "value": 20
+        },
+        {
+            "description": "Phidget VINT device",
+            "enum": "PHIDCLASS_VINT",
+            "value": 21
+        }
+    ],
+    "DeviceID": [
+        {
+            "description": "Unknown Device",
+            "enum": "PHIDID_UNKNOWN",
+            "value": 125
+        },
+        {
+            "description": "Hub Port - Digital Input mode",
+            "enum": "PHIDID_DIGITALINPUT_PORT",
+            "value": 95
+        },
+        {
+            "description": "Hub Port - Digital Output mode",
+            "enum": "PHIDID_DIGITALOUTPUT_PORT",
+            "value": 96
+        },
+        {
+            "description": "Hub Port - Voltage Input mode",
+            "enum": "PHIDID_VOLTAGEINPUT_PORT",
+            "value": 97
+        },
+        {
+            "description": "Hub Port - Voltage Ratio Input mode",
+            "enum": "PHIDID_VOLTAGERATIOINPUT_PORT",
+            "value": 98
+        },
+        {
+            "description": "Dictionary",
+            "enum": "PHIDID_DICTIONARY",
+            "value": 111
+        },
+        {
+            "description": "PhidgetServo 1-Motor (1000)",
+            "enum": "PHIDID_1000",
+            "value": 2
+        },
+        {
+            "description": "PhidgetServo 4-Motor (1001)",
+            "enum": "PHIDID_1001",
+            "value": 3
+        },
+        {
+            "description": "PhidgetAnalog 4-Output (1002)",
+            "enum": "PHIDID_1002",
+            "value": 4
+        },
+        {
+            "description": "PhidgetAccelerometer 2-Axis (1008)",
+            "enum": "PHIDID_1008",
+            "value": 5
+        },
+        {
+            "description": "PhidgetInterfaceKit 8/8/8 (1010, 1013, 1018, 1019)",
+            "enum": "PHIDID_1010_1013_1018_1019",
+            "value": 6
+        },
+        {
+            "description": "PhidgetInterfaceKit 2/2/2 (1011)",
+            "enum": "PHIDID_1011",
+            "value": 7
+        },
+        {
+            "description": "PhidgetInterfaceKit 0/16/16 (1012)",
+            "enum": "PHIDID_1012",
+            "value": 8
+        },
+        {
+            "description": "PhidgetInterfaceKit 0/0/4 (1014)",
+            "enum": "PHIDID_1014",
+            "value": 9
+        },
+        {
+            "description": "PhidgetLinearTouch (1015)",
+            "enum": "PHIDID_1015",
+            "value": 10
+        },
+        {
+            "description": "PhidgetCircularTouch (1016)",
+            "enum": "PHIDID_1016",
+            "value": 11
+        },
+        {
+            "description": "PhidgetInterfaceKit 0/0/8 (1017)",
+            "enum": "PHIDID_1017",
+            "value": 12
+        },
+        {
+            "description": "PhidgetRFID (1023)",
+            "enum": "PHIDID_1023",
+            "value": 13
+        },
+        {
+            "description": "PhidgetRFID Read-Write (1024)",
+            "enum": "PHIDID_1024",
+            "value": 14
+        },
+        {
+            "description": "PhidgetLED-64 (1030)",
+            "enum": "PHIDID_1030",
+            "value": 15
+        },
+        {
+            "description": "PhidgetLED-64 Advanced (1031)",
+            "enum": "PHIDID_1031",
+            "value": 16
+        },
+        {
+            "description": "PhidgetLED-64 Advanced (1032)",
+            "enum": "PHIDID_1032",
+            "value": 17
+        },
+        {
+            "description": "PhidgetGPS (1040)",
+            "enum": "PHIDID_1040",
+            "value": 18
+        },
+        {
+            "description": "PhidgetSpatial 0/0/3 Basic (1041)",
+            "enum": "PHIDID_1041",
+            "value": 19
+        },
+        {
+            "description": "PhidgetSpatial 3/3/3 Basic (1042)",
+            "enum": "PHIDID_1042",
+            "value": 20
+        },
+        {
+            "description": "PhidgetSpatial Precision 0/0/3 High Resolution (1043)",
+            "enum": "PHIDID_1043",
+            "value": 21
+        },
+        {
+            "description": "PhidgetSpatial Precision 3/3/3 High Resolution (1044)",
+            "enum": "PHIDID_1044",
+            "value": 22
+        },
+        {
+            "description": "PhidgetTemperatureSensor IR (1045)",
+            "enum": "PHIDID_1045",
+            "value": 23
+        },
+        {
+            "description": "PhidgetBridge 4-Input (1046)",
+            "enum": "PHIDID_1046",
+            "value": 24
+        },
+        {
+            "description": "PhidgetEncoder HighSpeed 4-Input (1047)",
+            "enum": "PHIDID_1047",
+            "value": 25
+        },
+        {
+            "description": "PhidgetTemperatureSensor 4-Input (1048)",
+            "enum": "PHIDID_1048",
+            "value": 26
+        },
+        {
+            "description": "PhidgetSpatial 0/0/3 (1049)",
+            "enum": "PHIDID_1049",
+            "value": 27
+        },
+        {
+            "description": "PhidgetTemperatureSensor 1-Input (1051)",
+            "enum": "PHIDID_1051",
+            "value": 28
+        },
+        {
+            "description": "PhidgetEncoder (1052)",
+            "enum": "PHIDID_1052",
+            "value": 29
+        },
+        {
+            "description": "PhidgetAccelerometer 2-Axis (1053)",
+            "enum": "PHIDID_1053",
+            "value": 30
+        },
+        {
+            "description": "PhidgetFrequencyCounter (1054)",
+            "enum": "PHIDID_1054",
+            "value": 31
+        },
+        {
+            "description": "PhidgetIR (1055)",
+            "enum": "PHIDID_1055",
+            "value": 32
+        },
+        {
+            "description": "PhidgetSpatial 3/3/3 (1056)",
+            "enum": "PHIDID_1056",
+            "value": 33
+        },
+        {
+            "description": "PhidgetEncoder HighSpeed (1057)",
+            "enum": "PHIDID_1057",
+            "value": 34
+        },
+        {
+            "description": "PhidgetPHSensor (1058)",
+            "enum": "PHIDID_1058",
+            "value": 35
+        },
+        {
+            "description": "PhidgetAccelerometer 3-Axis (1059)",
+            "enum": "PHIDID_1059",
+            "value": 36
+        },
+        {
+            "description": "PhidgetMotorControl LV (1060)",
+            "enum": "PHIDID_1060",
+            "value": 37
+        },
+        {
+            "description": "PhidgetAdvancedServo 8-Motor (1061)",
+            "enum": "PHIDID_1061",
+            "value": 38
+        },
+        {
+            "description": "PhidgetStepper Unipolar 4-Motor (1062)",
+            "enum": "PHIDID_1062",
+            "value": 39
+        },
+        {
+            "description": "PhidgetStepper Bipolar 1-Motor (1063)",
+            "enum": "PHIDID_1063",
+            "value": 40
+        },
+        {
+            "description": "PhidgetMotorControl HC (1064)",
+            "enum": "PHIDID_1064",
+            "value": 41
+        },
+        {
+            "description": "PhidgetMotorControl 1-Motor (1065)",
+            "enum": "PHIDID_1065",
+            "value": 42
+        },
+        {
+            "description": "PhidgetAdvancedServo 1-Motor (1066)",
+            "enum": "PHIDID_1066",
+            "value": 43
+        },
+        {
+            "description": "PhidgetStepper Bipolar HC (1067)",
+            "enum": "PHIDID_1067",
+            "value": 44
+        },
+        {
+            "description": "PhidgetTextLCD 20x2 with PhidgetInterfaceKit 8/8/8 (1202, 1203)",
+            "enum": "PHIDID_1202_1203",
+            "value": 45
+        },
+        {
+            "description": "PhidgetTextLCD Adapter (1204)",
+            "enum": "PHIDID_1204",
+            "value": 46
+        },
+        {
+            "description": "PhidgetTextLCD 20x2 (1215, 1216, 1217, 1218)",
+            "enum": "PHIDID_1215__1218",
+            "value": 47
+        },
+        {
+            "description": "PhidgetTextLCD 20x2 with PhidgetInterfaceKit 0/8/8 (1219, 1220, 1221, 1222)",
+            "enum": "PHIDID_1219__1222",
+            "value": 48
+        },
+        {
+            "description": "pH Adapter Phidget (ADP1000)",
+            "enum": "PHIDID_ADP1000",
+            "value": 49
+        },
+        {
+            "description": "8x Voltage Input Phidget (DAQ1000)",
+            "enum": "PHIDID_DAQ1000",
+            "value": 51
+        },
+        {
+            "description": "4x Digital Input Phidget (DAQ1200)",
+            "enum": "PHIDID_DAQ1200",
+            "value": 52
+        },
+        {
+            "description": "4x Isolated Digital Input Phidget (DAQ1300)",
+            "enum": "PHIDID_DAQ1300",
+            "value": 53
+        },
+        {
+            "description": "16x Isolated Digital Input Phidget (DAQ1301)",
+            "enum": "PHIDID_DAQ1301",
+            "value": 54
+        },
+        {
+            "description": "Versatile Input Phidget (DAQ1400)",
+            "enum": "PHIDID_DAQ1400",
+            "value": 55
+        },
+        {
+            "description": "Wheatstone Bridge Phidget (DAQ1500)",
+            "enum": "PHIDID_DAQ1500",
+            "value": 56
+        },
+        {
+            "description": "DC Motor Phidget (DCC1000)",
+            "enum": "PHIDID_DCC1000",
+            "value": 57
+        },
+        {
+            "description": "2A DC Motor Phidget (DCC1001)",
+            "enum": "PHIDID_DCC1001",
+            "value": 110
+        },
+        {
+            "description": "4A DC Motor Phidget (DCC1002)",
+            "enum": "PHIDID_DCC1002",
+            "value": 117
+        },
+        {
+            "description": "2x DC Motor Phidget (DCC1003)",
+            "enum": "PHIDID_DCC1003",
+            "value": 120
+        },
+        {
+            "description": "30V 50A DC Motor Phidget (DCC1020)",
+            "enum": "PHIDID_DCC1020",
+            "value": 128
+        },
+        {
+            "description": "Brushless DC Motor Phidget (DCC1100)",
+            "enum": "PHIDID_DCC1100",
+            "value": 108
+        },
+        {
+            "description": "30V 50A Brushless DC Motor Phidget (DCC1120)",
+            "enum": "PHIDID_DCC1120",
+            "value": 150
+        },
+        {
+            "description": "Distance Phidget (DST1000)",
+            "enum": "PHIDID_DST1000",
+            "value": 58
+        },
+        {
+            "description": "Distance Phidget 650mm (DST1001)",
+            "enum": "PHIDID_DST1001",
+            "value": 121
+        },
+        {
+            "description": "Distance Phidget 1300mm (DST1002)",
+            "enum": "PHIDID_DST1002",
+            "value": 126
+        },
+        {
+            "description": "Sonar Phidget (DST1200)",
+            "enum": "PHIDID_DST1200",
+            "value": 59
+        },
+        {
+            "description": "Quadrature Encoder Phidget (ENC1000)",
+            "enum": "PHIDID_ENC1000",
+            "value": 60
+        },
+        {
+            "description": "Quadrature Encoder Phidget (ENC1001)",
+            "enum": "PHIDID_ENC1001",
+            "value": 155
+        },
+        {
+            "description": "Touch Keypad Phidget (HIN1000)",
+            "enum": "PHIDID_HIN1000",
+            "value": 61
+        },
+        {
+            "description": "Touch Wheel Phidget (HIN1001)",
+            "enum": "PHIDID_HIN1001",
+            "value": 62
+        },
+        {
+            "description": "Thumbstick Phidget (HIN1100)",
+            "enum": "PHIDID_HIN1100",
+            "value": 63
+        },
+        {
+            "description": "Phidget Dial (HIN1101)",
+            "enum": "PHIDID_HIN1101",
+            "value": 109
+        },
+        {
+            "description": "6-Port USB VINT Hub Phidget (HUB0000)",
+            "enum": "PHIDID_HUB0000",
+            "value": 64
+        },
+        {
+            "description": "6-Port USB VINT Hub Phidget (HUB0001)",
+            "enum": "PHIDID_HUB0001",
+            "value": 142
+        },
+        {
+            "description": "6-Port USB VINT Hub Phidget (HUB0002)",
+            "enum": "PHIDID_HUB0002",
+            "value": 147
+        },
+        {
+            "description": "6-Port PhidgetSBC VINT Hub Phidget (HUB0004)",
+            "enum": "PHIDID_HUB0004",
+            "value": 67
+        },
+        {
+            "description": "1-Port USB VINT Hub Phidget (HUB0007)",
+            "enum": "PHIDID_HUB0007",
+            "value": 148
+        },
+        {
+            "description": "6-Port Network VINT Hub Phidget (HUB5000)",
+            "enum": "PHIDID_HUB5000",
+            "value": 123
+        },
+        {
+            "description": "Humidity Phidget (HUM1000)",
+            "enum": "PHIDID_HUM1000",
+            "value": 69
+        },
+        {
+            "description": "Humidity Phidget (HUM1001)",
+            "enum": "PHIDID_HUM1001",
+            "value": 127
+        },
+        {
+            "description": "Soil Moisture Phidget (HUM1100)",
+            "enum": "PHIDID_HUM1100",
+            "value": 136
+        },
+        {
+            "description": "Graphic LCD Phidget (LCD1100)",
+            "enum": "PHIDID_LCD1100",
+            "value": 70
+        },
+        {
+            "description": "32x Isolated LED Phidget (LED1000)",
+            "enum": "PHIDID_LED1000",
+            "value": 71
+        },
+        {
+            "description": "Light Phidget (LUX1000)",
+            "enum": "PHIDID_LUX1000",
+            "value": 72
+        },
+        {
+            "description": "PhidgetAccelerometer (MOT0100)",
+            "enum": "PHIDID_MOT0100",
+            "value": 146
+        },
+        {
+            "description": "PhidgetSpatial Precision 3/3/3 (MOT0109)",
+            "enum": "PHIDID_MOT0109",
+            "value": 140
+        },
+        {
+            "description": "PhidgetSpatial Precision 3/3/3 (MOT0110)",
+            "enum": "PHIDID_MOT0110",
+            "value": 141
+        },
+        {
+            "description": "Accelerometer Phidget (MOT1100)",
+            "enum": "PHIDID_MOT1100",
+            "value": 73
+        },
+        {
+            "description": "Spatial Phidget (MOT1101)",
+            "enum": "PHIDID_MOT1101",
+            "value": 74
+        },
+        {
+            "description": "Spatial Phidget (MOT1102)",
+            "enum": "PHIDID_MOT1102",
+            "value": 137
+        },
+        {
+            "description": "12-bit Voltage Output Phidget (OUT1000)",
+            "enum": "PHIDID_OUT1000",
+            "value": 75
+        },
+        {
+            "description": "Isolated 12-bit Voltage Output Phidget (OUT1001)",
+            "enum": "PHIDID_OUT1001",
+            "value": 76
+        },
+        {
+            "description": "Isolated 16-bit Voltage Output Phidget (OUT1002)",
+            "enum": "PHIDID_OUT1002",
+            "value": 77
+        },
+        {
+            "description": "4x Digital Output Phidget (OUT1100)",
+            "enum": "PHIDID_OUT1100",
+            "value": 78
+        },
+        {
+            "description": "Barometer Phidget (PRE1000)",
+            "enum": "PHIDID_PRE1000",
+            "value": 79
+        },
+        {
+            "description": "PhidgetAdvancedServo 8-Motor (RCC0004)",
+            "enum": "PHIDID_RCC0004",
+            "value": 124
+        },
+        {
+            "description": "16x RC Servo Phidget (RCC1000)",
+            "enum": "PHIDID_RCC1000",
+            "value": 80
+        },
+        {
+            "description": "4x Relay Phidget (REL1000)",
+            "enum": "PHIDID_REL1000",
+            "value": 81
+        },
+        {
+            "description": "4x Isolated Solid State Relay Phidget (REL1100)",
+            "enum": "PHIDID_REL1100",
+            "value": 82
+        },
+        {
+            "description": "16x Isolated Solid State Relay Phidget (REL1101)",
+            "enum": "PHIDID_REL1101",
+            "value": 83
+        },
+        {
+            "description": "Programmable Power Guard Phidget (SAF1000)",
+            "enum": "PHIDID_SAF1000",
+            "value": 84
+        },
+        {
+            "description": "Sound Phidget (SND1000)",
+            "enum": "PHIDID_SND1000",
+            "value": 85
+        },
+        {
+            "description": "Stepper Phidget (STC1000)",
+            "enum": "PHIDID_STC1000",
+            "value": 86
+        },
+        {
+            "description": "2.5A Stepper Phidget (STC1001)",
+            "enum": "PHIDID_STC1001",
+            "value": 115
+        },
+        {
+            "description": "8A Stepper Phidget (STC1002)",
+            "enum": "PHIDID_STC1002",
+            "value": 118
+        },
+        {
+            "description": "4A Stepper Phidget (STC1003)",
+            "enum": "PHIDID_STC1003",
+            "value": 119
+        },
+        {
+            "description": "4A Stepper Phidget (STC1005)",
+            "enum": "PHIDID_STC1005",
+            "value": 149
+        },
+        {
+            "description": "Temperature Phidget (TMP1000)",
+            "enum": "PHIDID_TMP1000",
+            "value": 87
+        },
+        {
+            "description": "Isolated Thermocouple Phidget (TMP1100)",
+            "enum": "PHIDID_TMP1100",
+            "value": 88
+        },
+        {
+            "description": "4x Thermocouple Phidget (TMP1101)",
+            "enum": "PHIDID_TMP1101",
+            "value": 89
+        },
+        {
+            "description": "RTD Phidget (TMP1200)",
+            "enum": "PHIDID_TMP1200",
+            "value": 90
+        },
+        {
+            "description": "20-bit (+-40V) Voltage Input Phidget (VCP1000)",
+            "enum": "PHIDID_VCP1000",
+            "value": 92
+        },
+        {
+            "description": "10-bit (+-40V) Voltage Input Phidget (VCP1001)",
+            "enum": "PHIDID_VCP1001",
+            "value": 93
+        },
+        {
+            "description": "10-bit (+-1V) Voltage Input Phidget (VCP1002)",
+            "enum": "PHIDID_VCP1002",
+            "value": 94
+        },
+        {
+            "description": "30A Current Sensor Phidget (VCP1100)",
+            "enum": "PHIDID_VCP1100",
+            "value": 105
+        }
+    ],
+    "DriveMode": [
+        {
+            "description": "Configures the motor for coasting deceleration",
+            "enum": "DRIVE_MODE_COAST",
+            "value": 1
+        },
+        {
+            "description": "Configures the motor for forced deceleration",
+            "enum": "DRIVE_MODE_FORCED",
+            "value": 2
+        }
+    ],
+    "EncoderIOMode": [
+        {
+            "description": "No additional pull-up or pull-down resistors will be applied to the input lines.",
+            "enum": "ENCODER_IO_MODE_PUSH_PULL",
+            "value": 1
+        },
+        {
+            "description": "2.2kΩ pull-down resistors will be applied to the input lines.",
+            "enum": "ENCODER_IO_MODE_LINE_DRIVER_2K2",
+            "value": 2
+        },
+        {
+            "description": "10kΩ pull-down resistors will be applied to the input lines.",
+            "enum": "ENCODER_IO_MODE_LINE_DRIVER_10K",
+            "value": 3
+        },
+        {
+            "description": "2.2kΩ pull-up resistors will be applied to the input lines.",
+            "enum": "ENCODER_IO_MODE_OPEN_COLLECTOR_2K2",
+            "value": 4
+        },
+        {
+            "description": "10kΩ pull-up resistors will be applied to the input lines.",
+            "enum": "ENCODER_IO_MODE_OPEN_COLLECTOR_10K",
+            "value": 5
+        }
+    ],
+    "Encoding": [
+        {
+            "description": "Unknown - the default value",
+            "enum": "IR_ENCODING_UNKNOWN",
+            "value": 1
+        },
+        {
+            "description": "Space encoding, or Pulse Distance Modulation",
+            "enum": "IR_ENCODING_SPACE",
+            "value": 2
+        },
+        {
+            "description": "Pulse encoding, or Pulse Width Modulation",
+            "enum": "IR_ENCODING_PULSE",
+            "value": 3
+        },
+        {
+            "description": "Bi-Phase, or Manchester encoding",
+            "enum": "IR_ENCODING_BIPHASE",
+            "value": 4
+        },
+        {
+            "description": "RC5 - a type of Bi-Phase encoding",
+            "enum": "IR_ENCODING_RC5",
+            "value": 5
+        },
+        {
+            "description": "RC6 - a type of Bi-Phase encoding",
+            "enum": "IR_ENCODING_RC6",
+            "value": 6
+        }
+    ],
+    "ErrorCode": [
+        {
+            "description": "Call succeeded.",
+            "enum": "EPHIDGET_OK",
+            "value": 0
+        },
+        {
+            "description": "Not Permitted",
+            "enum": "EPHIDGET_PERM",
+            "value": 1
+        },
+        {
+            "description": "The specified entity does not exist. This is usually a result of Net or Log API calls.",
+            "enum": "EPHIDGET_NOENT",
+            "value": 2
+        },
+        {
+            "description": "Call has timed out. This can happen for a number of common reasons: Check that the Phidget you are trying to open is plugged in, and that the addressing parameters have been specified correctly. Check that the Phidget is not already open in another program, such as the Phidget Control Panel, or another program you are developing. If your Phidget has a plug or terminal block for external power, ensure it is plugged in and powered. If you are using remote Phidgets, ensure that your computer can access the remote Phidgets using the Phidget Control Panel. If you are using remote Phidgets, ensure you have enabled Server Discovery or added the server corresponding to the Phidget you are trying to open. If you are using Network Server Discovery, try extending the timeout to allow more time for the server to be discovered.",
+            "enum": "EPHIDGET_TIMEOUT",
+            "value": 3
+        },
+        {
+            "description": "Keep Alive Failure",
+            "enum": "EPHIDGET_KEEPALIVE",
+            "value": 58
+        },
+        {
+            "description": "The operation was interrupted; either from an error, or because the device was closed.",
+            "enum": "EPHIDGET_INTERRUPTED",
+            "value": 4
+        },
+        {
+            "description": "IO Issue",
+            "enum": "EPHIDGET_IO",
+            "value": 5
+        },
+        {
+            "description": "Memory Issue",
+            "enum": "EPHIDGET_NOMEMORY",
+            "value": 6
+        },
+        {
+            "description": "Access to the resource (file) is denied. This can happen when enabling logging.",
+            "enum": "EPHIDGET_ACCESS",
+            "value": 7
+        },
+        {
+            "description": "Address Issue",
+            "enum": "EPHIDGET_FAULT",
+            "value": 8
+        },
+        {
+            "description": "Specified resource is in use. This error code is not normally used.",
+            "enum": "EPHIDGET_BUSY",
+            "value": 9
+        },
+        {
+            "description": "Object Exists",
+            "enum": "EPHIDGET_EXIST",
+            "value": 10
+        },
+        {
+            "description": "Object is not a directory",
+            "enum": "EPHIDGET_NOTDIR",
+            "value": 11
+        },
+        {
+            "description": "Object is a directory",
+            "enum": "EPHIDGET_ISDIR",
+            "value": 12
+        },
+        {
+            "description": "Invalid or malformed command. This can be caused by sending a command to a device which is not supported in it's current configuration.",
+            "enum": "EPHIDGET_INVALID",
+            "value": 13
+        },
+        {
+            "description": "Too many open files in system",
+            "enum": "EPHIDGET_NFILE",
+            "value": 14
+        },
+        {
+            "description": "Too many open files",
+            "enum": "EPHIDGET_MFILE",
+            "value": 15
+        },
+        {
+            "description": "The provided buffer argument size is too small.",
+            "enum": "EPHIDGET_NOSPC",
+            "value": 16
+        },
+        {
+            "description": "File too Big",
+            "enum": "EPHIDGET_FBIG",
+            "value": 17
+        },
+        {
+            "description": "Read Only Filesystem",
+            "enum": "EPHIDGET_ROFS",
+            "value": 18
+        },
+        {
+            "description": "Read Only Object",
+            "enum": "EPHIDGET_RO",
+            "value": 19
+        },
+        {
+            "description": "This API call is not supported. For Class APIs this means that this API is not supported by this device. This can also mean the API is not supported on this OS, or OS configuration.",
+            "enum": "EPHIDGET_UNSUPPORTED",
+            "value": 20
+        },
+        {
+            "description": "One or more of the parameters passed to the function is not accepted by the channel in its current configuration.",
+            "enum": "EPHIDGET_INVALIDARG",
+            "value": 21
+        },
+        {
+            "description": "Try again",
+            "enum": "EPHIDGET_AGAIN",
+            "value": 22
+        },
+        {
+            "description": "Not Empty",
+            "enum": "EPHIDGET_NOTEMPTY",
+            "value": 26
+        },
+        {
+            "description": "Something unexpected has occured. Enable library logging and have a look at the log, or contact Phidgets support.",
+            "enum": "EPHIDGET_UNEXPECTED",
+            "value": 28
+        },
+        {
+            "description": "Duplicated request. Can happen with some Net API calls, such as trying to add the same server twice.",
+            "enum": "EPHIDGET_DUPLICATE",
+            "value": 27
+        },
+        {
+            "description": "Bad Credential",
+            "enum": "EPHIDGET_BADPASSWORD",
+            "value": 37
+        },
+        {
+            "description": "Network Unavailable",
+            "enum": "EPHIDGET_NETUNAVAIL",
+            "value": 45
+        },
+        {
+            "description": "Connection Refused",
+            "enum": "EPHIDGET_CONNREF",
+            "value": 35
+        },
+        {
+            "description": "Connection Reset",
+            "enum": "EPHIDGET_CONNRESET",
+            "value": 46
+        },
+        {
+            "description": "No route to host",
+            "enum": "EPHIDGET_HOSTUNREACH",
+            "value": 48
+        },
+        {
+            "description": "No Such Device",
+            "enum": "EPHIDGET_NODEV",
+            "value": 40
+        },
+        {
+            "description": "A Phidget channel object of the wrong channel class was passed into this API call.",
+            "enum": "EPHIDGET_WRONGDEVICE",
+            "value": 50
+        },
+        {
+            "description": "Broken Pipe",
+            "enum": "EPHIDGET_PIPE",
+            "value": 41
+        },
+        {
+            "description": "Name Resolution Failure",
+            "enum": "EPHIDGET_RESOLV",
+            "value": 44
+        },
+        {
+            "description": "The value is unknown. This can happen right after attach, when the value has not yet been received from the Phidget. This can also happen if a device has not yet been configured / enabled. Some properties can only be read back after being set.",
+            "enum": "EPHIDGET_UNKNOWNVAL",
+            "value": 51
+        },
+        {
+            "description": "This can happen for a number of common reasons. Be sure you are opening the channel before trying to use it. If you are opening the channel, the program may not be waiting for the channel to be attached. If possible use openWaitForAttachment. Otherwise, be sure to check the Attached property of the channel before trying to use it.",
+            "enum": "EPHIDGET_NOTATTACHED",
+            "value": 52
+        },
+        {
+            "description": "Invalid or Unexpected Packet",
+            "enum": "EPHIDGET_INVALIDPACKET",
+            "value": 53
+        },
+        {
+            "description": "Argument List Too Long",
+            "enum": "EPHIDGET_2BIG",
+            "value": 54
+        },
+        {
+            "description": "Bad Version",
+            "enum": "EPHIDGET_BADVERSION",
+            "value": 55
+        },
+        {
+            "description": "Channel was closed. This can happen if a channel is closed while openWaitForAttachment is waiting.",
+            "enum": "EPHIDGET_CLOSED",
+            "value": 56
+        },
+        {
+            "description": "Device is not configured enough for this API call. Have a look at the must-set properties for this device and make sure to configure them first.",
+            "enum": "EPHIDGET_NOTCONFIGURED",
+            "value": 57
+        },
+        {
+            "description": "End of File",
+            "enum": "EPHIDGET_EOF",
+            "value": 31
+        },
+        {
+            "description": "Failsafe Triggered on this channel. Close and Re-open the channel to resume operation.",
+            "enum": "EPHIDGET_FAILSAFE",
+            "value": 59
+        },
+        {
+            "description": "The value has been measured to be higher than the valid range of the sensor.",
+            "enum": "EPHIDGET_UNKNOWNVALHIGH",
+            "value": 60
+        },
+        {
+            "description": "The value has been measured to be lower than the valid range of the sensor.",
+            "enum": "EPHIDGET_UNKNOWNVALLOW",
+            "value": 61
+        },
+        {
+            "description": "The power supply of your device is outside the acceptable range to allow operation.",
+            "enum": "EPHIDGET_BADPOWER",
+            "value": 62
+        },
+        {
+            "description": "Something has caused your device to decide it needs to be powered off and on to resume operation.",
+            "enum": "EPHIDGET_POWERCYCLE",
+            "value": 63
+        },
+        {
+            "description": "The hall sensor on your Brushless DC Motor Controller is Improperly Connected",
+            "enum": "EPHIDGET_HALLSENSOR",
+            "value": 64
+        },
+        {
+            "description": "Current sensor offset outside acceptable bounds. Move the sensor aways from magnetic fields and try again.",
+            "enum": "EPHIDGET_BADCURRENT",
+            "value": 65
+        },
+        {
+            "description": "One or more required connections on the device has been deemed faulty. Check your connections and try again.",
+            "enum": "EPHIDGET_BADCONNECTION",
+            "value": 66
+        },
+        {
+            "description": "An external device has responded with a NACK response. Evaluate whether this is expected and try again.",
+            "enum": "EPHIDGET_NACK",
+            "value": 67
+        }
+    ],
+    "ErrorEventCode": [
+        {
+            "description": "Client and Server protocol versions don't match. Ensure that both sides are using the same release of phidget22.",
+            "enum": "EEPHIDGET_BADVERSION",
+            "value": 1
+        },
+        {
+            "description": "Check that the Phidget is not already open in another program, such as the Phidget Control Panel, or another program you are developing.",
+            "enum": "EEPHIDGET_BUSY",
+            "value": 2
+        },
+        {
+            "description": "This could be a network communication issue, an authentication issue (if server password is enabled), or a Device access / hardware issue.",
+            "enum": "EEPHIDGET_NETWORK",
+            "value": 3
+        },
+        {
+            "description": "An error occured dispatching a command or event.",
+            "enum": "EEPHIDGET_DISPATCH",
+            "value": 4
+        },
+        {
+            "description": "A general failure occured - see description for details.",
+            "enum": "EEPHIDGET_FAILURE",
+            "value": 5
+        },
+        {
+            "description": "An error state has cleared.",
+            "enum": "EEPHIDGET_OK",
+            "value": 4096
+        },
+        {
+            "description": "A sampling overrun happened in firmware.",
+            "enum": "EEPHIDGET_OVERRUN",
+            "value": 4098
+        },
+        {
+            "description": "One or more packets were lost.",
+            "enum": "EEPHIDGET_PACKETLOST",
+            "value": 4099
+        },
+        {
+            "description": "Variable has wrapped around.",
+            "enum": "EEPHIDGET_WRAP",
+            "value": 4100
+        },
+        {
+            "description": "Over-temperature condition detected.",
+            "enum": "EEPHIDGET_OVERTEMP",
+            "value": 4101
+        },
+        {
+            "description": "Over-current condition detected.",
+            "enum": "EEPHIDGET_OVERCURRENT",
+            "value": 4102
+        },
+        {
+            "description": "Out of range condition detected.",
+            "enum": "EEPHIDGET_OUTOFRANGE",
+            "value": 4103
+        },
+        {
+            "description": "Power supply problem detected.",
+            "enum": "EEPHIDGET_BADPOWER",
+            "value": 4104
+        },
+        {
+            "description": "Saturation condition detected.",
+            "enum": "EEPHIDGET_SATURATION",
+            "value": 4105
+        },
+        {
+            "description": "Over-voltage condition detected.",
+            "enum": "EEPHIDGET_OVERVOLTAGE",
+            "value": 4107
+        },
+        {
+            "description": "Failsafe condition detected.",
+            "enum": "EEPHIDGET_FAILSAFE",
+            "value": 4108
+        },
+        {
+            "description": "Voltage error detected.",
+            "enum": "EEPHIDGET_VOLTAGEERROR",
+            "value": 4109
+        },
+        {
+            "description": "Energy dump condition detected.",
+            "enum": "EEPHIDGET_ENERGYDUMP",
+            "value": 4110
+        },
+        {
+            "description": "Motor stall detected.",
+            "enum": "EEPHIDGET_MOTORSTALL",
+            "value": 4111
+        },
+        {
+            "description": "Invalid state detected.",
+            "enum": "EEPHIDGET_INVALIDSTATE",
+            "value": 4112
+        },
+        {
+            "description": "Bad connection detected.",
+            "enum": "EEPHIDGET_BADCONNECTION",
+            "value": 4113
+        },
+        {
+            "description": "Measurement is above the valid range.",
+            "enum": "EEPHIDGET_OUTOFRANGEHIGH",
+            "value": 4114
+        },
+        {
+            "description": "Measurement is below the valid range.",
+            "enum": "EEPHIDGET_OUTOFRANGELOW",
+            "value": 4115
+        },
+        {
+            "description": "Fault condition detected.",
+            "enum": "EEPHIDGET_FAULT",
+            "value": 4116
+        },
+        {
+            "description": "External stop condition detected.",
+            "enum": "EEPHIDGET_ESTOP",
+            "value": 4117
+        },
+        {
+            "description": "Current sensor problem detected.",
+            "enum": "EEPHIDGET_BADCURRENT",
+            "value": 4118
+        }
+    ],
+    "FanMode": [
+        {
+            "description": "Turns the fan off.",
+            "enum": "FAN_MODE_OFF",
+            "value": 1
+        },
+        {
+            "description": "Turns the fan on.",
+            "enum": "FAN_MODE_ON",
+            "value": 2
+        },
+        {
+            "description": "The fan will be automatically controlled based on temperature.",
+            "enum": "FAN_MODE_AUTO",
+            "value": 3
+        }
+    ],
+    "FilterType": [
+        {
+            "description": "Frequency is calculated from the number of times the signal transitions from a negative voltage to a positive voltage and back again.",
+            "enum": "FILTER_TYPE_ZERO_CROSSING",
+            "value": 1
+        },
+        {
+            "description": "Frequency is calculated from the number of times the signal transitions from a logic false to a logic true and back again.",
+            "enum": "FILTER_TYPE_LOGIC_LEVEL",
+            "value": 2
+        }
+    ],
+    "HubPortMode": [
+        {
+            "description": "Communicate with a smart VINT device",
+            "enum": "PORT_MODE_VINT_PORT",
+            "value": 0
+        },
+        {
+            "description": "5V Logic-level digital input",
+            "enum": "PORT_MODE_DIGITAL_INPUT",
+            "value": 1
+        },
+        {
+            "description": "3.3V digital output",
+            "enum": "PORT_MODE_DIGITAL_OUTPUT",
+            "value": 2
+        },
+        {
+            "description": "0-5V voltage input for non-ratiometric sensors ",
+            "enum": "PORT_MODE_VOLTAGE_INPUT",
+            "value": 3
+        },
+        {
+            "description": "0-5V voltage input for ratiometric sensors",
+            "enum": "PORT_MODE_VOLTAGE_RATIO_INPUT",
+            "value": 4
+        }
+    ],
+    "IRCodeEncoding": [
+        {
+            "description": "Unknown - the default value",
+            "enum": "IR_ENCODING_UNKNOWN",
+            "value": 1
+        },
+        {
+            "description": "Space encoding, or Pulse Distance Modulation",
+            "enum": "IR_ENCODING_SPACE",
+            "value": 2
+        },
+        {
+            "description": "Pulse encoding, or Pulse Width Modulation",
+            "enum": "IR_ENCODING_PULSE",
+            "value": 3
+        },
+        {
+            "description": "Bi-Phase, or Manchester encoding",
+            "enum": "IR_ENCODING_BIPHASE",
+            "value": 4
+        },
+        {
+            "description": "RC5 - a type of Bi-Phase encoding",
+            "enum": "IR_ENCODING_RC5",
+            "value": 5
+        },
+        {
+            "description": "RC6 - a type of Bi-Phase encoding",
+            "enum": "IR_ENCODING_RC6",
+            "value": 6
+        }
+    ],
+    "IRCodeLength": [
+        {
+            "description": "Unknown - the default value",
+            "enum": "IR_LENGTH_UNKNOWN",
+            "value": 1
+        },
+        {
+            "description": "Constant - the bitstream and gap length is constant",
+            "enum": "IR_LENGTH_CONSTANT",
+            "value": 2
+        },
+        {
+            "description": "Variable - the bitstream has a variable length with a constant gap",
+            "enum": "IR_LENGTH_VARIABLE",
+            "value": 3
+        }
+    ],
+    "InputMode": [
+        {
+            "description": "For interfacing NPN digital sensors",
+            "enum": "INPUT_MODE_NPN",
+            "value": 1
+        },
+        {
+            "description": "For interfacing PNP digital sensors",
+            "enum": "INPUT_MODE_PNP",
+            "value": 2
+        },
+        {
+            "description": "Floating input",
+            "enum": "INPUT_MODE_FLOATING",
+            "value": 3
+        },
+        {
+            "description": "Enables a pullup for interfaces that only pull low",
+            "enum": "INPUT_MODE_PULLUP",
+            "value": 4
+        }
+    ],
+    "LCDPixelState": [
+        {
+            "description": "Pixel off state",
+            "enum": "PIXEL_STATE_OFF",
+            "value": 0
+        },
+        {
+            "description": "Pixel on state",
+            "enum": "PIXEL_STATE_ON",
+            "value": 1
+        },
+        {
+            "description": "Invert the pixel state",
+            "enum": "PIXEL_STATE_INVERT",
+            "value": 2
+        }
+    ],
+    "LCDScreenSize": [
+        {
+            "description": "Screen size unknown",
+            "enum": "SCREEN_SIZE_NONE",
+            "value": 1
+        }
+    ],
+    "LEDArrayAnimationType": [
+        {
+            "description": "Move the pattern in a positively incrementing direction",
+            "enum": "ANIMATION_TYPE_FORWARD_SCROLL",
+            "value": 1
+        },
+        {
+            "description": "Move the pattern in a decrementing direction",
+            "enum": "ANIMATION_TYPE_REVERSE_SCROLL",
+            "value": 2
+        },
+        {
+            "description": "Fades LEDs between colors in the supplied pattern, chosen at random.",
+            "enum": "ANIMATION_TYPE_RANDOMIZE",
+            "value": 3
+        },
+        {
+            "description": "Flip the pattern and move it in a positively incrementing direction, starting from the animation end point",
+            "enum": "ANIMATION_TYPE_FORWARD_SCROLL_MIRROR",
+            "value": 4
+        },
+        {
+            "description": "Flip the pattern and move it in a decrementing direction, starting from the animation end point",
+            "enum": "ANIMATION_TYPE_REVERSE_SCROLL_MIRROR",
+            "value": 5
+        }
+    ],
+    "LEDArrayColorOrder": [
+        {
+            "description": "Byte order RGB (WS2811)",
+            "enum": "LED_COLOR_ORDER_RGB",
+            "value": 1
+        },
+        {
+            "description": "Byte order GRB (WS2812B, SK6812)",
+            "enum": "LED_COLOR_ORDER_GRB",
+            "value": 2
+        },
+        {
+            "description": "Byte order RGBW",
+            "enum": "LED_COLOR_ORDER_RGBW",
+            "value": 3
+        },
+        {
+            "description": "Byte order GRBW (SK6812RGBW)",
+            "enum": "LED_COLOR_ORDER_GRBW",
+            "value": 4
+        }
+    ],
+    "LEDForwardVoltage": [
+        {
+            "description": "1.7 V",
+            "enum": "LED_FORWARD_VOLTAGE_1_7V",
+            "value": 1
+        },
+        {
+            "description": "2.75 V",
+            "enum": "LED_FORWARD_VOLTAGE_2_75V",
+            "value": 2
+        },
+        {
+            "description": "3.2 V",
+            "enum": "LED_FORWARD_VOLTAGE_3_2V",
+            "value": 3
+        },
+        {
+            "description": "3.9 V",
+            "enum": "LED_FORWARD_VOLTAGE_3_9V",
+            "value": 4
+        },
+        {
+            "description": "4.0 V",
+            "enum": "LED_FORWARD_VOLTAGE_4_0V",
+            "value": 5
+        },
+        {
+            "description": "4.8 V",
+            "enum": "LED_FORWARD_VOLTAGE_4_8V",
+            "value": 6
+        },
+        {
+            "description": "5.0 V",
+            "enum": "LED_FORWARD_VOLTAGE_5_0V",
+            "value": 7
+        },
+        {
+            "description": "5.6 V",
+            "enum": "LED_FORWARD_VOLTAGE_5_6V",
+            "value": 8
+        }
+    ],
+    "Length": [
+        {
+            "description": "Unknown - the default value",
+            "enum": "IR_LENGTH_UNKNOWN",
+            "value": 1
+        },
+        {
+            "description": "Constant - the bitstream and gap length is constant",
+            "enum": "IR_LENGTH_CONSTANT",
+            "value": 2
+        },
+        {
+            "description": "Variable - the bitstream has a variable length with a constant gap",
+            "enum": "IR_LENGTH_VARIABLE",
+            "value": 3
+        }
+    ],
+    "LogLevel": [
+        {
+            "description": "Critical",
+            "enum": "PHIDGET_LOG_CRITICAL",
+            "value": 1
+        },
+        {
+            "description": "Error",
+            "enum": "PHIDGET_LOG_ERROR",
+            "value": 2
+        },
+        {
+            "description": "Warning",
+            "enum": "PHIDGET_LOG_WARNING",
+            "value": 3
+        },
+        {
+            "description": "Info",
+            "enum": "PHIDGET_LOG_INFO",
+            "value": 4
+        },
+        {
+            "description": "Debug",
+            "enum": "PHIDGET_LOG_DEBUG",
+            "value": 5
+        },
+        {
+            "description": "Verbose",
+            "enum": "PHIDGET_LOG_VERBOSE",
+            "value": 6
+        }
+    ],
+    "PacketErrorCode": [
+        {
+            "description": "No error",
+            "enum": "PACKET_ERROR_OK",
+            "value": 0
+        },
+        {
+            "description": "Unknown Error",
+            "enum": "PACKET_ERROR_UNKNOWN",
+            "value": 1
+        },
+        {
+            "description": "The response packet timed out",
+            "enum": "PACKET_ERROR_TIMEOUT",
+            "value": 2
+        },
+        {
+            "description": "Something about the sent or received data didn't match the expected format.",
+            "enum": "PACKET_ERROR_FORMAT",
+            "value": 3
+        },
+        {
+            "description": "The input lines are invalid. This likely means a cable has been unplugged.",
+            "enum": "PACKET_ERROR_INVALID",
+            "value": 4
+        },
+        {
+            "description": "Data is being received faster than it can be processed. Some has been lost.",
+            "enum": "PACKET_ERROR_OVERRUN",
+            "value": 5
+        },
+        {
+            "description": "Something behind the scenes got out of sequence.",
+            "enum": "PACKET_ERROR_CORRUPT",
+            "value": 6
+        },
+        {
+            "description": "One or more packets have received a NACK response",
+            "enum": "PACKET_ERROR_NACK",
+            "value": 7
+        }
+    ],
+    "PhidgetServerType": [
+        {
+            "description": "Phidget22 Server<br/>Server discovery with this server type allows discovery of servers hosting Phidget devices. Enabling server discovery with this server type allows automated connection to these servers, and the Phidgets connected to them. Enabling server discovery with this server type will also enable ServerAdded and ServerRemoved events for this server type.",
+            "enum": "PHIDGETSERVER_DEVICEREMOTE",
+            "value": 3
+        },
+        {
+            "description": "Phidget22 Web server<br/>Server discovery with this server type detects the presence of Phidget web servers used to communicate with in-browser JavaScript. Enabling server discovery with this server type will enable ServerAdded and ServerRemoved events for this server type.",
+            "enum": "PHIDGETSERVER_WWWREMOTE",
+            "value": 6
+        },
+        {
+            "description": "Phidget SBC<br/>Server discovery with this server type detects the presence of Network Phidgets (SBC3003, HUB5000, etc.). Enabling server discovery with this server type will enable ServerAdded and ServerRemoved events for this server type.",
+            "enum": "PHIDGETSERVER_SBC",
+            "value": 7
+        }
+    ],
+    "PortMode": [
+        {
+            "description": "Communicate with a smart VINT device",
+            "enum": "PORT_MODE_VINT_PORT",
+            "value": 0
+        },
+        {
+            "description": "5V Logic-level digital input",
+            "enum": "PORT_MODE_DIGITAL_INPUT",
+            "value": 1
+        },
+        {
+            "description": "3.3V digital output",
+            "enum": "PORT_MODE_DIGITAL_OUTPUT",
+            "value": 2
+        },
+        {
+            "description": "0-5V voltage input for non-ratiometric sensors ",
+            "enum": "PORT_MODE_VOLTAGE_INPUT",
+            "value": 3
+        },
+        {
+            "description": "0-5V voltage input for ratiometric sensors",
+            "enum": "PORT_MODE_VOLTAGE_RATIO_INPUT",
+            "value": 4
+        }
+    ],
+    "PositionType": [
+        {
+            "description": "Configures the controller to use the encoder as a position source",
+            "enum": "POSITION_TYPE_ENCODER",
+            "value": 1
+        },
+        {
+            "description": "Configures the controller to use the hall-effect sensor as a position source",
+            "enum": "POSITION_TYPE_HALL_SENSOR",
+            "value": 2
+        }
+    ],
+    "PowerSupply": [
+        {
+            "description": "Switch the sensor power supply off",
+            "enum": "POWER_SUPPLY_OFF",
+            "value": 1
+        },
+        {
+            "description": "The sensor is provided with 12 volts",
+            "enum": "POWER_SUPPLY_12V",
+            "value": 2
+        },
+        {
+            "description": "The sensor is provided with 24 volts",
+            "enum": "POWER_SUPPLY_24V",
+            "value": 3
+        }
+    ],
+    "RCServoVoltage": [
+        {
+            "description": "Run all servos on 5V DC",
+            "enum": "RCSERVO_VOLTAGE_5V",
+            "value": 1
+        },
+        {
+            "description": "Run all servos on 6V DC",
+            "enum": "RCSERVO_VOLTAGE_6V",
+            "value": 2
+        },
+        {
+            "description": "Run all servos on 7.4V DC",
+            "enum": "RCSERVO_VOLTAGE_7_4V",
+            "value": 3
+        }
+    ],
+    "RFIDChipset": [
+        {
+            "description": "T5577",
+            "enum": "CHIPSET_T5577",
+            "value": 1
+        },
+        {
+            "description": "EM4305",
+            "enum": "CHIPSET_EM4305",
+            "value": 2
+        }
+    ],
+    "RFIDProtocol": [
+        {
+            "description": "EM4100 Series",
+            "enum": "PROTOCOL_EM4100",
+            "value": 1
+        },
+        {
+            "description": "ISO11785 FDX B",
+            "enum": "PROTOCOL_ISO11785_FDX_B",
+            "value": 2
+        },
+        {
+            "description": "PhidgetTAG",
+            "enum": "PROTOCOL_PHIDGETS",
+            "value": 3
+        },
+        {
+            "description": "HID Generic",
+            "enum": "PROTOCOL_HID_GENERIC",
+            "value": 4
+        },
+        {
+            "description": "HID H10301",
+            "enum": "PROTOCOL_HID_H10301",
+            "value": 5
+        }
+    ],
+    "RFIDTNF": [
+        {
+            "description": "Record is Empty",
+            "enum": "TNF_EMPTY",
+            "value": 0
+        },
+        {
+            "description": "Record is well known type",
+            "enum": "TNF_WELL_KNOWN",
+            "value": 1
+        },
+        {
+            "description": "Record contains a media type",
+            "enum": "TNF_MIME_MEDIA",
+            "value": 2
+        },
+        {
+            "description": "Record is ABSOLUTE_URI",
+            "enum": "TNF_ABSOLUTE_URI",
+            "value": 3
+        },
+        {
+            "description": "Record is EXTERNAL",
+            "enum": "TNF_EXTERNAL",
+            "value": 4
+        },
+        {
+            "description": "Record is unknown, treat payload as binary",
+            "enum": "TNF_UNKNOWN",
+            "value": 5
+        },
+        {
+            "description": "Used in chunked records, same type as previous chunk.",
+            "enum": "TNF_UNCHANGED",
+            "value": 6
+        }
+    ],
+    "RTDType": [
+        {
+            "description": "Configures the RTD type as a PT100 with a 3850ppm curve.",
+            "enum": "RTD_TYPE_PT100_3850",
+            "value": 1
+        },
+        {
+            "description": "Configures the RTD type as a PT1000 with a 3850ppm curve.",
+            "enum": "RTD_TYPE_PT1000_3850",
+            "value": 2
+        },
+        {
+            "description": "Configures the RTD type as a PT100 with a 3920ppm curve.",
+            "enum": "RTD_TYPE_PT100_3920",
+            "value": 3
+        },
+        {
+            "description": "Configures the RTD type as a PT1000 with a 3920ppm curve.",
+            "enum": "RTD_TYPE_PT1000_3920",
+            "value": 4
+        }
+    ],
+    "RTDWireSetup": [
+        {
+            "description": "Configures the device to make resistance calculations based on a 2-wire RTD setup.",
+            "enum": "RTD_WIRE_SETUP_2WIRE",
+            "value": 1
+        },
+        {
+            "description": "Configures the device to make resistance calculations based on a 3-wire RTD setup.",
+            "enum": "RTD_WIRE_SETUP_3WIRE",
+            "value": 2
+        },
+        {
+            "description": "Configures the device to make resistance calculations based on a 4-wire RTD setup.",
+            "enum": "RTD_WIRE_SETUP_4WIRE",
+            "value": 3
+        }
+    ],
+    "SpatialAlgorithm": [
+        {
+            "description": "No AHRS algorithm is used.",
+            "enum": "SPATIAL_ALGORITHM_NONE",
+            "value": 0
+        },
+        {
+            "description": "AHRS algorithm, incorporating magnetometer data for yaw correction.",
+            "enum": "SPATIAL_ALGORITHM_AHRS",
+            "value": 1
+        },
+        {
+            "description": "IMU algorithm, using gyro and accelerometer, but not magnetometer.",
+            "enum": "SPATIAL_ALGORITHM_IMU",
+            "value": 2
+        }
+    ],
+    "SpatialPrecision": [
+        {
+            "description": "High precision sensor is used when possible, fallback to low precision sensor.",
+            "enum": "SPATIAL_PRECISION_HYBRID",
+            "value": 0
+        },
+        {
+            "description": "High precision sensor is always used.",
+            "enum": "SPATIAL_PRECISION_HIGH",
+            "value": 1
+        },
+        {
+            "description": "Low precision sensor is always used.",
+            "enum": "SPATIAL_PRECISION_LOW",
+            "value": 2
+        }
+    ],
+    "StepperControlMode": [
+        {
+            "description": "Control the motor by setting a target position.",
+            "enum": "CONTROL_MODE_STEP",
+            "value": 0
+        },
+        {
+            "description": "Control the motor by selecting a target velocity (sign indicates direction). The motor will rotate continuously in the chosen direction.",
+            "enum": "CONTROL_MODE_RUN",
+            "value": 1
+        }
+    ],
+    "ThermocoupleType": [
+        {
+            "description": "Configures the thermocouple input as a J-Type thermocouple.",
+            "enum": "THERMOCOUPLE_TYPE_J",
+            "value": 1
+        },
+        {
+            "description": "Configures the thermocouple input as a K-Type thermocouple.",
+            "enum": "THERMOCOUPLE_TYPE_K",
+            "value": 2
+        },
+        {
+            "description": "Configures the thermocouple input as a E-Type thermocouple.",
+            "enum": "THERMOCOUPLE_TYPE_E",
+            "value": 3
+        },
+        {
+            "description": "Configures the thermocouple input as a T-Type thermocouple.",
+            "enum": "THERMOCOUPLE_TYPE_T",
+            "value": 4
+        }
+    ],
+    "Unit": [
+        {
+            "description": "Unitless",
+            "enum": "PHIDUNIT_NONE",
+            "value": 0
+        },
+        {
+            "description": "Boolean",
+            "enum": "PHIDUNIT_BOOLEAN",
+            "value": 1
+        },
+        {
+            "description": "Percent",
+            "enum": "PHIDUNIT_PERCENT",
+            "value": 2
+        },
+        {
+            "description": "Decibel",
+            "enum": "PHIDUNIT_DECIBEL",
+            "value": 3
+        },
+        {
+            "description": "Millimeter",
+            "enum": "PHIDUNIT_MILLIMETER",
+            "value": 4
+        },
+        {
+            "description": "Centimeter",
+            "enum": "PHIDUNIT_CENTIMETER",
+            "value": 5
+        },
+        {
+            "description": "Meter",
+            "enum": "PHIDUNIT_METER",
+            "value": 6
+        },
+        {
+            "description": "Gram",
+            "enum": "PHIDUNIT_GRAM",
+            "value": 7
+        },
+        {
+            "description": "Kilogram",
+            "enum": "PHIDUNIT_KILOGRAM",
+            "value": 8
+        },
+        {
+            "description": "Milliampere",
+            "enum": "PHIDUNIT_MILLIAMPERE",
+            "value": 9
+        },
+        {
+            "description": "Ampere",
+            "enum": "PHIDUNIT_AMPERE",
+            "value": 10
+        },
+        {
+            "description": "Kilopascal",
+            "enum": "PHIDUNIT_KILOPASCAL",
+            "value": 11
+        },
+        {
+            "description": "Volt",
+            "enum": "PHIDUNIT_VOLT",
+            "value": 12
+        },
+        {
+            "description": "Degree Celcius",
+            "enum": "PHIDUNIT_DEGREE_CELCIUS",
+            "value": 13
+        },
+        {
+            "description": "Lux",
+            "enum": "PHIDUNIT_LUX",
+            "value": 14
+        },
+        {
+            "description": "Gauss",
+            "enum": "PHIDUNIT_GAUSS",
+            "value": 15
+        },
+        {
+            "description": "pH",
+            "enum": "PHIDUNIT_PH",
+            "value": 16
+        },
+        {
+            "description": "Watt",
+            "enum": "PHIDUNIT_WATT",
+            "value": 17
+        }
+    ],
+    "VoltageOutputRange": [
+        {
+            "description": "±10V DC",
+            "enum": "VOLTAGE_OUTPUT_RANGE_10V",
+            "value": 1
+        },
+        {
+            "description": "0-5V DC",
+            "enum": "VOLTAGE_OUTPUT_RANGE_5V",
+            "value": 2
+        }
+    ],
+    "VoltageRange": [
+        {
+            "description": "Range ±2V DC",
+            "enum": "VOLTAGE_RANGE_2V",
+            "value": 7
+        },
+        {
+            "description": "Range ±5V DC",
+            "enum": "VOLTAGE_RANGE_5V",
+            "value": 8
+        },
+        {
+            "description": "Range ±15V DC",
+            "enum": "VOLTAGE_RANGE_15V",
+            "value": 9
+        },
+        {
+            "description": "Range ±40V DC",
+            "enum": "VOLTAGE_RANGE_40V",
+            "value": 10
+        },
+        {
+            "description": "Auto-range mode changes based on the present voltage measurements.",
+            "enum": "VOLTAGE_RANGE_AUTO",
+            "value": 11
+        }
+    ],
+    "VoltageRatioSensorType": [
+        {
+            "description": "Default. Configures the channel to be a generic ratiometric sensor. Unit is volts/volt.",
+            "enum": "SENSOR_TYPE_VOLTAGERATIO",
+            "value": 0
+        },
+        {
+            "description": "1101 - IR Distance Adapter, with Sharp Distance Sensor 2D120X (4-30cm)",
+            "enum": "SENSOR_TYPE_1101_SHARP_2D120X",
+            "value": 11011
+        },
+        {
+            "description": "1101 - IR Distance Adapter, with Sharp Distance Sensor 2Y0A21 (10-80cm)",
+            "enum": "SENSOR_TYPE_1101_SHARP_2Y0A21",
+            "value": 11012
+        },
+        {
+            "description": "1101 - IR Distance Adapter, with Sharp Distance Sensor 2Y0A02 (20-150cm)",
+            "enum": "SENSOR_TYPE_1101_SHARP_2Y0A02",
+            "value": 11013
+        },
+        {
+            "description": "1102 - IR Reflective Sensor 5mm",
+            "enum": "SENSOR_TYPE_1102",
+            "value": 11020
+        },
+        {
+            "description": "1103 - IR Reflective Sensor 10cm",
+            "enum": "SENSOR_TYPE_1103",
+            "value": 11030
+        },
+        {
+            "description": "1104 - Vibration Sensor",
+            "enum": "SENSOR_TYPE_1104",
+            "value": 11040
+        },
+        {
+            "description": "1105 - Light Sensor",
+            "enum": "SENSOR_TYPE_1105",
+            "value": 11050
+        },
+        {
+            "description": "1106 - Force Sensor",
+            "enum": "SENSOR_TYPE_1106",
+            "value": 11060
+        },
+        {
+            "description": "1107 - Humidity Sensor",
+            "enum": "SENSOR_TYPE_1107",
+            "value": 11070
+        },
+        {
+            "description": "1108 - Magnetic Sensor",
+            "enum": "SENSOR_TYPE_1108",
+            "value": 11080
+        },
+        {
+            "description": "1109 - Rotation Sensor",
+            "enum": "SENSOR_TYPE_1109",
+            "value": 11090
+        },
+        {
+            "description": "1110 - Touch Sensor",
+            "enum": "SENSOR_TYPE_1110",
+            "value": 11100
+        },
+        {
+            "description": "1111 - Motion Sensor",
+            "enum": "SENSOR_TYPE_1111",
+            "value": 11110
+        },
+        {
+            "description": "1112 - Slider 60",
+            "enum": "SENSOR_TYPE_1112",
+            "value": 11120
+        },
+        {
+            "description": "1113 - Mini Joy Stick Sensor",
+            "enum": "SENSOR_TYPE_1113",
+            "value": 11130
+        },
+        {
+            "description": "1115 - Pressure Sensor",
+            "enum": "SENSOR_TYPE_1115",
+            "value": 11150
+        },
+        {
+            "description": "1116 - Multi-turn Rotation Sensor",
+            "enum": "SENSOR_TYPE_1116",
+            "value": 11160
+        },
+        {
+            "description": "1118 - 50Amp Current Sensor AC",
+            "enum": "SENSOR_TYPE_1118_AC",
+            "value": 11181
+        },
+        {
+            "description": "1118 - 50Amp Current Sensor DC",
+            "enum": "SENSOR_TYPE_1118_DC",
+            "value": 11182
+        },
+        {
+            "description": "1119 - 20Amp Current Sensor AC",
+            "enum": "SENSOR_TYPE_1119_AC",
+            "value": 11191
+        },
+        {
+            "description": "1119 - 20Amp Current Sensor DC",
+            "enum": "SENSOR_TYPE_1119_DC",
+            "value": 11192
+        },
+        {
+            "description": "1120 - FlexiForce Adapter",
+            "enum": "SENSOR_TYPE_1120",
+            "value": 11200
+        },
+        {
+            "description": "1121 - Voltage Divider",
+            "enum": "SENSOR_TYPE_1121",
+            "value": 11210
+        },
+        {
+            "description": "1122 - 30 Amp Current Sensor AC",
+            "enum": "SENSOR_TYPE_1122_AC",
+            "value": 11221
+        },
+        {
+            "description": "1122 - 30 Amp Current Sensor DC",
+            "enum": "SENSOR_TYPE_1122_DC",
+            "value": 11222
+        },
+        {
+            "description": "1124 - Precision Temperature Sensor",
+            "enum": "SENSOR_TYPE_1124",
+            "value": 11240
+        },
+        {
+            "description": "1125 - Humidity Sensor",
+            "enum": "SENSOR_TYPE_1125_HUMIDITY",
+            "value": 11251
+        },
+        {
+            "description": "1125 - Temperature Sensor",
+            "enum": "SENSOR_TYPE_1125_TEMPERATURE",
+            "value": 11252
+        },
+        {
+            "description": "1126 - Differential Air Pressure Sensor +- 25kPa",
+            "enum": "SENSOR_TYPE_1126",
+            "value": 11260
+        },
+        {
+            "description": "1128 - MaxBotix EZ-1 Sonar Sensor",
+            "enum": "SENSOR_TYPE_1128",
+            "value": 11280
+        },
+        {
+            "description": "1129 - Touch Sensor",
+            "enum": "SENSOR_TYPE_1129",
+            "value": 11290
+        },
+        {
+            "description": "1131 - Thin Force Sensor",
+            "enum": "SENSOR_TYPE_1131",
+            "value": 11310
+        },
+        {
+            "description": "1134 - Switchable Voltage Divider",
+            "enum": "SENSOR_TYPE_1134",
+            "value": 11340
+        },
+        {
+            "description": "1136 - Differential Air Pressure Sensor +-2 kPa",
+            "enum": "SENSOR_TYPE_1136",
+            "value": 11360
+        },
+        {
+            "description": "1137 - Differential Air Pressure Sensor +-7 kPa",
+            "enum": "SENSOR_TYPE_1137",
+            "value": 11370
+        },
+        {
+            "description": "1138 - Differential Air Pressure Sensor 50 kPa",
+            "enum": "SENSOR_TYPE_1138",
+            "value": 11380
+        },
+        {
+            "description": "1139 - Differential Air Pressure Sensor 100 kPa",
+            "enum": "SENSOR_TYPE_1139",
+            "value": 11390
+        },
+        {
+            "description": "1140 - Absolute Air Pressure Sensor 20-400 kPa",
+            "enum": "SENSOR_TYPE_1140",
+            "value": 11400
+        },
+        {
+            "description": "1141 - Absolute Air Pressure Sensor 15-115 kPa",
+            "enum": "SENSOR_TYPE_1141",
+            "value": 11410
+        },
+        {
+            "description": "1146 - IR Reflective Sensor 1-4mm",
+            "enum": "SENSOR_TYPE_1146",
+            "value": 11460
+        },
+        {
+            "description": "3120 - Compression Load Cell (0-4.5 kg)",
+            "enum": "SENSOR_TYPE_3120",
+            "value": 31200
+        },
+        {
+            "description": "3121 - Compression Load Cell (0-11.3 kg)",
+            "enum": "SENSOR_TYPE_3121",
+            "value": 31210
+        },
+        {
+            "description": "3122 - Compression Load Cell (0-22.7 kg)",
+            "enum": "SENSOR_TYPE_3122",
+            "value": 31220
+        },
+        {
+            "description": "3123 - Compression Load Cell (0-45.3 kg)",
+            "enum": "SENSOR_TYPE_3123",
+            "value": 31230
+        },
+        {
+            "description": "3130 - Relative Humidity Sensor",
+            "enum": "SENSOR_TYPE_3130",
+            "value": 31300
+        },
+        {
+            "description": "3520 - Sharp Distance Sensor (4-30cm)",
+            "enum": "SENSOR_TYPE_3520",
+            "value": 35200
+        },
+        {
+            "description": "3521 - Sharp Distance Sensor (10-80cm)",
+            "enum": "SENSOR_TYPE_3521",
+            "value": 35210
+        },
+        {
+            "description": "3522 - Sharp Distance Sensor (20-150cm)",
+            "enum": "SENSOR_TYPE_3522",
+            "value": 35220
+        }
+    ],
+    "VoltageSensorType": [
+        {
+            "description": "Default. Configures the channel to be a generic voltage sensor. Unit is volts.",
+            "enum": "SENSOR_TYPE_VOLTAGE",
+            "value": 0
+        },
+        {
+            "description": "1114 - Temperature Sensor",
+            "enum": "SENSOR_TYPE_1114",
+            "value": 11140
+        },
+        {
+            "description": "1117 - Voltage Sensor",
+            "enum": "SENSOR_TYPE_1117",
+            "value": 11170
+        },
+        {
+            "description": "1123 - Precision Voltage Sensor",
+            "enum": "SENSOR_TYPE_1123",
+            "value": 11230
+        },
+        {
+            "description": "1127 - Precision Light Sensor",
+            "enum": "SENSOR_TYPE_1127",
+            "value": 11270
+        },
+        {
+            "description": "1130 - pH Adapter",
+            "enum": "SENSOR_TYPE_1130_PH",
+            "value": 11301
+        },
+        {
+            "description": "1130 - ORP Adapter",
+            "enum": "SENSOR_TYPE_1130_ORP",
+            "value": 11302
+        },
+        {
+            "description": "1132 - 4-20mA Adapter",
+            "enum": "SENSOR_TYPE_1132",
+            "value": 11320
+        },
+        {
+            "description": "1133 - Sound Sensor",
+            "enum": "SENSOR_TYPE_1133",
+            "value": 11330
+        },
+        {
+            "description": "1135 - Precision Voltage Sensor",
+            "enum": "SENSOR_TYPE_1135",
+            "value": 11350
+        },
+        {
+            "description": "1142 - Light Sensor 1000 lux",
+            "enum": "SENSOR_TYPE_1142",
+            "value": 11420
+        },
+        {
+            "description": "1143 - Light Sensor 70000 lux",
+            "enum": "SENSOR_TYPE_1143",
+            "value": 11430
+        },
+        {
+            "description": "3500 - AC Current Sensor 10Amp",
+            "enum": "SENSOR_TYPE_3500",
+            "value": 35000
+        },
+        {
+            "description": "3501 - AC Current Sensor 25Amp",
+            "enum": "SENSOR_TYPE_3501",
+            "value": 35010
+        },
+        {
+            "description": "3502 - AC Current Sensor 50Amp",
+            "enum": "SENSOR_TYPE_3502",
+            "value": 35020
+        },
+        {
+            "description": "3503 - AC Current Sensor 100Amp",
+            "enum": "SENSOR_TYPE_3503",
+            "value": 35030
+        },
+        {
+            "description": "3507 - AC Voltage Sensor 0-250V (50Hz)",
+            "enum": "SENSOR_TYPE_3507",
+            "value": 35070
+        },
+        {
+            "description": "3508 - AC Voltage Sensor 0-250V (60Hz)",
+            "enum": "SENSOR_TYPE_3508",
+            "value": 35080
+        },
+        {
+            "description": "3509 - DC Voltage Sensor 0-200V",
+            "enum": "SENSOR_TYPE_3509",
+            "value": 35090
+        },
+        {
+            "description": "3510 - DC Voltage Sensor 0-75V",
+            "enum": "SENSOR_TYPE_3510",
+            "value": 35100
+        },
+        {
+            "description": "3511 - DC Current Sensor 0-10mA",
+            "enum": "SENSOR_TYPE_3511",
+            "value": 35110
+        },
+        {
+            "description": "3512 - DC Current Sensor 0-100mA",
+            "enum": "SENSOR_TYPE_3512",
+            "value": 35120
+        },
+        {
+            "description": "3513 - DC Current Sensor 0-1A",
+            "enum": "SENSOR_TYPE_3513",
+            "value": 35130
+        },
+        {
+            "description": "3514 - AC Active Power Sensor 0-250V*0-30A (50Hz)",
+            "enum": "SENSOR_TYPE_3514",
+            "value": 35140
+        },
+        {
+            "description": "3515 - AC Active Power Sensor 0-250V*0-30A (60Hz)",
+            "enum": "SENSOR_TYPE_3515",
+            "value": 35150
+        },
+        {
+            "description": "3516 - AC Active Power Sensor 0-250V*0-5A (50Hz)",
+            "enum": "SENSOR_TYPE_3516",
+            "value": 35160
+        },
+        {
+            "description": "3517 - AC Active Power Sensor 0-250V*0-5A (60Hz)",
+            "enum": "SENSOR_TYPE_3517",
+            "value": 35170
+        },
+        {
+            "description": "3518 - AC Active Power Sensor 0-110V*0-5A (60Hz)",
+            "enum": "SENSOR_TYPE_3518",
+            "value": 35180
+        },
+        {
+            "description": "3519 - AC Active Power Sensor 0-110V*0-15A (60Hz)",
+            "enum": "SENSOR_TYPE_3519",
+            "value": 35190
+        },
+        {
+            "description": "3584 - 0-50A DC Current Transducer",
+            "enum": "SENSOR_TYPE_3584",
+            "value": 35840
+        },
+        {
+            "description": "3585 - 0-100A DC Current Transducer",
+            "enum": "SENSOR_TYPE_3585",
+            "value": 35850
+        },
+        {
+            "description": "3586 - 0-250A DC Current Transducer",
+            "enum": "SENSOR_TYPE_3586",
+            "value": 35860
+        },
+        {
+            "description": "3587 - +-50A DC Current Transducer",
+            "enum": "SENSOR_TYPE_3587",
+            "value": 35870
+        },
+        {
+            "description": "3588 - +-100A DC Current Transducer",
+            "enum": "SENSOR_TYPE_3588",
+            "value": 35880
+        },
+        {
+            "description": "3589 - +-250A DC Current Transducer",
+            "enum": "SENSOR_TYPE_3589",
+            "value": 35890
+        },
+        {
+            "description": "MOT2002 - Motion Sensor Low Sensitivity",
+            "enum": "SENSOR_TYPE_MOT2002_LOW",
+            "value": 20020
+        },
+        {
+            "description": "MOT2002 - Motion Sensor Medium Sensitivity",
+            "enum": "SENSOR_TYPE_MOT2002_MED",
+            "value": 20021
+        },
+        {
+            "description": "MOT2002 - Motion Sensor High Sensitivity",
+            "enum": "SENSOR_TYPE_MOT2002_HIGH",
+            "value": 20022
+        },
+        {
+            "description": "VCP4114 - +-25A DC Current Transducer",
+            "enum": "SENSOR_TYPE_VCP4114",
+            "value": 41140
+        },
+        {
+            "description": "VCP4115 - +-75A DC Current Transducer",
+            "enum": "SENSOR_TYPE_VCP4115",
+            "value": 41150
+        }
+    ]
+}
