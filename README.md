@@ -33,6 +33,8 @@ on routine plugin updates and keeps the Python bindings and native library match
 See the brief [Getting started guide](docs/GETTING_STARTED.md) for plugin setup,
 device creation, and printing a Phidgets network map.
 
+See [Release notes](CHANGELOG.md) for changes in each published version.
+
 ## Status
 
 The following Phidget classes are currently supported:
