@@ -40,6 +40,7 @@ class FakeLCD(object):
         self.contrast = 0.0
         self.handlers = {}
         self.writes = []
+        self.operations = []
         self.clear_count = 0
         self.flush_count = 0
         self.set_screen_sizes = []
@@ -109,12 +110,15 @@ class FakeLCD(object):
 
     def writeText(self, font, x, y, text):
         self.writes.append((font, x, y, text))
+        self.operations.append(("write", x, y, text))
 
     def clear(self):
         self.clear_count += 1
+        self.operations.append(("clear",))
 
     def flush(self):
         self.flush_count += 1
+        self.operations.append(("flush",))
 
 
 class FakePlugin(object):
@@ -302,6 +306,11 @@ class LCDTests(unittest.TestCase):
         self.assertEqual(
             wrapper._virtual_marquee_rows("ABC", 16, 2, 17, "right", 2),
             [(" " * 15) + "A", "BC" + (" " * 14)])
+        self.assertEqual(native.clear_count, 4)
+        self.assertEqual(native.flush_count, 4)
+        self.assertEqual(
+            [operation[0] for operation in native.operations],
+            ["clear", "write", "write", "flush"] * 4)
 
     def test_flash_alternates_all_rows_together_and_stop_leaves_last_frame(self):
         native = FakeLCD(screen_size=LCDScreenSize.SCREEN_SIZE_2x16)

@@ -1,5 +1,21 @@
 # Release notes
 
+## 0.2.1.45 — 2026-08-24
+
+### Fixed
+
+- Clear the LCD's buffered frame before writing each Marquee, Virtual
+  single-line marquee, or Flash frame. This positively erases separator and
+  padding cells instead of relying on trailing spaces to replace old glyphs,
+  preventing vertical remnants from appearing between marquee repeats.
+- Continue to flush only after every physical row has been written, keeping
+  each cleared and redrawn frame visually atomic.
+
+### Testing
+
+- Add regression coverage proving that every virtual-marquee frame is cleared,
+  fully written, and then flushed in that order.
+
 ## 0.2.1.44 — 2026-08-24
 
 ### Fixed
