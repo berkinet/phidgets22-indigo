@@ -29,7 +29,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.2.1.38</string>", plist)
+        self.assertIn("<string>0.2.1.39</string>", plist)
 
     def test_device_menu_defaults_and_icon_labels(self):
         root = ElementTree.parse(SERVER_PLUGIN / "Devices.xml").getroot()
@@ -58,9 +58,8 @@ class ConfigurationTests(unittest.TestCase):
 
         actions = ElementTree.parse(SERVER_PLUGIN / "Actions.xml").getroot()
         action_ids = {action.get("id") for action in actions.findall("Action")}
-        self.assertEqual(action_ids, {"lcdWriteText", "lcdClear", "lcdStartAnimation",
-                                      "lcdStopAnimation", "lcdSetBacklight",
-                                      "lcdSetContrast", "lcdSleep", "lcdWake"})
+        self.assertEqual(action_ids, {"lcdClear", "lcdStartAnimation",
+                                      "lcdStopAnimation", "lcdSleep", "lcdWake"})
         self.assertTrue(all(action.get("deviceFilter") == "self.lcd"
                             for action in actions.findall("Action")))
 
@@ -86,17 +85,25 @@ class ConfigurationTests(unittest.TestCase):
         instance = object.__new__(plugin.Plugin)
 
         valid, values = instance.validateActionConfigUi(
-            indigo.Dict({"x": " 3 ", "y": "4"}), "lcdWriteText", 1)
+            indigo.Dict({
+                "lineCount": "0", "animationMode": "static",
+                "graphicX": " 3 ", "graphicY": "4",
+                "backlight": "0.8", "contrast": "0.4",
+            }), "lcdStartAnimation", 1)
         self.assertTrue(valid)
-        self.assertEqual(values, {"x": "3", "y": "4"})
+        self.assertEqual(values["graphicX"], "3")
+        self.assertEqual(values["graphicY"], "4")
 
-        for action_type, field, value in (
-                ("lcdWriteText", "x", "-1"),
-                ("lcdSetBacklight", "backlight", "1.1"),
-                ("lcdSetContrast", "contrast", "dark")):
-            values = indigo.Dict({field: value})
+        for field, value in (("graphicX", "-1"), ("backlight", "1.1"),
+                             ("contrast", "dark")):
+            values = indigo.Dict({
+                "lineCount": "0", "animationMode": "static",
+                "graphicX": "0", "graphicY": "0",
+                "backlight": "0.8", "contrast": "0.4",
+            })
+            values[field] = value
             valid, returned_values, errors = instance.validateActionConfigUi(
-                values, action_type, 1)
+                values, "lcdStartAnimation", 1)
             self.assertFalse(valid)
             self.assertIs(returned_values, values)
             self.assertIn(field, errors)
@@ -152,34 +159,36 @@ class ConfigurationTests(unittest.TestCase):
         instance.activePhidgets[device.id] = active_lcd
         instance.substitute = lambda value: value.replace("%%name%%", "Kitchen")
 
-        instance.lcdWriteText(
+        instance.lcdSetDisplay(
             types.SimpleNamespace(props={
-                "lineCount": "0", "text": "%%name%%", "x": "2", "y": "3"}),
+                "lineCount": "0", "animationMode": "static",
+                "graphicText": "%%name%%", "graphicX": "2", "graphicY": "3",
+                "backlight": "0.6", "contrast": "0.3"}),
             device)
-        instance.lcdWriteText(
+        instance.lcdSetDisplay(
             types.SimpleNamespace(props={
-                "lineCount": "2", "line1": "%%name%%", "line2": "Ready"}),
+                "lineCount": "2", "animationMode": "static",
+                "animationLine1": "%%name%%", "animationLine2": "Ready",
+                "backlight": "0.7", "contrast": "0.4"}),
             device)
         instance.lcdClear(types.SimpleNamespace(props={}), device)
-        instance.lcdSetBacklight(
-            types.SimpleNamespace(props={"backlight": "0.6"}), device)
-        instance.lcdSetContrast(
-            types.SimpleNamespace(props={"contrast": "0.3"}), device)
         instance.lcdSleep(types.SimpleNamespace(props={}), device)
         instance.lcdWake(types.SimpleNamespace(props={}), device)
-        instance.lcdStartAnimation(types.SimpleNamespace(props={
+        instance.lcdSetDisplay(types.SimpleNamespace(props={
             "lineCount": "2", "animationMode": "marquee",
             "animationLine1": "%%name%%", "animationLine2": "Open",
             "marqueeInterval": "0.5", "marqueeDirection": "right",
-            "marqueeGap": "4",
+            "marqueeGap": "4", "backlight": "0.8", "contrast": "0.5",
         }), device)
         instance.lcdStopAnimation(types.SimpleNamespace(props={}), device)
 
         active_lcd.writeText.assert_called_once_with("Kitchen", 2, 3)
         active_lcd.writeLines.assert_called_once_with(["Kitchen", "Ready"])
         active_lcd.clear.assert_called_once_with()
-        active_lcd.setBacklight.assert_called_once_with(0.6)
-        active_lcd.setContrast.assert_called_once_with(0.3)
+        self.assertEqual(active_lcd.setBacklight.call_args_list,
+                         [mock.call(0.6), mock.call(0.7), mock.call(0.8)])
+        self.assertEqual(active_lcd.setContrast.call_args_list,
+                         [mock.call(0.3), mock.call(0.4), mock.call(0.5)])
         self.assertEqual(active_lcd.setSleeping.call_args_list,
                          [mock.call(True), mock.call(False)])
         active_lcd.startAnimation.assert_called_once_with(
@@ -190,14 +199,18 @@ class ConfigurationTests(unittest.TestCase):
     def test_lcd_action_fields_follow_selected_device_height(self):
         instance = object.__new__(plugin.Plugin)
         device = types.SimpleNamespace(
-            states={"lcdType": "text", "screenHeight": 2},
+            states={"lcdType": "text", "screenHeight": 2,
+                    "backlight": 0.75, "contrast": 0.35},
             pluginProps={"lcdScreenSize": "7"})
         indigo.devices = {42: device}
 
         values, errors = instance.getActionConfigUiValues(
-            indigo.Dict({}), "lcdWriteText", 42)
+            indigo.Dict({}), "lcdStartAnimation", 42)
 
         self.assertEqual(values["lineCount"], "2")
+        self.assertEqual(values["animationLayout"], "static2")
+        self.assertEqual(values["backlight"], "0.75")
+        self.assertEqual(values["contrast"], "0.35")
         self.assertEqual(errors, {})
 
         values, errors = instance.getActionConfigUiValues(
@@ -216,6 +229,7 @@ class ConfigurationTests(unittest.TestCase):
         valid, values = instance.validateActionConfigUi(indigo.Dict({
             "lineCount": "2", "animationMode": "marquee",
             "marqueeInterval": "0.4", "marqueeGap": "3",
+            "backlight": "1.0", "contrast": "0.5",
         }), "lcdStartAnimation", 42)
         self.assertTrue(valid)
         self.assertEqual(values["marqueeInterval"], "0.4")
@@ -223,6 +237,7 @@ class ConfigurationTests(unittest.TestCase):
         valid, values, errors = instance.validateActionConfigUi(indigo.Dict({
             "lineCount": "2", "animationMode": "marquee",
             "marqueeInterval": "0.01", "marqueeGap": "0",
+            "backlight": "1.0", "contrast": "0.5",
         }), "lcdStartAnimation", 42)
         self.assertFalse(valid)
         self.assertIn("marqueeInterval", errors)

@@ -1,5 +1,22 @@
 # Release notes
 
+## 0.2.1.39 — 2026-08-24
+
+### Changed
+
+- Consolidate Static, Marquee, and Flash content into one **Set LCD display**
+  action.
+- Move backlight and contrast into **Set LCD display**, initialized from the
+  selected device's current values.
+- Remove the separate **Write LCD text**, **Set LCD backlight**, and
+  **Set LCD contrast** actions.
+- Keep **Stop LCD animation** as a separate immediate action.
+
+### Testing
+
+- Update action declaration, device-aware layout, validation, and dispatch
+  coverage for the consolidated display action.
+
 ## 0.2.1.38 — 2026-08-24
 
 ### Added

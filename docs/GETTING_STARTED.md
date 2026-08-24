@@ -44,23 +44,22 @@ attachment.
 
 LCD commands are available under Indigo's **Device Actions**:
 
-- Write LCD text (automatically shows the attached text panel's rows)
-- Start or update LCD animation
+- Set LCD display
 - Stop LCD animation
 - Clear LCD
-- Set LCD backlight
-- Set LCD contrast
 - Put LCD to sleep or wake it, when supported by the hardware
 
-For a text LCD, **Write LCD text** clears the display and writes complete rows
-from the top. For a graphic LCD, the action instead shows text and pixel
-coordinates. This first implementation uses the built-in 5×8 font.
+**Set LCD display** provides Static, Marquee, and Flash / alternate modes,
+along with backlight and contrast. The selected text LCD determines whether
+one, two, or four row fields are shown. Static mode on a graphic LCD instead
+shows text and pixel coordinates. This implementation uses the built-in 5×8
+font.
 
 Text LCD animations have two modes. **Marquee** scrolls each row's message
 independently, while applying one direction, repeat gap, and interval to the
 whole display. **Flash / alternate** switches every row together between text
 sets A and B. Starting the animation action again replaces the running
-animation; ordinary writes, clear, sleep, and detachment stop it. The stop
+animation; Static, clear, sleep, and detachment stop it. The stop
 action leaves the most recently displayed frame visible.
 
 ## Print the Phidgets network map

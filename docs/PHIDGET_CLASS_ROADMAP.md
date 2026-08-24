@@ -104,11 +104,10 @@ detecting the attached channel's capabilities rather than assuming one model.
 
 ### Initial Indigo actions
 
-- Write one to four complete rows on a text LCD, or text at an x/y pixel
-  position on a graphic LCD.
+- Set static or animated display content, backlight, and contrast in one
+  device-aware action. Static content uses one to four complete rows on a text
+  LCD, or text at an x/y pixel position on a graphic LCD.
 - Clear the display.
-- Set backlight.
-- Set contrast.
 - Sleep or wake the display when supported.
 - Start/update or stop a text-display animation. Marquee scrolls each row
   independently; Flash alternates every row together between two text sets.

@@ -1,40 +1,29 @@
 <?xml version="1.0"?>
 <Actions>
-	<Action id="lcdWriteText" deviceFilter="self.lcd" uiPath="DeviceActions">
-		<Name>Write LCD text</Name>
-		<CallbackMethod>lcdWriteText</CallbackMethod>
-		<ConfigUI>
-			<Field id="lineCount" type="textfield" defaultValue="0" hidden="true"/>
-			<Field id="line1" type="textfield" visibleBindingId="lineCount" visibleBindingValue="1,2,3,4" alwaysUseInDialogHeightCalc="true"><Label>Line 1:</Label></Field>
-			<Field id="line2" type="textfield" visibleBindingId="lineCount" visibleBindingValue="2,3,4" alwaysUseInDialogHeightCalc="true"><Label>Line 2:</Label></Field>
-			<Field id="line3" type="textfield" visibleBindingId="lineCount" visibleBindingValue="3,4" alwaysUseInDialogHeightCalc="true"><Label>Line 3:</Label></Field>
-			<Field id="line4" type="textfield" visibleBindingId="lineCount" visibleBindingValue="4" alwaysUseInDialogHeightCalc="true"><Label>Line 4:</Label></Field>
-			<Field id="coordinateHelp" type="label" visibleBindingId="lineCount" visibleBindingValue="0" alwaysUseInDialogHeightCalc="true"><Label>Positions are pixels on a graphic LCD.</Label></Field>
-			<Field id="text" type="textfield" visibleBindingId="lineCount" visibleBindingValue="0" alwaysUseInDialogHeightCalc="true"><Label>Text:</Label></Field>
-			<Field id="x" type="textfield" defaultValue="0" visibleBindingId="lineCount" visibleBindingValue="0" alwaysUseInDialogHeightCalc="true"><Label>X position:</Label></Field>
-			<Field id="y" type="textfield" defaultValue="0" visibleBindingId="lineCount" visibleBindingValue="0" alwaysUseInDialogHeightCalc="true"><Label>Y position:</Label></Field>
-		</ConfigUI>
-	</Action>
 	<Action id="lcdClear" deviceFilter="self.lcd" uiPath="DeviceActions">
 		<Name>Clear LCD</Name>
 		<CallbackMethod>lcdClear</CallbackMethod>
 	</Action>
 	<Action id="lcdStartAnimation" deviceFilter="self.lcd" uiPath="DeviceActions">
-		<Name>Start or update LCD animation</Name>
-		<CallbackMethod>lcdStartAnimation</CallbackMethod>
+		<Name>Set LCD display</Name>
+		<CallbackMethod>lcdSetDisplay</CallbackMethod>
 		<ConfigUI>
 			<Field id="lineCount" type="textfield" defaultValue="0" hidden="true"/>
 			<Field id="animationLayout" type="textfield" defaultValue="unsupported" hidden="true"/>
-			<Field id="animationMode" type="menu" defaultValue="marquee">
-				<Label>Animation:</Label>
-				<List><Option value="marquee">Marquee</Option><Option value="flash">Flash / alternate</Option></List>
+			<Field id="animationMode" type="menu" defaultValue="static">
+				<Label>Display mode:</Label>
+				<List><Option value="static">Static</Option><Option value="marquee">Marquee</Option><Option value="flash">Flash / alternate</Option></List>
 				<CallbackMethod>lcdAnimationConfigChanged</CallbackMethod>
 			</Field>
-			<Field id="unsupportedAnimation" type="label" visibleBindingId="animationLayout" visibleBindingValue="unsupported" alwaysUseInDialogHeightCalc="true"><Label>Animations currently require a text LCD.</Label></Field>
-			<Field id="animationLine1" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="marquee1,marquee2,marquee3,marquee4,flash1,flash2,flash3,flash4" alwaysUseInDialogHeightCalc="true"><Label>Line 1:</Label></Field>
-			<Field id="animationLine2" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="marquee2,marquee3,marquee4,flash2,flash3,flash4" alwaysUseInDialogHeightCalc="true"><Label>Line 2:</Label></Field>
-			<Field id="animationLine3" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="marquee3,marquee4,flash3,flash4" alwaysUseInDialogHeightCalc="true"><Label>Line 3:</Label></Field>
-			<Field id="animationLine4" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="marquee4,flash4" alwaysUseInDialogHeightCalc="true"><Label>Line 4:</Label></Field>
+			<Field id="unsupportedAnimation" type="label" visibleBindingId="animationLayout" visibleBindingValue="unsupported" alwaysUseInDialogHeightCalc="true"><Label>Marquee and Flash currently require a text LCD.</Label></Field>
+			<Field id="animationLine1" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="static1,static2,static3,static4,marquee1,marquee2,marquee3,marquee4,flash1,flash2,flash3,flash4" alwaysUseInDialogHeightCalc="true"><Label>Line 1:</Label></Field>
+			<Field id="animationLine2" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="static2,static3,static4,marquee2,marquee3,marquee4,flash2,flash3,flash4" alwaysUseInDialogHeightCalc="true"><Label>Line 2:</Label></Field>
+			<Field id="animationLine3" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="static3,static4,marquee3,marquee4,flash3,flash4" alwaysUseInDialogHeightCalc="true"><Label>Line 3:</Label></Field>
+			<Field id="animationLine4" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="static4,marquee4,flash4" alwaysUseInDialogHeightCalc="true"><Label>Line 4:</Label></Field>
+			<Field id="coordinateHelp" type="label" visibleBindingId="animationLayout" visibleBindingValue="static0" alwaysUseInDialogHeightCalc="true"><Label>Positions are pixels on a graphic LCD.</Label></Field>
+			<Field id="graphicText" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="static0" alwaysUseInDialogHeightCalc="true"><Label>Text:</Label></Field>
+			<Field id="graphicX" type="textfield" defaultValue="0" visibleBindingId="animationLayout" visibleBindingValue="static0" alwaysUseInDialogHeightCalc="true"><Label>X position:</Label></Field>
+			<Field id="graphicY" type="textfield" defaultValue="0" visibleBindingId="animationLayout" visibleBindingValue="static0" alwaysUseInDialogHeightCalc="true"><Label>Y position:</Label></Field>
 			<Field id="alternateLine1" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="flash1,flash2,flash3,flash4" alwaysUseInDialogHeightCalc="true"><Label>Alternate line 1:</Label></Field>
 			<Field id="alternateLine2" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="flash2,flash3,flash4" alwaysUseInDialogHeightCalc="true"><Label>Alternate line 2:</Label></Field>
 			<Field id="alternateLine3" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="flash3,flash4" alwaysUseInDialogHeightCalc="true"><Label>Alternate line 3:</Label></Field>
@@ -43,25 +32,13 @@
 			<Field id="marqueeGap" type="textfield" defaultValue="3" visibleBindingId="animationLayout" visibleBindingValue="marquee1,marquee2,marquee3,marquee4" alwaysUseInDialogHeightCalc="true"><Label>Gap between repeats:</Label></Field>
 			<Field id="marqueeInterval" type="textfield" defaultValue="0.4" visibleBindingId="animationLayout" visibleBindingValue="marquee1,marquee2,marquee3,marquee4" alwaysUseInDialogHeightCalc="true"><Label>Scroll interval (seconds):</Label></Field>
 			<Field id="flashInterval" type="textfield" defaultValue="1.0" visibleBindingId="animationLayout" visibleBindingValue="flash1,flash2,flash3,flash4" alwaysUseInDialogHeightCalc="true"><Label>Alternate interval (seconds):</Label></Field>
+			<Field id="backlight" type="textfield" defaultValue="1.0"><Label>Backlight (0.0–1.0):</Label></Field>
+			<Field id="contrast" type="textfield" defaultValue="0.5"><Label>Contrast (0.0–1.0):</Label></Field>
 		</ConfigUI>
 	</Action>
 	<Action id="lcdStopAnimation" deviceFilter="self.lcd" uiPath="DeviceActions">
 		<Name>Stop LCD animation</Name>
 		<CallbackMethod>lcdStopAnimation</CallbackMethod>
-	</Action>
-	<Action id="lcdSetBacklight" deviceFilter="self.lcd" uiPath="DeviceActions">
-		<Name>Set LCD backlight</Name>
-		<CallbackMethod>lcdSetBacklight</CallbackMethod>
-		<ConfigUI>
-			<Field id="backlight" type="textfield" defaultValue="1.0"><Label>Backlight (0.0–1.0):</Label></Field>
-		</ConfigUI>
-	</Action>
-	<Action id="lcdSetContrast" deviceFilter="self.lcd" uiPath="DeviceActions">
-		<Name>Set LCD contrast</Name>
-		<CallbackMethod>lcdSetContrast</CallbackMethod>
-		<ConfigUI>
-			<Field id="contrast" type="textfield" defaultValue="0.5"><Label>Contrast (0.0–1.0):</Label></Field>
-		</ConfigUI>
 	</Action>
 	<Action id="lcdSleep" deviceFilter="self.lcd" uiPath="DeviceActions">
 		<Name>Put LCD to sleep</Name>
