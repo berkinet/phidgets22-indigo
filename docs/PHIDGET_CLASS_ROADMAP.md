@@ -89,8 +89,8 @@ detecting the attached channel's capabilities rather than assuming one model.
   the attached panel dimensions, so the selected size must be applied before
   text is written. The attached panel is then initialized.
 - Initial backlight and contrast values.
-- Automatic flushing is enabled internally so every first-release action is
-  immediately visible; frame-buffer batching remains deferred.
+- Complete frames are explicitly flushed so multi-row writes and animation
+  changes become visible together.
 - Optional row-aware initial text to restore when the channel attaches.
 
 ### Initial Indigo states
@@ -100,6 +100,7 @@ detecting the attached channel's capabilities rather than assuming one model.
   the attached hardware exposes them.
 - `lastText` as the last text successfully requested through the plugin. This
   is plugin state, not a readback of the pixels currently on the display.
+- `animationMode` and `animationRunning` for text-display animations.
 
 ### Initial Indigo actions
 
@@ -109,6 +110,8 @@ detecting the attached channel's capabilities rather than assuming one model.
 - Set backlight.
 - Set contrast.
 - Sleep or wake the display when supported.
+- Start/update or stop a text-display animation. Marquee scrolls each row
+  independently; Flash alternates every row together between two text sets.
 
 Action values are checked against the attached display dimensions and reported
 min/max ranges. The wrapper refreshes its states after attachment and after
@@ -121,6 +124,7 @@ successful actions.
 - Multiple frame buffers, copying, and saved frame buffers.
 - Cursor and cursor-blink controls specific to text displays.
 - User-selectable fonts and font sizing.
+- Treat all rows as one virtual line for a display-spanning marquee.
 
 These can be added without changing the initial device type because the
 wrapper will already distinguish text and graphic LCD subclasses.

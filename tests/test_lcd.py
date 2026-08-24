@@ -121,6 +121,28 @@ class FakePlugin(object):
     pluginPrefs = {"attachTimeout": "5", "suppressErrors": False}
 
 
+class FakeTimer(object):
+    instances = []
+
+    def __init__(self, interval, callback, args=()):
+        self.interval = interval
+        self.callback = callback
+        self.args = args
+        self.daemon = False
+        self.started = False
+        self.cancelled = False
+        self.__class__.instances.append(self)
+
+    def start(self):
+        self.started = True
+
+    def cancel(self):
+        self.cancelled = True
+
+    def fire(self):
+        self.callback(*self.args)
+
+
 def make_wrapper(native, **overrides):
     settings = {
         "screenSize": LCDScreenSize.SCREEN_SIZE_NONE,
@@ -165,7 +187,7 @@ class LCDTests(unittest.TestCase):
 
         self.assertEqual(native.set_screen_sizes, [LCDScreenSize.SCREEN_SIZE_2x16])
         self.assertEqual(native.initialize_count, 1)
-        self.assertTrue(native.auto_flush)
+        self.assertFalse(native.auto_flush)
         self.assertEqual(native.backlight, 0.75)
         self.assertEqual(native.contrast, 0.4)
         self.assertEqual(native.writes, [(LCDFont.FONT_5x8, 1, 0, "Ready")])
@@ -188,6 +210,64 @@ class LCDTests(unittest.TestCase):
             (LCDFont.FONT_5x8, 0, 1, "38.6 gallons"),
         ])
         self.assertEqual(wrapper.lastText, "Flow 7.7 GPM\n38.6 gallons")
+
+    def test_marquee_scrolls_each_row_and_starting_again_replaces_it(self):
+        native = FakeLCD(screen_size=LCDScreenSize.SCREEN_SIZE_2x16)
+        wrapper = make_wrapper(native)
+        wrapper.configureAttachedPhidget(native)
+        wrapper._state = "attached"
+        FakeTimer.instances = []
+
+        with mock.patch.object(lcd.threading, "Timer", FakeTimer):
+            wrapper.startAnimation(
+                "marquee", ["ABCDEFGHIJKLMNOPQRSTUVWXYZ", "12345678901234567890"],
+                interval=0.4, direction="left", gap=2)
+            first_timer = FakeTimer.instances[-1]
+            first_timer.fire()
+            active_marquee_timer = FakeTimer.instances[-1]
+
+            wrapper.startAnimation(
+                "flash", ["Hello", "World"], ["Bye", "Now"], interval=1.0)
+            writes_after_replacement = len(native.writes)
+            active_marquee_timer.fire()
+
+        self.assertTrue(first_timer.started)
+        self.assertTrue(active_marquee_timer.cancelled)
+        self.assertEqual(len(native.writes), writes_after_replacement)
+        self.assertEqual(native.writes[:4], [
+            (LCDFont.FONT_5x8, 0, 0, "ABCDEFGHIJKLMNOP"),
+            (LCDFont.FONT_5x8, 0, 1, "1234567890123456"),
+            (LCDFont.FONT_5x8, 0, 0, "BCDEFGHIJKLMNOPQ"),
+            (LCDFont.FONT_5x8, 0, 1, "2345678901234567"),
+        ])
+        self.assertEqual(native.writes[-2:], [
+            (LCDFont.FONT_5x8, 0, 0, "Hello           "),
+            (LCDFont.FONT_5x8, 0, 1, "World           "),
+        ])
+        self.assertEqual(wrapper._animation_mode, "flash")
+
+    def test_flash_alternates_all_rows_together_and_stop_leaves_last_frame(self):
+        native = FakeLCD(screen_size=LCDScreenSize.SCREEN_SIZE_2x16)
+        wrapper = make_wrapper(native)
+        wrapper.configureAttachedPhidget(native)
+        wrapper._state = "attached"
+        FakeTimer.instances = []
+
+        with mock.patch.object(lcd.threading, "Timer", FakeTimer):
+            wrapper.startAnimation(
+                "flash", ["Temperature", "21 C"], ["Humidity", "48 percent"],
+                interval=1.5)
+            timer = FakeTimer.instances[-1]
+            timer.fire()
+            current_timer = FakeTimer.instances[-1]
+            wrapper.stopAnimation()
+
+        self.assertEqual(native.writes[-2:], [
+            (LCDFont.FONT_5x8, 0, 0, "Humidity        "),
+            (LCDFont.FONT_5x8, 0, 1, "48 percent      "),
+        ])
+        self.assertTrue(current_timer.cancelled)
+        self.assertEqual(wrapper._animation_mode, "off")
 
     def test_graphic_lcd_uses_hardware_dimensions(self):
         native = FakeLCD(

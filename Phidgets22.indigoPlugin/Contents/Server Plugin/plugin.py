@@ -692,6 +692,30 @@ class Plugin(indigo.PluginBase):
     def lcdWake(self, action, device):
         self._lcdForAction(device).setSleeping(False)
 
+    def lcdStartAnimation(self, action, device):
+        line_count = int(action.props.get("lineCount", 0))
+        mode = action.props.get("animationMode", "marquee")
+        lines_a = [
+            self.substitute(action.props.get("animationLine%d" % line_number, ""))
+            for line_number in range(1, line_count + 1)
+        ]
+        lines_b = [
+            self.substitute(action.props.get("alternateLine%d" % line_number, ""))
+            for line_number in range(1, line_count + 1)
+        ]
+        self._lcdForAction(device).startAnimation(
+            mode=mode,
+            lines_a=lines_a,
+            lines_b=lines_b,
+            interval=float(action.props.get(
+                "marqueeInterval" if mode == "marquee" else "flashInterval",
+                0.4 if mode == "marquee" else 1.0)),
+            direction=action.props.get("marqueeDirection", "left"),
+            gap=int(action.props.get("marqueeGap", 3)))
+
+    def lcdStopAnimation(self, action, device):
+        self._lcdForAction(device).stopAnimation()
+
     def _lcdActionLineCount(self, deviceId):
         try:
             device = indigo.devices[int(deviceId)]
@@ -711,7 +735,22 @@ class Plugin(indigo.PluginBase):
         errors = indigo.Dict()
         if typeId == "lcdWriteText":
             pluginProps["lineCount"] = str(self._lcdActionLineCount(deviceId))
+        elif typeId == "lcdStartAnimation":
+            line_count = self._lcdActionLineCount(deviceId)
+            mode = pluginProps.get("animationMode", "marquee")
+            pluginProps["lineCount"] = str(line_count)
+            pluginProps["animationMode"] = mode
+            pluginProps["animationLayout"] = "%s%d" % (mode, line_count) \
+                if line_count else "unsupported"
         return (pluginProps, errors)
+
+    def lcdAnimationConfigChanged(self, valuesDict, typeId, deviceId):
+        line_count = self._lcdActionLineCount(deviceId)
+        mode = valuesDict.get("animationMode", "marquee")
+        valuesDict["lineCount"] = str(line_count)
+        valuesDict["animationLayout"] = "%s%d" % (mode, line_count) \
+            if line_count else "unsupported"
+        return valuesDict
 
     def validateActionConfigUi(self, valuesDict, typeId, deviceId):
         errors = indigo.Dict()
@@ -734,6 +773,26 @@ class Plugin(indigo.PluginBase):
                 valuesDict[field] = str(value)
             except (TypeError, ValueError):
                 errors[field] = "Enter a value from 0.0 to 1.0."
+        elif typeId == "lcdStartAnimation":
+            if int(valuesDict.get("lineCount", 0)) == 0:
+                errors["animationMode"] = "LCD animation currently requires a text LCD."
+            mode = valuesDict.get("animationMode", "marquee")
+            interval_field = "marqueeInterval" if mode == "marquee" else "flashInterval"
+            try:
+                interval = float(valuesDict.get(interval_field, ""))
+                if interval < 0.1 or interval > 60.0:
+                    raise ValueError
+                valuesDict[interval_field] = str(interval)
+            except (TypeError, ValueError):
+                errors[interval_field] = "Enter an interval from 0.1 to 60 seconds."
+            if mode == "marquee":
+                try:
+                    gap = int(valuesDict.get("marqueeGap", "3"))
+                    if gap < 1 or gap > 100:
+                        raise ValueError
+                    valuesDict["marqueeGap"] = str(gap)
+                except (TypeError, ValueError):
+                    errors["marqueeGap"] = "Enter a gap from 1 to 100 characters."
 
         if errors:
             errors["showAlertText"] = "Correct the LCD action settings."

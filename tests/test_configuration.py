@@ -29,7 +29,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.2.1.37</string>", plist)
+        self.assertIn("<string>0.2.1.38</string>", plist)
 
     def test_device_menu_defaults_and_icon_labels(self):
         root = ElementTree.parse(SERVER_PLUGIN / "Devices.xml").getroot()
@@ -58,7 +58,8 @@ class ConfigurationTests(unittest.TestCase):
 
         actions = ElementTree.parse(SERVER_PLUGIN / "Actions.xml").getroot()
         action_ids = {action.get("id") for action in actions.findall("Action")}
-        self.assertEqual(action_ids, {"lcdWriteText", "lcdClear", "lcdSetBacklight",
+        self.assertEqual(action_ids, {"lcdWriteText", "lcdClear", "lcdStartAnimation",
+                                      "lcdStopAnimation", "lcdSetBacklight",
                                       "lcdSetContrast", "lcdSleep", "lcdWake"})
         self.assertTrue(all(action.get("deviceFilter") == "self.lcd"
                             for action in actions.findall("Action")))
@@ -146,6 +147,8 @@ class ConfigurationTests(unittest.TestCase):
         active_lcd.setBacklight = mock.Mock()
         active_lcd.setContrast = mock.Mock()
         active_lcd.setSleeping = mock.Mock()
+        active_lcd.startAnimation = mock.Mock()
+        active_lcd.stopAnimation = mock.Mock()
         instance.activePhidgets[device.id] = active_lcd
         instance.substitute = lambda value: value.replace("%%name%%", "Kitchen")
 
@@ -164,6 +167,13 @@ class ConfigurationTests(unittest.TestCase):
             types.SimpleNamespace(props={"contrast": "0.3"}), device)
         instance.lcdSleep(types.SimpleNamespace(props={}), device)
         instance.lcdWake(types.SimpleNamespace(props={}), device)
+        instance.lcdStartAnimation(types.SimpleNamespace(props={
+            "lineCount": "2", "animationMode": "marquee",
+            "animationLine1": "%%name%%", "animationLine2": "Open",
+            "marqueeInterval": "0.5", "marqueeDirection": "right",
+            "marqueeGap": "4",
+        }), device)
+        instance.lcdStopAnimation(types.SimpleNamespace(props={}), device)
 
         active_lcd.writeText.assert_called_once_with("Kitchen", 2, 3)
         active_lcd.writeLines.assert_called_once_with(["Kitchen", "Ready"])
@@ -172,6 +182,10 @@ class ConfigurationTests(unittest.TestCase):
         active_lcd.setContrast.assert_called_once_with(0.3)
         self.assertEqual(active_lcd.setSleeping.call_args_list,
                          [mock.call(True), mock.call(False)])
+        active_lcd.startAnimation.assert_called_once_with(
+            mode="marquee", lines_a=["Kitchen", "Open"], lines_b=["", ""],
+            interval=0.5, direction="right", gap=4)
+        active_lcd.stopAnimation.assert_called_once_with()
 
     def test_lcd_action_fields_follow_selected_device_height(self):
         instance = object.__new__(plugin.Plugin)
@@ -185,6 +199,34 @@ class ConfigurationTests(unittest.TestCase):
 
         self.assertEqual(values["lineCount"], "2")
         self.assertEqual(errors, {})
+
+        values, errors = instance.getActionConfigUiValues(
+            indigo.Dict({"animationMode": "flash"}), "lcdStartAnimation", 42)
+        self.assertEqual(values["animationLayout"], "flash2")
+        self.assertEqual(values["lineCount"], "2")
+
+        values["animationMode"] = "marquee"
+        returned = instance.lcdAnimationConfigChanged(
+            values, "lcdStartAnimation", 42)
+        self.assertEqual(returned["animationLayout"], "marquee2")
+
+    def test_lcd_animation_validation(self):
+        instance = object.__new__(plugin.Plugin)
+
+        valid, values = instance.validateActionConfigUi(indigo.Dict({
+            "lineCount": "2", "animationMode": "marquee",
+            "marqueeInterval": "0.4", "marqueeGap": "3",
+        }), "lcdStartAnimation", 42)
+        self.assertTrue(valid)
+        self.assertEqual(values["marqueeInterval"], "0.4")
+
+        valid, values, errors = instance.validateActionConfigUi(indigo.Dict({
+            "lineCount": "2", "animationMode": "marquee",
+            "marqueeInterval": "0.01", "marqueeGap": "0",
+        }), "lcdStartAnimation", 42)
+        self.assertFalse(valid)
+        self.assertIn("marqueeInterval", errors)
+        self.assertIn("marqueeGap", errors)
 
 
 if __name__ == "__main__":

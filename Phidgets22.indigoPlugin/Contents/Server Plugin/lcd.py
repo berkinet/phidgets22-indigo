@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import threading
+import traceback
 
 import indigo
 
@@ -35,6 +36,11 @@ class LCDPhidget(PhidgetBase):
         self.screenHeight = None
         self._supportsSleeping = False
         self._display_lock = threading.RLock()
+        self._animation_generation = 0
+        self._animation_timer = None
+        self._animation_mode = "off"
+        self._animation_frame = 0
+        self._animation_settings = None
 
     def addPhidgetHandlers(self):
         self.phidget.setOnErrorHandler(self.onErrorHandler)
@@ -92,9 +98,9 @@ class LCDPhidget(PhidgetBase):
                         raise
                     self.logger.debug("LCD initialize is unavailable: %s", error)
 
-            # The first release exposes complete display actions rather than
-            # frame-buffer batching, so every action must become visible.
-            self.phidget.setAutoFlush(True)
+            # Flush complete frames explicitly. This keeps multi-row animation
+            # updates together instead of exposing one changed row at a time.
+            self.phidget.setAutoFlush(False)
             self._set_bounded("Backlight", self.backlight,
                               "getMinBacklight", "getMaxBacklight", "setBacklight")
             self._set_bounded("Contrast", self.contrast,
@@ -116,6 +122,16 @@ class LCDPhidget(PhidgetBase):
         super(LCDPhidget, self).onAttachHandler(ph)
         if self._state == "attached":
             self.updateIndigoStatus()
+
+    def onDetachHandler(self, ph):
+        with self._display_lock:
+            self._cancel_animation_locked()
+        super(LCDPhidget, self).onDetachHandler(ph)
+
+    def stop(self):
+        with self._display_lock:
+            self._cancel_animation_locked()
+        super(LCDPhidget, self).stop()
 
     def _ensure_attached(self):
         if self._state != "attached":
@@ -142,6 +158,7 @@ class LCDPhidget(PhidgetBase):
     def writeText(self, text, x=0, y=0):
         with self._display_lock:
             self._ensure_attached()
+            self._cancel_animation_locked()
             self._write_text(str(text), x, y)
             self.updateIndigoStatus()
 
@@ -168,12 +185,129 @@ class LCDPhidget(PhidgetBase):
     def writeLines(self, lines):
         with self._display_lock:
             self._ensure_attached()
+            self._cancel_animation_locked()
             self._write_lines(lines)
+            self.updateIndigoStatus()
+
+    def _cancel_animation_locked(self):
+        self._animation_generation += 1
+        timer = self._animation_timer
+        self._animation_timer = None
+        if timer is not None:
+            timer.cancel()
+        self._animation_mode = "off"
+        self._animation_settings = None
+
+    def _schedule_animation_locked(self, generation, interval):
+        timer = threading.Timer(interval, self._animation_tick, (generation,))
+        timer.daemon = True
+        self._animation_timer = timer
+        timer.start()
+
+    def _marquee_window(self, text, width, frame, direction, gap):
+        text = str(text or "")
+        if len(text) <= width:
+            return text.ljust(width)
+        cycle = text + (" " * gap)
+        offset = frame % len(cycle)
+        if direction == "right":
+            offset = (-frame) % len(cycle)
+        rotated = cycle[offset:] + cycle[:offset]
+        repeats = (width // len(rotated)) + 2
+        return (rotated * repeats)[:width]
+
+    def _render_animation_locked(self):
+        settings = self._animation_settings
+        width = self.screenWidth
+        height = self.screenHeight
+        if settings["mode"] == "marquee":
+            rows = [
+                self._marquee_window(line, width, self._animation_frame,
+                                     settings["direction"], settings["gap"])
+                for line in settings["lines_a"]
+            ]
+        else:
+            source = settings["lines_a"] if self._animation_frame % 2 == 0 \
+                else settings["lines_b"]
+            rows = [line.ljust(width) for line in source]
+
+        for row_number, row in enumerate(rows[:height]):
+            self.phidget.writeText(LCDFont.FONT_5x8, 0, row_number, row)
+        self.phidget.flush()
+        self.lastText = "\n".join(row.rstrip() for row in rows[:height]).rstrip("\n")
+
+    def _animation_tick(self, generation):
+        with self._display_lock:
+            if (generation != self._animation_generation or
+                    self._animation_mode == "off" or self._state != "attached"):
+                return
+            try:
+                self._animation_frame += 1
+                self._render_animation_locked()
+                self._schedule_animation_locked(
+                    generation, self._animation_settings["interval"])
+            except Exception:
+                self.logger.error("LCD animation stopped after a write error: device='%s'\n%s",
+                                  self.indigoDevice.name, traceback.format_exc())
+                self._cancel_animation_locked()
+                self.updateIndigoStatus()
+
+    def startAnimation(self, mode, lines_a, lines_b=None, interval=0.4,
+                       direction="left", gap=3):
+        with self._display_lock:
+            self._ensure_attached()
+            if self.lcdType != "text":
+                raise ValueError("LCD animations currently require a text LCD")
+            if mode not in ("marquee", "flash"):
+                raise ValueError("LCD animation mode must be marquee or flash")
+            interval = float(interval)
+            if interval < 0.1 or interval > 60.0:
+                raise ValueError("LCD animation interval must be from 0.1 to 60 seconds")
+            if direction not in ("left", "right"):
+                raise ValueError("LCD marquee direction must be left or right")
+            gap = int(gap)
+            if gap < 1 or gap > 100:
+                raise ValueError("LCD marquee gap must be from 1 to 100 characters")
+
+            height = self.screenHeight
+            width = self.screenWidth
+            normalized_a = [str(line or "") for line in list(lines_a)[:height]]
+            normalized_a.extend([""] * (height - len(normalized_a)))
+            normalized_b = [str(line or "") for line in list(lines_b or [])[:height]]
+            normalized_b.extend([""] * (height - len(normalized_b)))
+            if mode == "flash":
+                for set_name, lines in (("A", normalized_a), ("B", normalized_b)):
+                    for line_number, line in enumerate(lines):
+                        if len(line) > width:
+                            raise ValueError(
+                                "Flash text %s line %d is longer than %d characters" %
+                                (set_name, line_number + 1, width))
+
+            self._cancel_animation_locked()
+            generation = self._animation_generation
+            self._animation_mode = mode
+            self._animation_frame = 0
+            self._animation_settings = {
+                "mode": mode,
+                "lines_a": normalized_a,
+                "lines_b": normalized_b,
+                "interval": interval,
+                "direction": direction,
+                "gap": gap,
+            }
+            self._render_animation_locked()
+            self._schedule_animation_locked(generation, interval)
+            self.updateIndigoStatus()
+
+    def stopAnimation(self):
+        with self._display_lock:
+            self._cancel_animation_locked()
             self.updateIndigoStatus()
 
     def clear(self):
         with self._display_lock:
             self._ensure_attached()
+            self._cancel_animation_locked()
             self.phidget.clear()
             self.phidget.flush()
             self.lastText = ""
@@ -198,6 +332,8 @@ class LCDPhidget(PhidgetBase):
             self._ensure_attached()
             if not self._supportsSleeping:
                 raise ValueError("The attached LCD does not support sleep/wake control")
+            if sleeping:
+                self._cancel_animation_locked()
             self.phidget.setSleeping(bool(sleeping))
             self.updateIndigoStatus()
 
@@ -210,6 +346,8 @@ class LCDPhidget(PhidgetBase):
             "contrast": self._read_optional("getContrast"),
             "sleeping": self._read_optional("getSleeping"),
             "lastText": self.lastText,
+            "animationMode": self._animation_mode,
+            "animationRunning": self._animation_mode != "off",
         }
         for state_id, value in values.items():
             if value is not None:
@@ -231,6 +369,10 @@ class LCDPhidget(PhidgetBase):
             "sleeping", "Sleeping", "sleeping"))
         states.append(self.indigo_plugin.getDeviceStateDictForStringType(
             "lastText", "Last text", "lastText"))
+        states.append(self.indigo_plugin.getDeviceStateDictForStringType(
+            "animationMode", "Animation mode", "animationMode"))
+        states.append(self.indigo_plugin.getDeviceStateDictForBoolOnOffType(
+            "animationRunning", "Animation running", "animationRunning"))
         return states
 
     def getDeviceDisplayStateId(self):

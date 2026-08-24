@@ -1,5 +1,31 @@
 # Release notes
 
+## 0.2.1.38 — 2026-08-24
+
+### Added
+
+- Add **Start or update LCD animation** and **Stop LCD animation** actions for
+  text displays.
+- Add Marquee mode, in which each display row scrolls its own message using a
+  shared direction, gap, and interval.
+- Add Flash mode, which alternates all display rows together between text sets
+  A and B.
+- Expose animation mode and running status as Indigo states.
+
+### Reliability
+
+- Starting an animation again atomically replaces the previous animation.
+- Normal writes, clears, sleep, detach, and plugin shutdown cancel animation
+  timers so competing operations cannot write to the same display.
+- Guard animation timers with generation counters so stale callbacks cannot
+  resume after replacement or cancellation.
+
+### Testing
+
+- Add regression coverage for independent-row marquee frames, synchronized
+  flash frames, replacement, stale callbacks, stopping, action dispatch, and
+  animation configuration validation.
+
 ## 0.2.1.37 — 2026-08-24
 
 ### Fixed
