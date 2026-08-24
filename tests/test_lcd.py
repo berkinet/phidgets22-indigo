@@ -266,6 +266,43 @@ class LCDTests(unittest.TestCase):
         ])
         self.assertEqual(wrapper._animation_mode, "flash")
 
+    def test_virtual_marquee_uses_all_rows_as_one_row_major_line(self):
+        native = FakeLCD(screen_size=LCDScreenSize.SCREEN_SIZE_2x16)
+        wrapper = make_wrapper(native)
+        wrapper.configureAttachedPhidget(native)
+        wrapper._state = "attached"
+        FakeTimer.instances = []
+
+        with mock.patch.object(lcd.threading, "Timer", FakeTimer):
+            wrapper.startAnimation(
+                "virtualMarquee", ["ABC"], interval=0.4,
+                direction="left", gap=2)
+            FakeTimer.instances[-1].fire()
+            wrapper.startAnimation(
+                "virtualMarquee", ["ABC"], interval=0.4,
+                direction="right", gap=2)
+            FakeTimer.instances[-1].fire()
+
+        blank = " " * 16
+        self.assertEqual(native.writes[:4], [
+            (LCDFont.FONT_5x8, 0, 0, blank),
+            (LCDFont.FONT_5x8, 0, 1, (" " * 15) + "A"),
+            (LCDFont.FONT_5x8, 0, 0, blank),
+            (LCDFont.FONT_5x8, 0, 1, (" " * 14) + "AB"),
+        ])
+        self.assertEqual(native.writes[-4:], [
+            (LCDFont.FONT_5x8, 0, 0, "C" + (" " * 15)),
+            (LCDFont.FONT_5x8, 0, 1, blank),
+            (LCDFont.FONT_5x8, 0, 0, "BC" + (" " * 14)),
+            (LCDFont.FONT_5x8, 0, 1, blank),
+        ])
+        self.assertEqual(
+            wrapper._virtual_marquee_rows("ABC", 16, 2, 16, "left", 2),
+            [(" " * 15) + "A", "BC" + (" " * 14)])
+        self.assertEqual(
+            wrapper._virtual_marquee_rows("ABC", 16, 2, 17, "right", 2),
+            [(" " * 15) + "A", "BC" + (" " * 14)])
+
     def test_flash_alternates_all_rows_together_and_stop_leaves_last_frame(self):
         native = FakeLCD(screen_size=LCDScreenSize.SCREEN_SIZE_2x16)
         logger = mock.Mock()

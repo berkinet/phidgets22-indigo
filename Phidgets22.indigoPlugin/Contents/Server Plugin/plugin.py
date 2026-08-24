@@ -676,10 +676,14 @@ class Plugin(indigo.PluginBase):
     def lcdSetDisplay(self, action, device):
         line_count = int(action.props.get("lineCount", 0))
         mode = action.props.get("animationMode", "static")
-        lines_a = [
-            self.substitute(action.props.get("animationLine%d" % line_number, ""))
-            for line_number in range(1, line_count + 1)
-        ]
+        if mode == "virtualMarquee":
+            lines_a = [self.substitute(action.props.get("virtualText", ""))]
+        else:
+            lines_a = [
+                self.substitute(action.props.get(
+                    "animationLine%d" % line_number, ""))
+                for line_number in range(1, line_count + 1)
+            ]
         lines_b = [
             self.substitute(action.props.get("alternateLine%d" % line_number, ""))
             for line_number in range(1, line_count + 1)
@@ -701,8 +705,9 @@ class Plugin(indigo.PluginBase):
                 lines_a=lines_a,
                 lines_b=lines_b,
                 interval=float(action.props.get(
-                    "marqueeInterval" if mode == "marquee" else "flashInterval",
-                    0.4 if mode == "marquee" else 1.0)),
+                    "marqueeInterval" if mode in ("marquee", "virtualMarquee")
+                    else "flashInterval",
+                    0.4 if mode in ("marquee", "virtualMarquee") else 1.0)),
                 direction=action.props.get("marqueeDirection", "left"),
                 gap=int(action.props.get("marqueeGap", 3)))
 
@@ -783,8 +788,10 @@ class Plugin(indigo.PluginBase):
                         errors[field] = "%s must be a whole number of zero or greater." % label
             if mode != "static" and line_count == 0:
                 errors["animationMode"] = "LCD animation currently requires a text LCD."
-            if mode in ("marquee", "flash"):
-                interval_field = "marqueeInterval" if mode == "marquee" else "flashInterval"
+            if mode in ("marquee", "virtualMarquee", "flash"):
+                interval_field = (
+                    "marqueeInterval" if mode in ("marquee", "virtualMarquee")
+                    else "flashInterval")
                 try:
                     interval = float(valuesDict.get(interval_field, ""))
                     if interval < 0.1 or interval > 60.0:
@@ -792,7 +799,7 @@ class Plugin(indigo.PluginBase):
                     valuesDict[interval_field] = str(interval)
                 except (TypeError, ValueError):
                     errors[interval_field] = "Enter an interval from 0.1 to 60 seconds."
-                if mode == "marquee":
+                if mode in ("marquee", "virtualMarquee"):
                     try:
                         gap = int(valuesDict.get("marqueeGap", "3"))
                         if gap < 1 or gap > 100:

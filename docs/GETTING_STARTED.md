@@ -55,12 +55,19 @@ one, two, or four row fields are shown. Static mode on a graphic LCD instead
 shows text and pixel coordinates. This implementation uses the built-in 5×8
 font.
 
-Text LCD animations have two modes. **Marquee** scrolls each row's message
-independently, while applying one direction, repeat gap, and interval to the
-whole display. **Flash / alternate** switches every row together between text
-sets A and B. Starting the animation action again replaces the running
-animation; Static, clear, sleep, and detachment stop it. The stop
-action leaves the most recently displayed frame visible.
+Text LCD animations have three modes. **Marquee — independent rows** scrolls
+each row's message independently, while applying one direction, repeat gap,
+and interval to the whole display. **Flash / alternate** switches every row
+together between text sets A and B. Starting the animation action again
+replaces the running animation; Static, clear, sleep, and detachment stop it.
+The stop action leaves the most recently displayed frame visible.
+
+**Virtual single-line marquee** instead shows one text field and treats every
+physical row as one continuous row-major line. A 2×20 display therefore acts
+as a 40-character path: Left enters at the lower right and moves toward the
+upper left; Right enters at the upper left and moves toward the lower right.
+Direction, interval, and repeat gap use the same controls as the independent-
+row marquee.
 
 Static and Flash text wider than its physical row is clipped to fit. Marquee
 text is not clipped because the complete message scrolls through the row. Each

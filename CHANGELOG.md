@@ -1,5 +1,23 @@
 # Release notes
 
+## 0.2.1.42 — 2026-08-24
+
+### Added
+
+- Add **Virtual single-line marquee** to the LCD display action. It exposes one
+  text field and treats every physical row as one row-major virtual line (40
+  characters on a 2×20 display).
+- Keep the existing direction, interval, and repeat-gap controls. Left-moving
+  text enters at the lower-right cell and travels toward the upper-left;
+  right-moving text enters at the upper-left and travels toward the
+  lower-right.
+- Preserve the existing independent-row Marquee as a separate display mode.
+
+### Testing
+
+- Add regression coverage for both virtual-marquee directions, entry points,
+  row-boundary wrapping, action layout, validation, and dispatch.
+
 ## 0.2.1.41 — 2026-08-24
 
 ### Fixed

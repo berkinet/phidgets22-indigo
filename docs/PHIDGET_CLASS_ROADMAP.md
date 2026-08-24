@@ -109,8 +109,9 @@ detecting the attached channel's capabilities rather than assuming one model.
   LCD, or text at an x/y pixel position on a graphic LCD.
 - Clear the display.
 - Sleep or wake the display when supported.
-- Start/update or stop a text-display animation. Marquee scrolls each row
-  independently; Flash alternates every row together between two text sets.
+- Start/update or stop a text-display animation. Marquee can scroll each row
+  independently or treat all rows as one row-major virtual line; Flash
+  alternates every row together between two text sets.
 
 Action values are checked against the attached display dimensions and reported
 min/max ranges. The wrapper refreshes its states after attachment and after
@@ -123,7 +124,6 @@ successful actions.
 - Multiple frame buffers, copying, and saved frame buffers.
 - Cursor and cursor-blink controls specific to text displays.
 - User-selectable fonts and font sizing.
-- Treat all rows as one virtual line for a display-spanning marquee.
 
 These can be added without changing the initial device type because the
 wrapper will already distinguish text and graphic LCD subclasses.

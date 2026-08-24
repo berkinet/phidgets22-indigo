@@ -226,6 +226,32 @@ class LCDPhidget(PhidgetBase):
         repeats = (width // len(rotated)) + 2
         return (rotated * repeats)[:width]
 
+    def _virtual_marquee_rows(self, text, width, height, frame, direction, gap):
+        """Render row-major display cells as one continuous marquee line."""
+        text = str(text or "")
+        capacity = width * height
+        cells = [" "] * capacity
+        if not text or capacity <= 0:
+            return ["".join(cells[offset:offset + width])
+                    for offset in range(0, capacity, width)]
+
+        # One complete passage plus the requested number of blank frames. For
+        # left motion, the first character enters at the lower-right cell. For
+        # right motion, the last character enters at the upper-left cell so
+        # the message remains readable from left to right as it moves.
+        cycle_length = capacity + len(text) + gap - 1
+        progress = frame % cycle_length
+        if direction == "left":
+            start = capacity - 1 - progress
+        else:
+            start = -(len(text) - 1) + progress
+        for character_number, character in enumerate(text):
+            position = start + character_number
+            if 0 <= position < capacity:
+                cells[position] = character
+        return ["".join(cells[offset:offset + width])
+                for offset in range(0, capacity, width)]
+
     def _render_animation_locked(self):
         settings = self._animation_settings
         width = self.screenWidth
@@ -236,6 +262,10 @@ class LCDPhidget(PhidgetBase):
                                      settings["direction"], settings["gap"])
                 for line in settings["lines_a"]
             ]
+        elif settings["mode"] == "virtualMarquee":
+            rows = self._virtual_marquee_rows(
+                settings["lines_a"][0], width, height, self._animation_frame,
+                settings["direction"], settings["gap"])
         else:
             source = settings["lines_a"] if self._animation_frame % 2 == 0 \
                 else settings["lines_b"]
@@ -268,8 +298,9 @@ class LCDPhidget(PhidgetBase):
             self._ensure_attached()
             if self.lcdType != "text":
                 raise ValueError("LCD animations currently require a text LCD")
-            if mode not in ("marquee", "flash"):
-                raise ValueError("LCD animation mode must be marquee or flash")
+            if mode not in ("marquee", "virtualMarquee", "flash"):
+                raise ValueError(
+                    "LCD animation mode must be marquee, virtual marquee, or flash")
             interval = float(interval)
             if interval < 0.1 or interval > 60.0:
                 raise ValueError("LCD animation interval must be from 0.1 to 60 seconds")
@@ -280,10 +311,15 @@ class LCDPhidget(PhidgetBase):
                 raise ValueError("LCD marquee gap must be from 1 to 100 characters")
 
             height = self.screenHeight
-            normalized_a = [str(line or "") for line in list(lines_a)[:height]]
-            normalized_a.extend([""] * (height - len(normalized_a)))
-            normalized_b = [str(line or "") for line in list(lines_b or [])[:height]]
-            normalized_b.extend([""] * (height - len(normalized_b)))
+            if mode == "virtualMarquee":
+                source = list(lines_a or [])
+                normalized_a = [str(source[0] or "") if source else ""]
+                normalized_b = []
+            else:
+                normalized_a = [str(line or "") for line in list(lines_a)[:height]]
+                normalized_a.extend([""] * (height - len(normalized_a)))
+                normalized_b = [str(line or "") for line in list(lines_b or [])[:height]]
+                normalized_b.extend([""] * (height - len(normalized_b)))
             if mode == "flash":
                 width = self.screenWidth
                 normalized_a = [
