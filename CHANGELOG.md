@@ -1,5 +1,17 @@
 # Release notes
 
+## 0.2.1.34 — 2026-08-24
+
+### Fixed
+
+- Report the Frequency Counter's session-cumulative `getCount()` value instead
+  of the per-data-interval count supplied to the count-change callback.
+
+### Testing
+
+- Add regression coverage proving that fluctuating interval counts produce a
+  monotonic cumulative Indigo `count` state.
+
 ## 0.2.1.33 — 2026-08-23
 
 ### Fixed

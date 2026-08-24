@@ -53,7 +53,7 @@ class FrequencyCounterPhidget(PhidgetBase):
         self.indigoDevice.updateStateOnServer("frequency", value=frequency,  decimalPlaces=self.decimalPlaces)
 
     def onCountChangeHandler(self, ph, count, timeChange):
-        self.indigoDevice.updateStateOnServer("count", value=count)
+        self.indigoDevice.updateStateOnServer("count", value=ph.getCount())
         self.indigoDevice.updateStateOnServer("timeChange", value=timeChange,  decimalPlaces=self.decimalPlaces)
 
     def getDeviceStateList(self):

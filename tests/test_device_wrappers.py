@@ -43,6 +43,24 @@ class DeviceWrapperTests(unittest.TestCase):
             wrapper.phidget.handlers["setOnCountChangeHandler"].__func__,
             frequencycounter.FrequencyCounterPhidget.onCountChangeHandler)
 
+    def test_frequency_counter_publishes_session_cumulative_count(self):
+        wrapper = object.__new__(frequencycounter.FrequencyCounterPhidget)
+        wrapper.indigoDevice = mock.Mock()
+        wrapper.decimalPlaces = 2
+        phidget = mock.Mock()
+        phidget.getCount.side_effect = [100, 102, 105]
+
+        for interval_count in (1, 2, 3):
+            wrapper.onCountChangeHandler(phidget, interval_count, 32.0)
+
+        count_updates = [call for call in wrapper.indigoDevice.updateStateOnServer.call_args_list
+                         if call.args[0] == "count"]
+        self.assertEqual(
+            count_updates,
+            [mock.call("count", value=100),
+             mock.call("count", value=102),
+             mock.call("count", value=105)])
+
     def test_digital_output_refreshes_state_after_successful_attach(self):
         wrapper = object.__new__(digitaloutput.DigitalOutputPhidget)
         wrapper._state = "starting"
