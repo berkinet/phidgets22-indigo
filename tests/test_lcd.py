@@ -45,6 +45,8 @@ class FakeLCD(object):
         self.flush_count = 0
         self.set_screen_sizes = []
         self.initialize_count = 0
+        self.cursor_blink = True
+        self.cursor_on = True
 
     def __getattr__(self, name):
         if name.startswith("setOn") and name.endswith("Handler"):
@@ -73,6 +75,12 @@ class FakeLCD(object):
 
     def setAutoFlush(self, value):
         self.auto_flush = value
+
+    def setCursorBlink(self, value):
+        self.cursor_blink = value
+
+    def setCursorOn(self, value):
+        self.cursor_on = value
 
     def getMinBacklight(self):
         return 0.0
@@ -192,6 +200,8 @@ class LCDTests(unittest.TestCase):
         self.assertEqual(native.set_screen_sizes, [LCDScreenSize.SCREEN_SIZE_2x16])
         self.assertEqual(native.initialize_count, 1)
         self.assertFalse(native.auto_flush)
+        self.assertFalse(native.cursor_blink)
+        self.assertFalse(native.cursor_on)
         self.assertEqual(native.backlight, 0.75)
         self.assertEqual(native.contrast, 0.4)
         self.assertEqual(native.writes, [(LCDFont.FONT_5x8, 1, 0, "Ready")])

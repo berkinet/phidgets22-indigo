@@ -63,6 +63,9 @@ class ActionsMixin(object):
             for line_number in range(1, line_count + 1)
         ]
         lcd = self._lcdForAction(action, device)
+        # A display action implies that the panel should be visible. This also
+        # exits backlight-based sleep emulation before applying its brightness.
+        lcd.setSleeping(False)
         lcd.setBacklight(float(action.props.get("backlight", 1.0)))
         lcd.setContrast(float(action.props.get("contrast", 0.5)))
         if mode == "static":

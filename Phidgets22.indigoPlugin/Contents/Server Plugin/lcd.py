@@ -55,6 +55,13 @@ class LCDPhidget(PhidgetBase):
         except Exception:
             return default
 
+    def _write_optional(self, method_name, value):
+        try:
+            getattr(self.phidget, method_name)(value)
+            return True
+        except Exception:
+            return False
+
     def _subclass_name(self, channel_subclass):
         if channel_subclass == ChannelSubclass.PHIDCHSUBCLASS_LCD_TEXT:
             return "text"
@@ -99,6 +106,12 @@ class LCDPhidget(PhidgetBase):
                     if error.code != ErrorCode.EPHIDGET_UNSUPPORTED:
                         raise
                     self.logger.debug("LCD initialize is unavailable: %s", error)
+
+            # Cursor modes persist in the controller and appear as vertical
+            # bars among moving text. Animations never use a visible cursor.
+            if self.lcdType == "text":
+                self._write_optional("setCursorBlink", False)
+                self._write_optional("setCursorOn", False)
 
             # Flush complete frames explicitly. This keeps multi-row animation
             # updates together instead of exposing one changed row at a time.

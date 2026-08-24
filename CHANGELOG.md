@@ -14,6 +14,10 @@
 - Flush the LCD clear operation before writing each replacement animation
   frame. The 1204 text-LCD adapter can otherwise leave old glyph columns
   visible as vertical bars in Virtual single-line marquee repeat gaps.
+- Explicitly disable the text controller's persistent cursor and cursor-blink
+  modes so cursor columns cannot appear among moving marquee text.
+- Treat every Set LCD display action as a wake operation before applying its
+  requested backlight, so a prior emulated Sleep cannot suppress brightness.
 
 ### Testing
 

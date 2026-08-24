@@ -283,7 +283,9 @@ class ConfigurationTests(unittest.TestCase):
                          [mock.call(0.3), mock.call(0.4), mock.call(0.5),
                           mock.call(0.6)])
         self.assertEqual(active_lcd.setSleeping.call_args_list,
-                         [mock.call(True), mock.call(False)])
+                         [mock.call(False), mock.call(False),
+                          mock.call(True), mock.call(False),
+                          mock.call(False), mock.call(False)])
         self.assertEqual(active_lcd.startAnimation.call_args_list, [
             mock.call(
                 mode="marquee", lines_a=["Kitchen", "Open"],
