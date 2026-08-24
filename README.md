@@ -12,9 +12,9 @@ This version is based on his original
 
 ## Download and install
 
-Download the latest `Phidgets22-*.zip` file from
-[GitHub Releases](https://github.com/berkinet/phidgets22-indigo/releases), unzip
-it, and double-click `Phidgets22.indigoPlugin` to install it in Indigo.
+On the [GitHub repository](https://github.com/berkinet/phidgets22-indigo), click
+**Code**, select **Download ZIP**, unzip the downloaded repository, and
+double-click `Phidgets22.indigoPlugin` to install it in Indigo.
 
 ## Requirements
 

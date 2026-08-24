@@ -29,7 +29,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.2.1.35</string>", plist)
+        self.assertIn("<string>0.2.1.36</string>", plist)
 
     def test_device_menu_defaults_and_icon_labels(self):
         root = ElementTree.parse(SERVER_PLUGIN / "Devices.xml").getroot()

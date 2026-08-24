@@ -1,6 +1,6 @@
 # Release notes
 
-## Unreleased
+## 0.2.1.36 — 2026-08-24
 
 ### Fixed
 
