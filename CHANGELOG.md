@@ -1,5 +1,22 @@
 # Release notes
 
+## 0.2.1.46 — 2026-08-24
+
+### Fixed
+
+- Make **Put LCD to sleep** and **Wake LCD** work on text LCD adapters that do
+  not implement native Phidget sleep/wake control. Sleep now turns the
+  backlight down to its supported minimum, and Wake restores its prior level.
+- Keep a backlight value selected while the emulated sleep is active as the
+  level to restore on Wake, without prematurely illuminating the display.
+- Publish the emulated sleeping state to Indigo so action groups complete
+  normally and device state remains accurate.
+
+### Testing
+
+- Add regression coverage for emulated sleep, changing the desired backlight
+  while asleep, wake restoration, and Indigo sleeping-state updates.
+
 ## 0.2.1.45 — 2026-08-24
 
 ### Fixed

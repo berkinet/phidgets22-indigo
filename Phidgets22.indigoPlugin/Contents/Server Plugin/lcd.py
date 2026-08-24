@@ -35,6 +35,8 @@ class LCDPhidget(PhidgetBase):
         self.screenWidth = None
         self.screenHeight = None
         self._supportsSleeping = False
+        self._emulatedSleeping = False
+        self._wakeBacklight = None
         self._display_lock = threading.RLock()
         self._animation_generation = 0
         self._animation_timer = None
@@ -110,6 +112,8 @@ class LCDPhidget(PhidgetBase):
             self.screenHeight = self.phidget.getHeight()
             sleeping = self._read_optional("getSleeping")
             self._supportsSleeping = sleeping is not None
+            self._emulatedSleeping = False
+            self._wakeBacklight = None
 
             if self.restoreInitialText:
                 if any(self.initialLines):
@@ -367,8 +371,18 @@ class LCDPhidget(PhidgetBase):
     def setBacklight(self, value):
         with self._display_lock:
             self._ensure_attached()
-            self._set_bounded("Backlight", float(value),
-                              "getMinBacklight", "getMaxBacklight", "setBacklight")
+            value = float(value)
+            if self._emulatedSleeping:
+                minimum = self.phidget.getMinBacklight()
+                maximum = self.phidget.getMaxBacklight()
+                if value < minimum or value > maximum:
+                    raise ValueError(
+                        "Backlight %.3f is outside the attached LCD range %.3f–%.3f" %
+                        (value, minimum, maximum))
+                self._wakeBacklight = value
+            else:
+                self._set_bounded("Backlight", value,
+                                  "getMinBacklight", "getMaxBacklight", "setBacklight")
             self.updateIndigoStatus()
 
     def setContrast(self, value):
@@ -381,11 +395,21 @@ class LCDPhidget(PhidgetBase):
     def setSleeping(self, sleeping):
         with self._display_lock:
             self._ensure_attached()
-            if not self._supportsSleeping:
-                raise ValueError("The attached LCD does not support sleep/wake control")
             if sleeping:
                 self._cancel_animation_locked()
-            self.phidget.setSleeping(bool(sleeping))
+            if self._supportsSleeping:
+                self.phidget.setSleeping(bool(sleeping))
+            elif sleeping and not self._emulatedSleeping:
+                self._wakeBacklight = self.phidget.getBacklight()
+                self.phidget.setBacklight(self.phidget.getMinBacklight())
+                self._emulatedSleeping = True
+            elif not sleeping and self._emulatedSleeping:
+                wake_backlight = (self._wakeBacklight if self._wakeBacklight is not None
+                                  else self.backlight)
+                self._set_bounded("Backlight", float(wake_backlight),
+                                  "getMinBacklight", "getMaxBacklight", "setBacklight")
+                self._emulatedSleeping = False
+                self._wakeBacklight = None
             self.updateIndigoStatus()
 
     def updateIndigoStatus(self):
@@ -395,7 +419,8 @@ class LCDPhidget(PhidgetBase):
             "screenHeight": self.screenHeight,
             "backlight": self._read_optional("getBacklight"),
             "contrast": self._read_optional("getContrast"),
-            "sleeping": self._read_optional("getSleeping"),
+            "sleeping": (self._read_optional("getSleeping")
+                         if self._supportsSleeping else self._emulatedSleeping),
             "lastText": self.lastText,
             "animationMode": self._animation_mode,
             "animationRunning": self._animation_mode != "off",

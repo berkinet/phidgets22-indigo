@@ -398,14 +398,26 @@ class LCDTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Select the dimensions"):
             wrapper.configureAttachedPhidget(native)
 
-    def test_sleep_action_reports_unsupported_hardware(self):
+    def test_sleep_action_falls_back_to_backlight_control(self):
         native = FakeLCD(screen_size=LCDScreenSize.SCREEN_SIZE_2x16)
         wrapper = make_wrapper(native)
         wrapper.configureAttachedPhidget(native)
         wrapper._state = "attached"
 
-        with self.assertRaisesRegex(ValueError, "does not support"):
-            wrapper.setSleeping(True)
+        wrapper.setSleeping(True)
+
+        self.assertEqual(native.backlight, native.getMinBacklight())
+        self.assertTrue(wrapper._emulatedSleeping)
+        wrapper.indigoDevice.updateStateOnServer.assert_any_call(
+            "sleeping", value=True)
+
+        wrapper.setBacklight(0.6)
+        wrapper.setSleeping(False)
+
+        self.assertEqual(native.backlight, 0.6)
+        self.assertFalse(wrapper._emulatedSleeping)
+        wrapper.indigoDevice.updateStateOnServer.assert_any_call(
+            "sleeping", value=False)
 
 
 if __name__ == "__main__":
