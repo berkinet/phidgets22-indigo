@@ -211,6 +211,26 @@ class LCDTests(unittest.TestCase):
         ])
         self.assertEqual(wrapper.lastText, "Flow 7.7 GPM\n38.6 gallons")
 
+    def test_static_text_is_clipped_to_the_physical_row_width(self):
+        native = FakeLCD(screen_size=LCDScreenSize.SCREEN_SIZE_2x16)
+        logger = mock.Mock()
+        wrapper = make_wrapper(native, logger=logger)
+        wrapper.configureAttachedPhidget(native)
+        wrapper._state = "attached"
+
+        wrapper.writeLines(["This text is much too long", "Second row"])
+
+        self.assertEqual(native.writes[-2:], [
+            (LCDFont.FONT_5x8, 0, 0, "This text is muc"),
+            (LCDFont.FONT_5x8, 0, 1, "Second row"),
+        ])
+        self.assertEqual(wrapper.lastText, "This text is muc\nSecond row")
+        logger.warning.assert_called_once_with(
+            "LCD %s text clipped: device='%s', line=%d, width=%d, "
+            "original=%r, displayed=%r",
+            "Static", wrapper.indigoDevice.name, 1, 16,
+            "This text is much too long", "This text is muc")
+
     def test_marquee_scrolls_each_row_and_starting_again_replaces_it(self):
         native = FakeLCD(screen_size=LCDScreenSize.SCREEN_SIZE_2x16)
         wrapper = make_wrapper(native)
@@ -248,26 +268,36 @@ class LCDTests(unittest.TestCase):
 
     def test_flash_alternates_all_rows_together_and_stop_leaves_last_frame(self):
         native = FakeLCD(screen_size=LCDScreenSize.SCREEN_SIZE_2x16)
-        wrapper = make_wrapper(native)
+        logger = mock.Mock()
+        wrapper = make_wrapper(native, logger=logger)
         wrapper.configureAttachedPhidget(native)
         wrapper._state = "attached"
         FakeTimer.instances = []
 
         with mock.patch.object(lcd.threading, "Timer", FakeTimer):
             wrapper.startAnimation(
-                "flash", ["Temperature", "21 C"], ["Humidity", "48 percent"],
+                "flash", ["Temperature reading", "21 C"],
+                ["Relative humidity reading", "48 percent"],
                 interval=1.5)
             timer = FakeTimer.instances[-1]
             timer.fire()
             current_timer = FakeTimer.instances[-1]
             wrapper.stopAnimation()
 
+        self.assertEqual(native.writes[:2], [
+            (LCDFont.FONT_5x8, 0, 0, "Temperature read"),
+            (LCDFont.FONT_5x8, 0, 1, "21 C            "),
+        ])
         self.assertEqual(native.writes[-2:], [
-            (LCDFont.FONT_5x8, 0, 0, "Humidity        "),
+            (LCDFont.FONT_5x8, 0, 0, "Relative humidit"),
             (LCDFont.FONT_5x8, 0, 1, "48 percent      "),
         ])
         self.assertTrue(current_timer.cancelled)
         self.assertEqual(wrapper._animation_mode, "off")
+        self.assertEqual(logger.warning.call_count, 2)
+        self.assertEqual(
+            [call.args[1] for call in logger.warning.call_args_list],
+            ["Flash set A", "Flash set B"])
 
     def test_graphic_lcd_uses_hardware_dimensions(self):
         native = FakeLCD(

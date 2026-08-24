@@ -162,6 +162,16 @@ class LCDPhidget(PhidgetBase):
             self._write_text(str(text), x, y)
             self.updateIndigoStatus()
 
+    def _clip_text_row(self, text, width, context, line_number):
+        if len(text) <= width:
+            return text
+        clipped = text[:width]
+        self.logger.warning(
+            "LCD %s text clipped: device='%s', line=%d, width=%d, "
+            "original=%r, displayed=%r",
+            context, self.indigoDevice.name, line_number, width, text, clipped)
+        return clipped
+
     def _write_lines(self, lines):
         if self.lcdType != "text":
             raise ValueError("Write LCD lines is only available for text LCDs")
@@ -171,16 +181,16 @@ class LCDPhidget(PhidgetBase):
         if any(normalized[height:]):
             raise ValueError("The attached LCD has only %d text line%s" %
                              (height, "" if height == 1 else "s"))
-        for line_number, line in enumerate(normalized[:height]):
-            if len(line) > width:
-                raise ValueError("LCD line %d is longer than %d characters" %
-                                 (line_number + 1, width))
+        visible_lines = [
+            self._clip_text_row(line, width, "Static", line_number + 1)
+            for line_number, line in enumerate(normalized[:height])
+        ]
         self.phidget.clear()
-        for line_number, line in enumerate(normalized[:height]):
+        for line_number, line in enumerate(visible_lines):
             if line:
                 self.phidget.writeText(LCDFont.FONT_5x8, 0, line_number, line)
         self.phidget.flush()
-        self.lastText = "\n".join(normalized[:height]).rstrip("\n")
+        self.lastText = "\n".join(visible_lines).rstrip("\n")
 
     def writeLines(self, lines):
         with self._display_lock:
@@ -229,7 +239,7 @@ class LCDPhidget(PhidgetBase):
         else:
             source = settings["lines_a"] if self._animation_frame % 2 == 0 \
                 else settings["lines_b"]
-            rows = [line.ljust(width) for line in source]
+            rows = [line[:width].ljust(width) for line in source]
 
         for row_number, row in enumerate(rows[:height]):
             self.phidget.writeText(LCDFont.FONT_5x8, 0, row_number, row)
@@ -270,19 +280,20 @@ class LCDPhidget(PhidgetBase):
                 raise ValueError("LCD marquee gap must be from 1 to 100 characters")
 
             height = self.screenHeight
-            width = self.screenWidth
             normalized_a = [str(line or "") for line in list(lines_a)[:height]]
             normalized_a.extend([""] * (height - len(normalized_a)))
             normalized_b = [str(line or "") for line in list(lines_b or [])[:height]]
             normalized_b.extend([""] * (height - len(normalized_b)))
             if mode == "flash":
-                for set_name, lines in (("A", normalized_a), ("B", normalized_b)):
-                    for line_number, line in enumerate(lines):
-                        if len(line) > width:
-                            raise ValueError(
-                                "Flash text %s line %d is longer than %d characters" %
-                                (set_name, line_number + 1, width))
-
+                width = self.screenWidth
+                normalized_a = [
+                    self._clip_text_row(line, width, "Flash set A", line_number + 1)
+                    for line_number, line in enumerate(normalized_a)
+                ]
+                normalized_b = [
+                    self._clip_text_row(line, width, "Flash set B", line_number + 1)
+                    for line_number, line in enumerate(normalized_b)
+                ]
             self._cancel_animation_locked()
             generation = self._animation_generation
             self._animation_mode = mode

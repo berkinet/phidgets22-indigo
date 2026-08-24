@@ -1,5 +1,20 @@
 # Release notes
 
+## 0.2.1.41 — 2026-08-24
+
+### Fixed
+
+- Clip overlong Static and Flash text to the physical display-row width
+  instead of aborting the Indigo action.
+- Log one warning for each clipped row, including the original and displayed
+  text. Flash warnings occur when the animation starts, not on every frame.
+- Add an action-dialog note explaining the clipping behavior. Marquee text
+  remains unbounded because it scrolls through the complete message.
+
+### Testing
+
+- Add regression coverage for overlong Static content and both Flash frames.
+
 ## 0.2.1.40 — 2026-08-24
 
 ### Fixed

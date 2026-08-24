@@ -62,6 +62,11 @@ sets A and B. Starting the animation action again replaces the running
 animation; Static, clear, sleep, and detachment stop it. The stop
 action leaves the most recently displayed frame visible.
 
+Static and Flash text wider than its physical row is clipped to fit. Marquee
+text is not clipped because the complete message scrolls through the row. Each
+clipped row produces one Indigo Event Log warning showing its original and
+displayed text; Flash logs this when the animation starts, not on every frame.
+
 ## Print the Phidgets network map
 
 Choose **Plugins → Phidgets 22 → Print Phidgets network diagram to log**.
