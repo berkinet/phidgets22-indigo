@@ -114,6 +114,23 @@ class ActionsMixin(object):
             return "%s%d" % (mode, line_count)
         return "static0" if mode == "static" else "unsupported"
 
+    def _updateVirtualTextStatus(self, values):
+        text = str(values.get("virtualText", "") or "")
+        if not text:
+            values["virtualTextStatus"] = "∅ empty"
+        else:
+            line_count = (len(text.splitlines())
+                          if "\r" in text or "\n" in text else 1)
+            if line_count > 1:
+                values["virtualTextStatus"] = (
+                    "⚠ %d characters stored across %d lines" %
+                    (len(text), line_count))
+            else:
+                values["virtualTextStatus"] = (
+                    "→ %d character%s stored" %
+                    (len(text), "" if len(text) == 1 else "s"))
+        return values
+
     def getActionConfigUiValues(self, pluginProps, typeId, deviceId):
         errors = indigo.Dict()
         if typeId == "lcdStartAnimation":
@@ -122,6 +139,7 @@ class ActionsMixin(object):
             pluginProps["lineCount"] = str(line_count)
             pluginProps["animationMode"] = mode
             pluginProps["animationLayout"] = self._lcdDisplayLayout(mode, line_count)
+            self._updateVirtualTextStatus(pluginProps)
             try:
                 device = indigo.devices[int(deviceId)]
                 if "backlight" not in pluginProps:
@@ -142,7 +160,7 @@ class ActionsMixin(object):
         mode = valuesDict.get("animationMode", "static")
         valuesDict["lineCount"] = str(line_count)
         valuesDict["animationLayout"] = self._lcdDisplayLayout(mode, line_count)
-        return valuesDict
+        return self._updateVirtualTextStatus(valuesDict)
 
     def validateActionConfigUi(self, valuesDict, typeId, deviceId):
         errors = indigo.Dict()

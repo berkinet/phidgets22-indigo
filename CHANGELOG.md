@@ -20,6 +20,9 @@
 - Reject multiline Virtual marquee text in the action editor and safely turn
   legacy embedded newlines into spaces before display, preventing control-code
   glyphs from appearing as vertical bars.
+- Show `∅ empty`, a right-arrow plus the stored character count, or a multiline
+  warning directly below the Virtual marquee text field so hidden content is
+  visible even when the single-line editor looks empty or truncated.
 
 ### Testing
 

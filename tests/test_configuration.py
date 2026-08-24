@@ -338,6 +338,19 @@ class ConfigurationTests(unittest.TestCase):
         returned = instance.lcdAnimationConfigChanged(
             values, "lcdStartAnimation", 42)
         self.assertEqual(returned["animationLayout"], "virtualMarquee2")
+        self.assertEqual(returned["virtualTextStatus"], "∅ empty")
+
+        values["virtualText"] = "TEST-XYZ-123"
+        returned = instance.lcdAnimationConfigChanged(
+            values, "lcdStartAnimation", 42)
+        self.assertEqual(returned["virtualTextStatus"],
+                         "→ 12 characters stored")
+
+        values["virtualText"] = "Visible\nHidden"
+        returned = instance.lcdAnimationConfigChanged(
+            values, "lcdStartAnimation", 42)
+        self.assertEqual(returned["virtualTextStatus"],
+                         "⚠ 14 characters stored across 2 lines")
 
     def test_lcd_animation_validation(self):
         instance = object.__new__(plugin.Plugin)
