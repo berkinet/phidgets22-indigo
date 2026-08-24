@@ -8,6 +8,8 @@ from Phidget22.ChannelSubclass import ChannelSubclass
 from Phidget22.Devices.LCD import LCD
 from Phidget22.LCDFont import LCDFont
 from Phidget22.LCDScreenSize import LCDScreenSize
+from Phidget22.ErrorCode import ErrorCode
+from Phidget22.PhidgetException import PhidgetException
 
 from phidget import PhidgetBase
 
@@ -16,7 +18,7 @@ class LCDPhidget(PhidgetBase):
     """Indigo wrapper for Phidget22 text and graphic LCD channels."""
 
     def __init__(self, screenSize, backlight, contrast,
-                 restoreInitialText, initialText, initialX, initialY,
+                 restoreInitialText, initialText, initialLines, initialX, initialY,
                  *args, **kwargs):
         super(LCDPhidget, self).__init__(phidget=LCD(), *args, **kwargs)
         self.screenSize = LCDScreenSize(int(screenSize))
@@ -24,6 +26,7 @@ class LCDPhidget(PhidgetBase):
         self.contrast = float(contrast)
         self.restoreInitialText = bool(restoreInitialText)
         self.initialText = initialText or ""
+        self.initialLines = list(initialLines or [])
         self.initialX = int(initialX)
         self.initialY = int(initialY)
         self.lastText = ""
@@ -77,6 +80,18 @@ class LCDPhidget(PhidgetBase):
                 raise ValueError(
                     "Select the dimensions of the LCD panel connected to this text LCD adapter")
 
+            # Text adapters such as the 1204 need the attached panel initialized
+            # after its dimensions have been selected. Some LCD channels do not
+            # implement initialize(), so only invoke it for a configured text LCD.
+            if (self.lcdType == "text" and
+                    self.screenSize != LCDScreenSize.SCREEN_SIZE_NONE):
+                try:
+                    self.phidget.initialize()
+                except PhidgetException as error:
+                    if error.code != ErrorCode.EPHIDGET_UNSUPPORTED:
+                        raise
+                    self.logger.debug("LCD initialize is unavailable: %s", error)
+
             # The first release exposes complete display actions rather than
             # frame-buffer batching, so every action must become visible.
             self.phidget.setAutoFlush(True)
@@ -90,8 +105,12 @@ class LCDPhidget(PhidgetBase):
             sleeping = self._read_optional("getSleeping")
             self._supportsSleeping = sleeping is not None
 
-            if self.restoreInitialText and self.initialText:
-                self._write_text(self.initialText, self.initialX, self.initialY)
+            if self.restoreInitialText:
+                if any(self.initialLines):
+                    self._write_lines(self.initialLines)
+                elif self.initialText:
+                    # Preserve coordinate-based settings saved by v0.2.1.35.
+                    self._write_text(self.initialText, self.initialX, self.initialY)
 
     def onAttachHandler(self, ph):
         super(LCDPhidget, self).onAttachHandler(ph)
@@ -121,6 +140,31 @@ class LCDPhidget(PhidgetBase):
         with self._display_lock:
             self._ensure_attached()
             self._write_text(str(text), x, y)
+            self.updateIndigoStatus()
+
+    def _write_lines(self, lines):
+        if self.lcdType != "text":
+            raise ValueError("Write LCD lines is only available for text LCDs")
+        height = self.screenHeight if self.screenHeight is not None else self.phidget.getHeight()
+        width = self.screenWidth if self.screenWidth is not None else self.phidget.getWidth()
+        normalized = [str(line or "") for line in lines]
+        if any(normalized[height:]):
+            raise ValueError("The attached LCD has only %d text line%s" %
+                             (height, "" if height == 1 else "s"))
+        for line_number, line in enumerate(normalized[:height]):
+            if len(line) > width:
+                raise ValueError("LCD line %d is longer than %d characters" %
+                                 (line_number + 1, width))
+        self.phidget.clear()
+        for line_number, line in enumerate(normalized[:height]):
+            if line:
+                self.phidget.writeText(LCDFont.FONT_5x8, 0, line_number, line)
+        self.lastText = "\n".join(normalized[:height]).rstrip("\n")
+
+    def writeLines(self, lines):
+        with self._display_lock:
+            self._ensure_attached()
+            self._write_lines(lines)
             self.updateIndigoStatus()
 
     def clear(self):

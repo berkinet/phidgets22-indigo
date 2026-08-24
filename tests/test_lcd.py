@@ -43,6 +43,7 @@ class FakeLCD(object):
         self.clear_count = 0
         self.flush_count = 0
         self.set_screen_sizes = []
+        self.initialize_count = 0
 
     def __getattr__(self, name):
         if name.startswith("setOn") and name.endswith("Handler"):
@@ -65,6 +66,9 @@ class FakeLCD(object):
 
     def getHeight(self):
         return self.height
+
+    def initialize(self):
+        self.initialize_count += 1
 
     def setAutoFlush(self, value):
         self.auto_flush = value
@@ -124,6 +128,7 @@ def make_wrapper(native, **overrides):
         "contrast": 0.4,
         "restoreInitialText": False,
         "initialText": "",
+        "initialLines": [],
         "initialX": 0,
         "initialY": 0,
         "indigo_plugin": FakePlugin(),
@@ -159,6 +164,7 @@ class LCDTests(unittest.TestCase):
         wrapper.configureAttachedPhidget(native)
 
         self.assertEqual(native.set_screen_sizes, [LCDScreenSize.SCREEN_SIZE_2x16])
+        self.assertEqual(native.initialize_count, 1)
         self.assertTrue(native.auto_flush)
         self.assertEqual(native.backlight, 0.75)
         self.assertEqual(native.contrast, 0.4)
@@ -166,6 +172,21 @@ class LCDTests(unittest.TestCase):
         self.assertEqual(native.flush_count, 0)
         self.assertEqual(wrapper.lastText, "Ready")
         self.assertEqual((wrapper.screenWidth, wrapper.screenHeight), (16, 2))
+
+    def test_writes_all_text_rows_and_clears_previous_contents(self):
+        native = FakeLCD(screen_size=LCDScreenSize.SCREEN_SIZE_2x16)
+        wrapper = make_wrapper(native)
+        wrapper.configureAttachedPhidget(native)
+        wrapper._state = "attached"
+
+        wrapper.writeLines(["Flow 7.7 GPM", "38.6 gallons"])
+
+        self.assertEqual(native.clear_count, 1)
+        self.assertEqual(native.writes, [
+            (LCDFont.FONT_5x8, 0, 0, "Flow 7.7 GPM"),
+            (LCDFont.FONT_5x8, 0, 1, "38.6 gallons"),
+        ])
+        self.assertEqual(wrapper.lastText, "Flow 7.7 GPM\n38.6 gallons")
 
     def test_graphic_lcd_uses_hardware_dimensions(self):
         native = FakeLCD(

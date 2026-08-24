@@ -1,5 +1,18 @@
 # Release notes
 
+## Unreleased
+
+### Fixed
+
+- Initialize configured text LCD panels after applying their screen size so
+  adapters such as the 1204 can accept text writes.
+- Add row-aware initial-text fields and a **Write LCD lines** action, including
+  two explicit rows for 2-row panels and up to four for supported displays.
+
+### Testing
+
+- Add regression coverage for text-panel initialization and multi-line writes.
+
 ## 0.2.1.35 — 2026-08-24
 
 ### Added

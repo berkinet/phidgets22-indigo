@@ -626,6 +626,10 @@ class Plugin(indigo.PluginBase):
                 restoreInitialText = _saved_bool(
                     device.pluginProps.get("lcdRestoreInitialText", False))
                 initialText = device.pluginProps.get("lcdInitialText", "")
+                initialLines = [
+                    device.pluginProps.get("lcdInitialLine%d" % line_number, "")
+                    for line_number in range(1, 5)
+                ]
                 initialX = int(device.pluginProps.get("lcdInitialX", 0))
                 initialY = int(device.pluginProps.get("lcdInitialY", 0))
                 newPhidget = LCDPhidget(
@@ -633,6 +637,7 @@ class Plugin(indigo.PluginBase):
                     logger=self.logger, screenSize=screenSize,
                     backlight=backlight, contrast=contrast,
                     restoreInitialText=restoreInitialText, initialText=initialText,
+                    initialLines=initialLines,
                     initialX=initialX, initialY=initialY)
             else:
                 raise Exception("Unexpected device type: %s" % device.deviceTypeId)
@@ -664,6 +669,14 @@ class Plugin(indigo.PluginBase):
         self._lcdForAction(device).writeText(
             text, int(action.props.get("x", 0)), int(action.props.get("y", 0)))
 
+    def lcdWriteLines(self, action, device):
+        line_count = int(action.props.get("lineCount", 2))
+        lines = [
+            self.substitute(action.props.get("line%d" % line_number, ""))
+            for line_number in range(1, line_count + 1)
+        ]
+        self._lcdForAction(device).writeLines(lines)
+
     def lcdClear(self, action, device):
         self._lcdForAction(device).clear()
 
@@ -690,6 +703,14 @@ class Plugin(indigo.PluginBase):
                     valuesDict[field] = str(value)
                 except (TypeError, ValueError):
                     errors[field] = "%s must be a whole number of zero or greater." % label
+        elif typeId == "lcdWriteLines":
+            try:
+                line_count = int(valuesDict.get("lineCount", "2"))
+                if line_count < 1 or line_count > 4:
+                    raise ValueError
+                valuesDict["lineCount"] = str(line_count)
+            except (TypeError, ValueError):
+                errors["lineCount"] = "Select from one to four display lines."
         elif typeId in ("lcdSetBacklight", "lcdSetContrast"):
             field = "backlight" if typeId == "lcdSetBacklight" else "contrast"
             try:

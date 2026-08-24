@@ -87,11 +87,11 @@ detecting the attached channel's capabilities rather than assuming one model.
 - Standard server/device/hub-port/channel discovery fields.
 - Screen size selection for text LCD adapters. These adapters cannot detect
   the attached panel dimensions, so the selected size must be applied before
-  text is written.
+  text is written. The attached panel is then initialized.
 - Initial backlight and contrast values.
 - Automatic flushing is enabled internally so every first-release action is
   immediately visible; frame-buffer batching remains deferred.
-- Optional initial text to restore when the channel attaches.
+- Optional row-aware initial text to restore when the channel attaches.
 
 ### Initial Indigo states
 
@@ -104,6 +104,7 @@ detecting the attached channel's capabilities rather than assuming one model.
 ### Initial Indigo actions
 
 - Write text at an x/y position.
+- Clear and write one to four complete rows on a text LCD.
 - Clear the display.
 - Set backlight.
 - Set contrast.

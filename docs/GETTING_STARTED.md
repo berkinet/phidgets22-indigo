@@ -38,19 +38,23 @@ adapter; the adapter cannot detect those dimensions itself. Integrated text
 LCDs and graphic LCDs should use **Automatic / graphic LCD**.
 
 Initial backlight and contrast values are applied whenever the channel
-attaches. Optionally, the configured initial text can also be restored after
-each attachment.
+attaches. Text panels show one, two, or four initial-line fields according to
+the selected panel size. Optionally, those lines can be restored after each
+attachment.
 
 LCD commands are available under Indigo's **Device Actions**:
 
 - Write LCD text
+- Write LCD lines (one to four complete rows on a text LCD)
 - Clear LCD
 - Set LCD backlight
 - Set LCD contrast
 - Put LCD to sleep or wake it, when supported by the hardware
 
 Text coordinates are character columns and rows on a text LCD. Graphic LCD
-coordinates are pixels. This first implementation uses the built-in 5×8 font.
+coordinates are pixels. **Write LCD text** retains coordinate-based placement;
+**Write LCD lines** clears a text display and writes complete rows from the
+top. This first implementation uses the built-in 5×8 font.
 
 ## Print the Phidgets network map
 

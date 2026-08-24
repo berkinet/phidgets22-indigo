@@ -14,6 +14,23 @@
 		<Name>Clear LCD</Name>
 		<CallbackMethod>lcdClear</CallbackMethod>
 	</Action>
+	<Action id="lcdWriteLines" deviceFilter="self.lcd" uiPath="DeviceActions">
+		<Name>Write LCD lines</Name>
+		<CallbackMethod>lcdWriteLines</CallbackMethod>
+		<ConfigUI>
+			<Field id="lineCount" type="menu" defaultValue="2">
+				<Label>Number of lines:</Label>
+				<List>
+					<Option value="1">1</Option><Option value="2">2</Option>
+					<Option value="3">3</Option><Option value="4">4</Option>
+				</List>
+			</Field>
+			<Field id="line1" type="textfield"><Label>Line 1:</Label></Field>
+			<Field id="line2" type="textfield" visibleBindingId="lineCount" visibleBindingValue="2,3,4" alwaysUseInDialogHeightCalc="true"><Label>Line 2:</Label></Field>
+			<Field id="line3" type="textfield" visibleBindingId="lineCount" visibleBindingValue="3,4" alwaysUseInDialogHeightCalc="true"><Label>Line 3:</Label></Field>
+			<Field id="line4" type="textfield" visibleBindingId="lineCount" visibleBindingValue="4" alwaysUseInDialogHeightCalc="true"><Label>Line 4:</Label></Field>
+		</ConfigUI>
+	</Action>
 	<Action id="lcdSetBacklight" deviceFilter="self.lcd" uiPath="DeviceActions">
 		<Name>Set LCD backlight</Name>
 		<CallbackMethod>lcdSetBacklight</CallbackMethod>

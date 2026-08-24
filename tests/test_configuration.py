@@ -58,7 +58,7 @@ class ConfigurationTests(unittest.TestCase):
 
         actions = ElementTree.parse(SERVER_PLUGIN / "Actions.xml").getroot()
         action_ids = {action.get("id") for action in actions.findall("Action")}
-        self.assertEqual(action_ids, {"lcdWriteText", "lcdClear", "lcdSetBacklight",
+        self.assertEqual(action_ids, {"lcdWriteText", "lcdWriteLines", "lcdClear", "lcdSetBacklight",
                                       "lcdSetContrast", "lcdSleep", "lcdWake"})
         self.assertTrue(all(action.get("deviceFilter") == "self.lcd"
                             for action in actions.findall("Action")))
@@ -89,8 +89,14 @@ class ConfigurationTests(unittest.TestCase):
         self.assertTrue(valid)
         self.assertEqual(values, {"x": "3", "y": "4"})
 
+        valid, values = instance.validateActionConfigUi(
+            indigo.Dict({"lineCount": " 2 "}), "lcdWriteLines", 1)
+        self.assertTrue(valid)
+        self.assertEqual(values, {"lineCount": "2"})
+
         for action_type, field, value in (
                 ("lcdWriteText", "x", "-1"),
+                ("lcdWriteLines", "lineCount", "5"),
                 ("lcdSetBacklight", "backlight", "1.1"),
                 ("lcdSetContrast", "contrast", "dark")):
             values = indigo.Dict({field: value})
@@ -124,6 +130,8 @@ class ConfigurationTests(unittest.TestCase):
             "lcdContrast": "0.4",
             "lcdRestoreInitialText": False,
             "lcdInitialText": "Ready",
+            "lcdInitialLine1": "",
+            "lcdInitialLine2": "",
             "lcdInitialX": "0",
             "lcdInitialY": "0",
         }
@@ -139,6 +147,7 @@ class ConfigurationTests(unittest.TestCase):
 
         active_lcd = object.__new__(plugin.LCDPhidget)
         active_lcd.writeText = mock.Mock()
+        active_lcd.writeLines = mock.Mock()
         active_lcd.clear = mock.Mock()
         active_lcd.setBacklight = mock.Mock()
         active_lcd.setContrast = mock.Mock()
@@ -149,6 +158,10 @@ class ConfigurationTests(unittest.TestCase):
         instance.lcdWriteText(
             types.SimpleNamespace(props={"text": "%%name%%", "x": "2", "y": "3"}),
             device)
+        instance.lcdWriteLines(
+            types.SimpleNamespace(props={
+                "lineCount": "2", "line1": "%%name%%", "line2": "Ready"}),
+            device)
         instance.lcdClear(types.SimpleNamespace(props={}), device)
         instance.lcdSetBacklight(
             types.SimpleNamespace(props={"backlight": "0.6"}), device)
@@ -158,6 +171,7 @@ class ConfigurationTests(unittest.TestCase):
         instance.lcdWake(types.SimpleNamespace(props={}), device)
 
         active_lcd.writeText.assert_called_once_with("Kitchen", 2, 3)
+        active_lcd.writeLines.assert_called_once_with(["Kitchen", "Ready"])
         active_lcd.clear.assert_called_once_with()
         active_lcd.setBacklight.assert_called_once_with(0.6)
         active_lcd.setContrast.assert_called_once_with(0.3)
