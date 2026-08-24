@@ -37,6 +37,7 @@ class LCDPhidget(PhidgetBase):
         self._supportsSleeping = False
         self._emulatedSleeping = False
         self._wakeBacklight = None
+        self._animationBlankCharacter = " "
         self._display_lock = threading.RLock()
         self._animation_generation = 0
         self._animation_timer = None
@@ -112,6 +113,15 @@ class LCDPhidget(PhidgetBase):
             if self.lcdType == "text":
                 self._write_optional("setCursorBlink", False)
                 self._write_optional("setCursorOn", False)
+                # The 1204 can advance over ordinary spaces without replacing
+                # the previous glyph. Use an explicitly blank custom character
+                # so marquee gap cells are always written to display memory.
+                try:
+                    self.phidget.setCharacterBitmap(
+                        LCDFont.FONT_5x8, "\x08", [0] * 40)
+                    self._animationBlankCharacter = "\x08"
+                except Exception:
+                    self._animationBlankCharacter = " "
 
             # Flush complete frames explicitly. This keeps multi-row animation
             # updates together instead of exposing one changed row at a time.
@@ -293,7 +303,12 @@ class LCDPhidget(PhidgetBase):
         # they share one flush, leaving the old glyphs visible in marquee gaps.
         self.phidget.clear()
         self.phidget.flush()
-        for row_number, row in enumerate(rows[:height]):
+        display_rows = rows
+        if (settings["mode"] == "virtualMarquee" and
+                self._animationBlankCharacter != " "):
+            display_rows = [
+                row.replace(" ", self._animationBlankCharacter) for row in rows]
+        for row_number, row in enumerate(display_rows[:height]):
             self.phidget.writeText(LCDFont.FONT_5x8, 0, row_number, row)
         self.phidget.flush()
         self.lastText = "\n".join(row.rstrip() for row in rows[:height]).rstrip("\n")

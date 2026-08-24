@@ -16,6 +16,9 @@
   visible as vertical bars in Virtual single-line marquee repeat gaps.
 - Explicitly disable the text controller's persistent cursor and cursor-blink
   modes so cursor columns cannot appear among moving marquee text.
+- Define an all-zero custom LCD character and use it for Virtual single-line
+  marquee blanks. This forces the 1204 to overwrite repeat-gap cells that it
+  can otherwise treat as non-writing ordinary spaces.
 - Treat every Set LCD display action as a wake operation before applying its
   requested backlight, so a prior emulated Sleep cannot suppress brightness.
 

@@ -47,6 +47,7 @@ class FakeLCD(object):
         self.initialize_count = 0
         self.cursor_blink = True
         self.cursor_on = True
+        self.character_bitmaps = []
 
     def __getattr__(self, name):
         if name.startswith("setOn") and name.endswith("Handler"):
@@ -81,6 +82,9 @@ class FakeLCD(object):
 
     def setCursorOn(self, value):
         self.cursor_on = value
+
+    def setCharacterBitmap(self, font, character, bitmap):
+        self.character_bitmaps.append((font, character, bitmap))
 
     def getMinBacklight(self):
         return 0.0
@@ -202,6 +206,8 @@ class LCDTests(unittest.TestCase):
         self.assertFalse(native.auto_flush)
         self.assertFalse(native.cursor_blink)
         self.assertFalse(native.cursor_on)
+        self.assertEqual(native.character_bitmaps,
+                         [(LCDFont.FONT_5x8, "\x08", [0] * 40)])
         self.assertEqual(native.backlight, 0.75)
         self.assertEqual(native.contrast, 0.4)
         self.assertEqual(native.writes, [(LCDFont.FONT_5x8, 1, 0, "Ready")])
@@ -297,17 +303,17 @@ class LCDTests(unittest.TestCase):
                 direction="right", gap=2)
             FakeTimer.instances[-1].fire()
 
-        blank = " " * 16
+        blank = "\x08" * 16
         self.assertEqual(native.writes[:4], [
             (LCDFont.FONT_5x8, 0, 0, blank),
-            (LCDFont.FONT_5x8, 0, 1, (" " * 15) + "A"),
+            (LCDFont.FONT_5x8, 0, 1, ("\x08" * 15) + "A"),
             (LCDFont.FONT_5x8, 0, 0, blank),
-            (LCDFont.FONT_5x8, 0, 1, (" " * 14) + "AB"),
+            (LCDFont.FONT_5x8, 0, 1, ("\x08" * 14) + "AB"),
         ])
         self.assertEqual(native.writes[-4:], [
-            (LCDFont.FONT_5x8, 0, 0, "C" + (" " * 15)),
+            (LCDFont.FONT_5x8, 0, 0, "C" + ("\x08" * 15)),
             (LCDFont.FONT_5x8, 0, 1, blank),
-            (LCDFont.FONT_5x8, 0, 0, "BC" + (" " * 14)),
+            (LCDFont.FONT_5x8, 0, 0, "BC" + ("\x08" * 14)),
             (LCDFont.FONT_5x8, 0, 1, blank),
         ])
         self.assertEqual(
