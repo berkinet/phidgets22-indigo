@@ -359,6 +359,15 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(values["marqueeGap"], "4")
 
         valid, values, errors = instance.validateActionConfigUi(indigo.Dict({
+            "lineCount": "2", "animationMode": "virtualMarquee",
+            "virtualText": "First line\nHidden old text",
+            "marqueeInterval": "0.5", "marqueeGap": "4",
+            "backlight": "1.0", "contrast": "0.5",
+        }), "lcdStartAnimation", 42)
+        self.assertFalse(valid)
+        self.assertIn("virtualText", errors)
+
+        valid, values, errors = instance.validateActionConfigUi(indigo.Dict({
             "lineCount": "2", "animationMode": "marquee",
             "marqueeInterval": "0.01", "marqueeGap": "0",
             "backlight": "1.0", "contrast": "0.5",

@@ -11,26 +11,22 @@
   level to restore on Wake, without prematurely illuminating the display.
 - Publish the emulated sleeping state to Indigo so action groups complete
   normally and device state remains accurate.
-- Flush the LCD clear operation before writing each replacement animation
-  frame. The 1204 text-LCD adapter can otherwise leave old glyph columns
-  visible as vertical bars in Virtual single-line marquee repeat gaps.
 - Explicitly disable the text controller's persistent cursor and cursor-blink
   modes so cursor columns cannot appear among moving marquee text.
-- Define an all-zero custom LCD character and use it for Virtual single-line
-  marquee blanks. This forces the 1204 to overwrite repeat-gap cells that it
-  can otherwise treat as non-writing ordinary spaces.
-- Use the 1204's primary custom-character slot and explicitly flush its bitmap
-  definition before rendering. This avoids the control-code alias used by the
-  prior attempt, which left the old display cells intact.
 - Treat every Set LCD display action as a wake operation before applying its
   requested backlight, so a prior emulated Sleep cannot suppress brightness.
+- Repeat Virtual single-line marquee text after exactly the configured gap,
+  rather than adding another full display-capacity gap between passages.
+- Reject multiline Virtual marquee text in the action editor and safely turn
+  legacy embedded newlines into spaces before display, preventing control-code
+  glyphs from appearing as vertical bars.
 
 ### Testing
 
 - Add regression coverage for emulated sleep, changing the desired backlight
   while asleep, wake restoration, and Indigo sleeping-state updates.
-- Strengthen animation sequencing coverage to require a committed clear before
-  each complete multi-row frame is written and flushed.
+- Add coverage for continuous 40-cell Virtual marquee repetition with an exact
+  configured gap and for rejecting embedded newlines.
 
 ## 0.2.1.45 — 2026-08-24
 

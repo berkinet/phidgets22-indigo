@@ -47,7 +47,6 @@ class FakeLCD(object):
         self.initialize_count = 0
         self.cursor_blink = True
         self.cursor_on = True
-        self.character_bitmaps = []
 
     def __getattr__(self, name):
         if name.startswith("setOn") and name.endswith("Handler"):
@@ -82,9 +81,6 @@ class FakeLCD(object):
 
     def setCursorOn(self, value):
         self.cursor_on = value
-
-    def setCharacterBitmap(self, font, character, bitmap):
-        self.character_bitmaps.append((font, character, bitmap))
 
     def getMinBacklight(self):
         return 0.0
@@ -206,12 +202,10 @@ class LCDTests(unittest.TestCase):
         self.assertFalse(native.auto_flush)
         self.assertFalse(native.cursor_blink)
         self.assertFalse(native.cursor_on)
-        self.assertEqual(native.character_bitmaps,
-                         [(LCDFont.FONT_5x8, "\x01", [0] * 40)])
         self.assertEqual(native.backlight, 0.75)
         self.assertEqual(native.contrast, 0.4)
         self.assertEqual(native.writes, [(LCDFont.FONT_5x8, 1, 0, "Ready")])
-        self.assertEqual(native.flush_count, 2)
+        self.assertEqual(native.flush_count, 1)
         self.assertEqual(wrapper.lastText, "Ready")
         self.assertEqual((wrapper.screenWidth, wrapper.screenHeight), (16, 2))
 
@@ -224,7 +218,7 @@ class LCDTests(unittest.TestCase):
         wrapper.writeLines(["Flow 7.7 GPM", "38.6 gallons"])
 
         self.assertEqual(native.clear_count, 1)
-        self.assertEqual(native.flush_count, 2)
+        self.assertEqual(native.flush_count, 1)
         self.assertEqual(native.writes, [
             (LCDFont.FONT_5x8, 0, 0, "Flow 7.7 GPM"),
             (LCDFont.FONT_5x8, 0, 1, "38.6 gallons"),
@@ -303,31 +297,34 @@ class LCDTests(unittest.TestCase):
                 direction="right", gap=2)
             FakeTimer.instances[-1].fire()
 
-        blank = "\x01" * 16
+        blank = " " * 16
         self.assertEqual(native.writes[:4], [
             (LCDFont.FONT_5x8, 0, 0, blank),
-            (LCDFont.FONT_5x8, 0, 1, ("\x01" * 15) + "A"),
+            (LCDFont.FONT_5x8, 0, 1, (" " * 15) + "A"),
             (LCDFont.FONT_5x8, 0, 0, blank),
-            (LCDFont.FONT_5x8, 0, 1, ("\x01" * 14) + "AB"),
+            (LCDFont.FONT_5x8, 0, 1, (" " * 14) + "AB"),
         ])
         self.assertEqual(native.writes[-4:], [
-            (LCDFont.FONT_5x8, 0, 0, "C" + ("\x01" * 15)),
+            (LCDFont.FONT_5x8, 0, 0, "C" + (" " * 15)),
             (LCDFont.FONT_5x8, 0, 1, blank),
-            (LCDFont.FONT_5x8, 0, 0, "BC" + ("\x01" * 14)),
+            (LCDFont.FONT_5x8, 0, 0, "BC" + (" " * 14)),
             (LCDFont.FONT_5x8, 0, 1, blank),
         ])
         self.assertEqual(
             wrapper._virtual_marquee_rows("ABC", 16, 2, 16, "left", 2),
-            [(" " * 15) + "A", "BC" + (" " * 14)])
+            [(" " * 15) + "A", "BC  ABC  ABC  AB"])
         self.assertEqual(
             wrapper._virtual_marquee_rows("ABC", 16, 2, 17, "right", 2),
-            [(" " * 15) + "A", "BC" + (" " * 14)])
+            ["ABC  ABC  ABC  A", "BC" + (" " * 14)])
+        self.assertIn(
+            "TEST-XYZ-123   TEST-XYZ-123",
+            "".join(wrapper._virtual_marquee_rows(
+                "TEST-XYZ-123", 20, 2, 26, "left", 3)))
         self.assertEqual(native.clear_count, 4)
-        self.assertEqual(native.flush_count, 9)
+        self.assertEqual(native.flush_count, 4)
         self.assertEqual(
             [operation[0] for operation in native.operations],
-            ["flush"] +
-            ["clear", "flush", "write", "write", "flush"] * 4)
+            ["clear", "write", "write", "flush"] * 4)
 
     def test_flash_alternates_all_rows_together_and_stop_leaves_last_frame(self):
         native = FakeLCD(screen_size=LCDScreenSize.SCREEN_SIZE_2x16)

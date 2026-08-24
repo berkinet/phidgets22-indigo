@@ -37,7 +37,6 @@ class LCDPhidget(PhidgetBase):
         self._supportsSleeping = False
         self._emulatedSleeping = False
         self._wakeBacklight = None
-        self._animationBlankCharacter = " "
         self._display_lock = threading.RLock()
         self._animation_generation = 0
         self._animation_timer = None
@@ -113,16 +112,6 @@ class LCDPhidget(PhidgetBase):
             if self.lcdType == "text":
                 self._write_optional("setCursorBlink", False)
                 self._write_optional("setCursorOn", False)
-                # The 1204 can advance over ordinary spaces without replacing
-                # the previous glyph. Use an explicitly blank custom character
-                # so marquee gap cells are always written to display memory.
-                try:
-                    self.phidget.setCharacterBitmap(
-                        LCDFont.FONT_5x8, "\x01", [0] * 40)
-                    self.phidget.flush()
-                    self._animationBlankCharacter = "\x01"
-                except Exception:
-                    self._animationBlankCharacter = " "
 
             # Flush complete frames explicitly. This keeps multi-row animation
             # updates together instead of exposing one changed row at a time.
@@ -263,20 +252,33 @@ class LCDPhidget(PhidgetBase):
             return ["".join(cells[offset:offset + width])
                     for offset in range(0, capacity, width)]
 
-        # One complete passage plus the requested number of blank frames. For
-        # left motion, the first character enters at the lower-right cell. For
-        # right motion, the last character enters at the upper-left cell so
-        # the message remains readable from left to right as it moves.
-        cycle_length = capacity + len(text) + gap - 1
-        progress = frame % cycle_length
+        # Start with one copy entering the display, then introduce each later
+        # copy exactly `gap` cells behind the previous one. Multiple copies may
+        # therefore be visible at once when the text is shorter than the
+        # row-major display capacity.
+        period = len(text) + gap
         if direction == "left":
-            start = capacity - 1 - progress
+            first_start = capacity - 1 - frame
+            copy_number = max(
+                0, ((-first_start - len(text)) // period) + 1)
+            while first_start + (copy_number * period) < capacity:
+                start = first_start + (copy_number * period)
+                for character_number, character in enumerate(text):
+                    position = start + character_number
+                    if 0 <= position < capacity:
+                        cells[position] = character
+                copy_number += 1
         else:
-            start = -(len(text) - 1) + progress
-        for character_number, character in enumerate(text):
-            position = start + character_number
-            if 0 <= position < capacity:
-                cells[position] = character
+            first_start = -(len(text) - 1) + frame
+            copy_number = max(
+                0, ((first_start - capacity) // period) + 1)
+            while first_start - (copy_number * period) + len(text) > 0:
+                start = first_start - (copy_number * period)
+                for character_number, character in enumerate(text):
+                    position = start + character_number
+                    if 0 <= position < capacity:
+                        cells[position] = character
+                copy_number += 1
         return ["".join(cells[offset:offset + width])
                 for offset in range(0, capacity, width)]
 
@@ -299,17 +301,9 @@ class LCDPhidget(PhidgetBase):
                 else settings["lines_b"]
             rows = [line[:width].ljust(width) for line in source]
 
-        # Commit the erase before composing the replacement frame. The 1204
-        # adapter can coalesce clear(), blank cells, and subsequent text when
-        # they share one flush, leaving the old glyphs visible in marquee gaps.
+        # Compose and commit the complete multi-row frame atomically.
         self.phidget.clear()
-        self.phidget.flush()
-        display_rows = rows
-        if (settings["mode"] == "virtualMarquee" and
-                self._animationBlankCharacter != " "):
-            display_rows = [
-                row.replace(" ", self._animationBlankCharacter) for row in rows]
-        for row_number, row in enumerate(display_rows[:height]):
+        for row_number, row in enumerate(rows[:height]):
             self.phidget.writeText(LCDFont.FONT_5x8, 0, row_number, row)
         self.phidget.flush()
         self.lastText = "\n".join(row.rstrip() for row in rows[:height]).rstrip("\n")

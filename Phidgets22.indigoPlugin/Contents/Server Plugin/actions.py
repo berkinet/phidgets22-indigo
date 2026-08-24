@@ -51,7 +51,10 @@ class ActionsMixin(object):
         line_count = int(action.props.get("lineCount", 0))
         mode = action.props.get("animationMode", "static")
         if mode == "virtualMarquee":
-            lines_a = [self.substitute(action.props.get("virtualText", ""))]
+            virtual_text = self.substitute(action.props.get("virtualText", ""))
+            virtual_text = virtual_text.replace("\r\n", " ").replace(
+                "\r", " ").replace("\n", " ")
+            lines_a = [virtual_text]
         else:
             lines_a = [
                 self.substitute(action.props.get(
@@ -188,6 +191,11 @@ class ActionsMixin(object):
                     except (TypeError, ValueError):
                         errors["marqueeGap"] = (
                             "Enter a gap from 1 to 100 characters.")
+            if (mode == "virtualMarquee" and
+                    any(character in valuesDict.get("virtualText", "")
+                        for character in ("\r", "\n"))):
+                errors["virtualText"] = (
+                    "Virtual single-line marquee text must be one line.")
 
         if errors:
             errors["showAlertText"] = "Correct the LCD action settings."
