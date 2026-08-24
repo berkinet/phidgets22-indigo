@@ -118,8 +118,9 @@ class LCDPhidget(PhidgetBase):
                 # so marquee gap cells are always written to display memory.
                 try:
                     self.phidget.setCharacterBitmap(
-                        LCDFont.FONT_5x8, "\x08", [0] * 40)
-                    self._animationBlankCharacter = "\x08"
+                        LCDFont.FONT_5x8, "\x01", [0] * 40)
+                    self.phidget.flush()
+                    self._animationBlankCharacter = "\x01"
                 except Exception:
                     self._animationBlankCharacter = " "
 
