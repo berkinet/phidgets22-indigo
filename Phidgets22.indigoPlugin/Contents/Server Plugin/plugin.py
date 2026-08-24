@@ -30,7 +30,15 @@ from temperaturesensor import TemperatureSensorPhidget
 from digitalinput import DigitalInputPhidget
 from frequencycounter import FrequencyCounterPhidget
 from humiditysensor import HumiditySensorPhidget
+from lcd import LCDPhidget
 from version_check import start_version_check
+
+
+def _saved_bool(value):
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "yes", "on")
+    return bool(value)
+
 
 class Plugin(indigo.PluginBase):
     def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
@@ -159,6 +167,7 @@ class Plugin(indigo.PluginBase):
         # display-only value as immutable by restoring it before every save.
         valuesDict['observedConnection'] = self._observedConnectionForDevice(devId)
         selected_channel = valuesDict.get('discoveredChannel', '')
+        description = None
         if selected_channel and selected_channel not in ('manual', 'selectDevice', 'selectChannel'):
             description = (self.discoveryInventory.resolve_channel(selected_channel)
                            if self.discoveryInventory is not None else None)
@@ -181,6 +190,48 @@ class Plugin(indigo.PluginBase):
             valuesDict['isVintHub'] = is_vint
             valuesDict['isVintDevice'] = bool(is_vint and not description.get('isHubPortDevice'))
             valuesDict['hubPort'] = str(description.get('hubPort')) if is_vint else ''
+
+        if typeId == "lcd":
+            errors = indigo.Dict()
+            try:
+                screen_size = int(valuesDict.get("lcdScreenSize", "1"))
+                if screen_size < 1 or screen_size > 12:
+                    raise ValueError
+            except (TypeError, ValueError):
+                errors["lcdScreenSize"] = "Select a valid LCD screen size."
+                screen_size = 1
+
+            for field, label in (("lcdBacklight", "backlight"),
+                                 ("lcdContrast", "contrast")):
+                try:
+                    value = float(valuesDict.get(field, ""))
+                    if value < 0.0 or value > 1.0:
+                        raise ValueError
+                except (TypeError, ValueError):
+                    errors[field] = "Enter a %s value from 0.0 to 1.0." % label
+
+            for field, label in (("lcdInitialX", "X"), ("lcdInitialY", "Y")):
+                try:
+                    value = int(valuesDict.get(field, "0"))
+                    if value < 0:
+                        raise ValueError
+                    valuesDict[field] = str(value)
+                except (TypeError, ValueError):
+                    errors[field] = "Enter a whole-number %s position of zero or greater." % label
+
+            if (description is not None and
+                    str(description.get("deviceSKU") or "").startswith("1204") and
+                    screen_size == 1):
+                errors["lcdScreenSize"] = (
+                    "Select the dimensions of the panel connected to this text LCD adapter.")
+
+            if (description is not None and description.get("channelSubclass") == 80 and
+                    screen_size != 1):
+                errors["lcdScreenSize"] = "Use Automatic / graphic LCD for a graphic display."
+
+            if errors:
+                errors["showAlertText"] = "Correct the LCD settings before saving."
+                return (False, valuesDict, errors)
 
         # Look to see if there ia a label for the serial number
         addrIndex = str(valuesDict['serialNumber'])
@@ -568,6 +619,21 @@ class Plugin(indigo.PluginBase):
             elif device.deviceTypeId == "humiditySensor":
                 humidityChangeTrigger = float(device.pluginProps.get("humidityChangeTrigger", 0))
                 newPhidget = HumiditySensorPhidget(indigo_plugin=self, channelInfo=channelInfo, indigoDevice=device, logger=self.logger, decimalPlaces=decimalPlaces, humidityChangeTrigger=humidityChangeTrigger, dataInterval=dataInterval)
+            elif device.deviceTypeId == "lcd":
+                screenSize = int(device.pluginProps.get("lcdScreenSize", 1))
+                backlight = float(device.pluginProps.get("lcdBacklight", 1.0))
+                contrast = float(device.pluginProps.get("lcdContrast", 0.5))
+                restoreInitialText = _saved_bool(
+                    device.pluginProps.get("lcdRestoreInitialText", False))
+                initialText = device.pluginProps.get("lcdInitialText", "")
+                initialX = int(device.pluginProps.get("lcdInitialX", 0))
+                initialY = int(device.pluginProps.get("lcdInitialY", 0))
+                newPhidget = LCDPhidget(
+                    indigo_plugin=self, channelInfo=channelInfo, indigoDevice=device,
+                    logger=self.logger, screenSize=screenSize,
+                    backlight=backlight, contrast=contrast,
+                    restoreInitialText=restoreInitialText, initialText=initialText,
+                    initialX=initialX, initialY=initialY)
             else:
                 raise Exception("Unexpected device type: %s" % device.deviceTypeId)
             newPhidget.start()
@@ -587,6 +653,58 @@ class Plugin(indigo.PluginBase):
         
     # Event and action methods
      ########################################
+    def _lcdForAction(self, device):
+        lcd = self.activePhidgets.get(device.id)
+        if lcd is None or not isinstance(lcd, LCDPhidget):
+            raise ValueError("LCD device '%s' is not active" % device.name)
+        return lcd
+
+    def lcdWriteText(self, action, device):
+        text = self.substitute(action.props.get("text", ""))
+        self._lcdForAction(device).writeText(
+            text, int(action.props.get("x", 0)), int(action.props.get("y", 0)))
+
+    def lcdClear(self, action, device):
+        self._lcdForAction(device).clear()
+
+    def lcdSetBacklight(self, action, device):
+        self._lcdForAction(device).setBacklight(float(action.props.get("backlight", 1.0)))
+
+    def lcdSetContrast(self, action, device):
+        self._lcdForAction(device).setContrast(float(action.props.get("contrast", 0.5)))
+
+    def lcdSleep(self, action, device):
+        self._lcdForAction(device).setSleeping(True)
+
+    def lcdWake(self, action, device):
+        self._lcdForAction(device).setSleeping(False)
+
+    def validateActionConfigUi(self, valuesDict, typeId, deviceId):
+        errors = indigo.Dict()
+        if typeId == "lcdWriteText":
+            for field, label in (("x", "X"), ("y", "Y")):
+                try:
+                    value = int(valuesDict.get(field, "0"))
+                    if value < 0:
+                        raise ValueError
+                    valuesDict[field] = str(value)
+                except (TypeError, ValueError):
+                    errors[field] = "%s must be a whole number of zero or greater." % label
+        elif typeId in ("lcdSetBacklight", "lcdSetContrast"):
+            field = "backlight" if typeId == "lcdSetBacklight" else "contrast"
+            try:
+                value = float(valuesDict.get(field, ""))
+                if value < 0.0 or value > 1.0:
+                    raise ValueError
+                valuesDict[field] = str(value)
+            except (TypeError, ValueError):
+                errors[field] = "Enter a value from 0.0 to 1.0."
+
+        if errors:
+            errors["showAlertText"] = "Correct the LCD action settings."
+            return (False, valuesDict, errors)
+        return (True, valuesDict)
+
     def getAttachCapableList(self, filter="", valuesDict=None, typeId="", targetId=0):
         # if self.logLevel > 1:
         #    indigo.server.log(u"Entering getIfKitStandaloneList", type=self.pluginDisplayName)

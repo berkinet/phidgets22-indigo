@@ -60,6 +60,10 @@ class FakeManager(object):
 
 
 class DiscoveryTests(unittest.TestCase):
+    def test_lcd_device_type_maps_to_native_channel_class(self):
+        self.assertEqual(
+            discovery.CHANNEL_CLASSES_BY_DEVICE_TYPE["lcd"], "PhidgetLCD")
+
     def test_describe_remote_channel(self):
         description = discovery.describe_channel(FakeChannel())
         self.assertEqual(description["serverName"], "phidget-server")

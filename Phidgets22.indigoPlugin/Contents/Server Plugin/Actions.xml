@@ -1,4 +1,39 @@
 <?xml version="1.0"?>
 <Actions>
-
+	<Action id="lcdWriteText" deviceFilter="self.lcd" uiPath="DeviceActions">
+		<Name>Write LCD text</Name>
+		<CallbackMethod>lcdWriteText</CallbackMethod>
+		<ConfigUI>
+			<Field id="coordinateHelp" type="label"><Label>Positions are columns/rows on text LCDs and pixels on graphic LCDs.</Label></Field>
+			<Field id="text" type="textfield"><Label>Text:</Label></Field>
+			<Field id="x" type="textfield" defaultValue="0"><Label>X position:</Label></Field>
+			<Field id="y" type="textfield" defaultValue="0"><Label>Y position:</Label></Field>
+		</ConfigUI>
+	</Action>
+	<Action id="lcdClear" deviceFilter="self.lcd" uiPath="DeviceActions">
+		<Name>Clear LCD</Name>
+		<CallbackMethod>lcdClear</CallbackMethod>
+	</Action>
+	<Action id="lcdSetBacklight" deviceFilter="self.lcd" uiPath="DeviceActions">
+		<Name>Set LCD backlight</Name>
+		<CallbackMethod>lcdSetBacklight</CallbackMethod>
+		<ConfigUI>
+			<Field id="backlight" type="textfield" defaultValue="1.0"><Label>Backlight (0.0–1.0):</Label></Field>
+		</ConfigUI>
+	</Action>
+	<Action id="lcdSetContrast" deviceFilter="self.lcd" uiPath="DeviceActions">
+		<Name>Set LCD contrast</Name>
+		<CallbackMethod>lcdSetContrast</CallbackMethod>
+		<ConfigUI>
+			<Field id="contrast" type="textfield" defaultValue="0.5"><Label>Contrast (0.0–1.0):</Label></Field>
+		</ConfigUI>
+	</Action>
+	<Action id="lcdSleep" deviceFilter="self.lcd" uiPath="DeviceActions">
+		<Name>Put LCD to sleep</Name>
+		<CallbackMethod>lcdSleep</CallbackMethod>
+	</Action>
+	<Action id="lcdWake" deviceFilter="self.lcd" uiPath="DeviceActions">
+		<Name>Wake LCD</Name>
+		<CallbackMethod>lcdWake</CallbackMethod>
+	</Action>
 </Actions>  

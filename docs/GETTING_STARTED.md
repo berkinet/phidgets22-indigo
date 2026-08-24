@@ -30,6 +30,28 @@ whose devices you want Indigo to discover.
 The **Phidgets path** shows the observed route to an existing device after it
 has connected.
 
+## Use an LCD
+
+Create an **LCD** device and select its discovered LCD channel. For a 1204
+TextLCD Adapter, select the dimensions of the physical panel connected to the
+adapter; the adapter cannot detect those dimensions itself. Integrated text
+LCDs and graphic LCDs should use **Automatic / graphic LCD**.
+
+Initial backlight and contrast values are applied whenever the channel
+attaches. Optionally, the configured initial text can also be restored after
+each attachment.
+
+LCD commands are available under Indigo's **Device Actions**:
+
+- Write LCD text
+- Clear LCD
+- Set LCD backlight
+- Set LCD contrast
+- Put LCD to sleep or wake it, when supported by the hardware
+
+Text coordinates are character columns and rows on a text LCD. Graphic LCD
+coordinates are pixels. This first implementation uses the built-in 5×8 font.
+
 ## Print the Phidgets network map
 
 Choose **Plugins → Phidgets 22 → Print Phidgets network diagram to log**.

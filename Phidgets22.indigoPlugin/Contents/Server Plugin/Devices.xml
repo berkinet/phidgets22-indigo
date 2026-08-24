@@ -498,4 +498,49 @@
 		</ConfigUI>
 	</Device>
 
+	<Device id="lcd" type="custom">
+		<Name>LCD</Name>
+		<ConfigUI>
+			<Field id="configurationMigrated" type="checkbox" defaultValue="false" hidden="true"/>
+			<Field id="migrationNotice" type="label" visibleBindingId="configurationMigrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>This device was automatically updated from the Phidgets 22 v0.2.0 legacy configuration. Review the discovered selection, then click Save to complete the update.</Label></Field>
+			<Field id="serverSelected" type="checkbox" defaultValue="false" hidden="true"/><Field id="deviceSelected" type="checkbox" defaultValue="false" hidden="true"/><Field id="vintSelected" type="checkbox" defaultValue="false" hidden="true"/><Field id="portSelected" type="checkbox" defaultValue="false" hidden="true"/><Field id="targetSelected" type="checkbox" defaultValue="false" hidden="true"/><Field id="channelParentSelected" type="checkbox" defaultValue="false" hidden="true"/><Field id="channelChoiceRequired" type="checkbox" defaultValue="false" hidden="true"/><Field id="derivedFieldsEnabled" type="checkbox" defaultValue="false" hidden="true"/>
+			<Field id="exampleLabel" type="label"><Label>Select a server, Phidget, and LCD channel.</Label></Field>
+			<Field id="discoveredServer" type="menu" defaultValue="manual"><Label>Discovered server:</Label><List class="self" method="getDiscoveredServerMenu" dynamicReload="true"/><CallbackMethod>menuChanged</CallbackMethod></Field>
+			<Field id="discoveredDevice" type="menu" defaultValue="selectServer" enabledBindingId="serverSelected"><Label>Phidget:</Label><List class="self" method="getDiscoveredDeviceMenu" dynamicReload="true"/><CallbackMethod>menuChanged</CallbackMethod></Field>
+			<Field id="discoveredPort" type="menu" defaultValue="selectDevice" visibleBindingId="vintSelected" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true" enabledBindingId="deviceSelected"><Label>VINT port:</Label><List class="self" method="getDiscoveredPortMenu" dynamicReload="true"/><CallbackMethod>menuChanged</CallbackMethod></Field>
+			<Field id="discoveredTarget" type="menu" defaultValue="selectPort" visibleBindingId="vintSelected" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true" enabledBindingId="portSelected"><Label>Port device/function:</Label><List class="self" method="getDiscoveredTargetMenu" dynamicReload="true"/><CallbackMethod>menuChanged</CallbackMethod></Field>
+			<Field id="discoveredChannel" type="menu" defaultValue="" enabledBindingId="channelParentSelected" visibleBindingId="channelChoiceRequired" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Discovered channel:</Label><List class="self" method="getDiscoveredChannelMenu" dynamicReload="true"/><CallbackMethod>menuChanged</CallbackMethod></Field>
+			<Field id="serverName" type="textfield" hidden="true"/><Field id="serialNumber" type="textfield" readonly="true"><Label>Serial number:</Label></Field><Field id="channel" type="textfield" hidden="true"/>
+			<Field id="isVintHub" type="checkbox" defaultValue="False" enabledBindingId="derivedFieldsEnabled"><Label>Connected to a VINT hub?</Label></Field>
+			<Field id="isVintDevice" type="checkbox" defaultValue="False" enabledBindingId="derivedFieldsEnabled" visibleBindingId="isVintHub" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Is this a VINT device?</Label></Field>
+			<Field id="hubPort" type="textfield" enabledBindingId="derivedFieldsEnabled" visibleBindingId="isVintHub" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Hub port:</Label></Field>
+			<Field id="observedConnection" type="textfield"><Label>Phidgets path:</Label></Field>
+			<Field id="discoverySeparator" type="separator"/>
+
+			<Field id="lcdScreenSize" type="menu" defaultValue="1">
+				<Label>Text LCD screen size:</Label>
+				<List>
+					<Option value="1">Automatic / graphic LCD</Option>
+					<Option value="2">1 row × 8 characters</Option>
+					<Option value="3">2 rows × 8 characters</Option>
+					<Option value="4">1 row × 16 characters</Option>
+					<Option value="5">2 rows × 16 characters</Option>
+					<Option value="6">4 rows × 16 characters</Option>
+					<Option value="7">2 rows × 20 characters</Option>
+					<Option value="8">4 rows × 20 characters</Option>
+					<Option value="9">2 rows × 24 characters</Option>
+					<Option value="10">1 row × 40 characters</Option>
+					<Option value="11">2 rows × 40 characters</Option>
+					<Option value="12">4 rows × 40 characters</Option>
+				</List>
+			</Field>
+			<Field id="lcdBacklight" type="textfield" defaultValue="1.0"><Label>Initial backlight (0.0–1.0):</Label></Field>
+			<Field id="lcdContrast" type="textfield" defaultValue="0.5"><Label>Initial contrast (0.0–1.0):</Label></Field>
+			<Field id="lcdRestoreInitialText" type="checkbox" defaultValue="false"><Label>Write initial text after every attachment?</Label></Field>
+			<Field id="lcdInitialText" type="textfield" visibleBindingId="lcdRestoreInitialText" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Initial text:</Label></Field>
+			<Field id="lcdInitialX" type="textfield" defaultValue="0" visibleBindingId="lcdRestoreInitialText" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Initial X position:</Label></Field>
+			<Field id="lcdInitialY" type="textfield" defaultValue="0" visibleBindingId="lcdRestoreInitialText" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Initial Y position:</Label></Field>
+		</ConfigUI>
+	</Device>
+
 </Devices>

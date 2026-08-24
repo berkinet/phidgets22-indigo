@@ -42,6 +42,7 @@ The following Phidget classes are currently supported:
 * DigitalOutput
 * FrequencyCounter
 * HumiditySensor
+* LCD
 * TemperatureSensor
 * VoltageInput
 * VoltageRatioInput
@@ -57,3 +58,4 @@ See the [Phidget Documentation](https://www.phidgets.com/docs/Addressing_Phidget
 - [Baseline architecture and assessment](docs/BASELINE_ASSESSMENT.md)
 - [Read-only discovery inventory](docs/DISCOVERY_INVENTORY.md)
 - [Preparatory cleanup audit](docs/CLEANUP_AUDIT.md)
+- [Phidget class support roadmap](docs/PHIDGET_CLASS_ROADMAP.md)

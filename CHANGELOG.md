@@ -1,5 +1,22 @@
 # Release notes
 
+## 0.2.1.35 — 2026-08-24
+
+### Added
+
+- Add discovery and lifecycle support for Phidget22 `LCD` channels, including
+  text LCD adapters and graphic LCDs.
+- Add Indigo actions to write text, clear the display, set backlight and
+  contrast, and sleep or wake supported displays.
+- Add text-panel dimension configuration, fixed 5×8 text rendering, optional
+  initial-text restoration after attachment, and LCD status states.
+
+### Testing
+
+- Add regression coverage for LCD discovery, configuration declarations,
+  attachment setup, text restoration, coordinate validation, display actions,
+  and hardware capability differences.
+
 ## 0.2.1.34 — 2026-08-24
 
 ### Fixed
