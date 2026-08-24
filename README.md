@@ -55,6 +55,11 @@ See the [Phidget Documentation](https://www.phidgets.com/docs/Addressing_Phidget
 
 ## Development documentation
 
+The runtime code is divided by responsibility: `plugin.py` coordinates Indigo
+and Phidget lifecycle, `device_factory.py` constructs channel wrappers,
+`actions.py` implements action callbacks, and `discovery_ui.py` implements
+configuration and discovery callbacks.
+
 - [Baseline architecture and assessment](docs/BASELINE_ASSESSMENT.md)
 - [Read-only discovery inventory](docs/DISCOVERY_INVENTORY.md)
 - [Preparatory cleanup audit](docs/CLEANUP_AUDIT.md)

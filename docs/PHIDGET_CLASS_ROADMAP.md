@@ -136,5 +136,6 @@ Adding a class normally requires coordinated changes to:
 2. The Indigo device declaration and configuration UI in `Devices.xml`.
 3. A channel wrapper implementing attachment configuration, event handlers,
    Indigo states, and actions where appropriate.
-4. `plugin.py` construction and lifecycle wiring.
+4. A focused builder registered in `device_factory.py`; `plugin.py` retains
+   only the shared start/stop lifecycle around the constructed wrapper.
 5. Focused regression tests for discovery, state updates, and actions.

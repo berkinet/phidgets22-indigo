@@ -1,5 +1,28 @@
 # Release notes
 
+## 0.2.1.43 — 2026-08-24
+
+### Changed
+
+- Refactor the main plugin module into focused components without changing the
+  Indigo-facing callbacks:
+  - `device_factory.py` constructs every supported Phidget wrapper from saved
+    device properties.
+  - `actions.py` owns native and LCD action dispatch plus action UI validation.
+  - `discovery_ui.py` owns preferences, discovery menus, device configuration,
+    address derivation, and discovery diagnostics.
+- Keep startup, active-device lifecycle, trigger coordination, server-outage
+  batching, and shutdown in the now substantially smaller `plugin.py`.
+- Use a per-device builder registry so adding another Phidget class no longer
+  requires extending a large construction branch in `plugin.py`.
+
+### Testing
+
+- Add structural regression coverage for mixin ownership, every registered
+  device builder, shared channel addressing, and unknown device types.
+- Run the complete existing behavior suite against the refactored module
+  boundaries.
+
 ## 0.2.1.42 — 2026-08-24
 
 ### Added

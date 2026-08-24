@@ -4,6 +4,7 @@ import sys
 import types
 import unittest
 import xml.etree.ElementTree as ElementTree
+from contextlib import ExitStack
 from unittest import mock
 
 
@@ -31,6 +32,9 @@ fake_indigo.PluginBase = FakePluginBase
 sys.modules.setdefault("indigo", fake_indigo)
 
 import indigo
+import actions
+import device_factory
+import discovery_ui
 import plugin
 
 
@@ -38,7 +42,67 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.2.1.42</string>", plist)
+        self.assertIn("<string>0.2.1.43</string>", plist)
+
+    def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
+        self.assertIs(plugin.Plugin.lcdSetDisplay, actions.ActionsMixin.lcdSetDisplay)
+        self.assertIs(plugin.Plugin.validateDeviceConfigUi,
+                      discovery_ui.DiscoveryUiMixin.validateDeviceConfigUi)
+        self.assertNotIn("lcdSetDisplay", plugin.Plugin.__dict__)
+        self.assertNotIn("validateDeviceConfigUi", plugin.Plugin.__dict__)
+        self.assertEqual(set(device_factory._BUILDERS), {
+            "voltageInput", "voltageRatioInput", "digitalOutput", "digitalInput",
+            "temperatureSensor", "frequencyCounter", "humiditySensor", "lcd",
+        })
+
+    def test_factory_constructs_every_supported_wrapper(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.pluginPrefs = {
+            "networkPhidgets": True,
+            "enableServerDiscovery": True,
+        }
+        instance.logger = logging.getLogger("test.configuration.factory")
+        constructors = {
+            "voltageInput": "VoltageInputPhidget",
+            "voltageRatioInput": "VoltageRatioInputPhidget",
+            "digitalOutput": "DigitalOutputPhidget",
+            "digitalInput": "DigitalInputPhidget",
+            "temperatureSensor": "TemperatureSensorPhidget",
+            "frequencyCounter": "FrequencyCounterPhidget",
+            "humiditySensor": "HumiditySensorPhidget",
+            "lcd": "LCDPhidget",
+        }
+        props = {
+            "serialNumber": "123456", "channel": "2",
+            "isVintHub": True, "isVintDevice": True, "hubPort": "1",
+        }
+
+        with ExitStack() as stack:
+            mocks = {
+                device_type: stack.enter_context(mock.patch.object(
+                    device_factory, class_name,
+                    return_value=mock.sentinel.wrapper))
+                for device_type, class_name in constructors.items()
+            }
+            for device_type in constructors:
+                with self.subTest(device_type=device_type):
+                    device = types.SimpleNamespace(
+                        deviceTypeId=device_type, pluginProps=dict(props))
+                    self.assertIs(
+                        device_factory.create_phidget(instance, device),
+                        mock.sentinel.wrapper)
+                    channel_info = mocks[device_type].call_args.kwargs["channelInfo"]
+                    self.assertEqual(channel_info.serialNumber, 123456)
+                    self.assertEqual(channel_info.channel, 2)
+                    self.assertEqual(channel_info.hubPort, 1)
+                    self.assertTrue(channel_info.netInfo.isRemote)
+                    self.assertTrue(channel_info.netInfo.serverDiscovery)
+
+        with self.assertRaisesRegex(ValueError, "Unexpected device type"):
+            device_factory.create_phidget(
+                instance,
+                types.SimpleNamespace(
+                    deviceTypeId="unknown", pluginProps=dict(props)))
 
     def test_device_menu_defaults_and_icon_labels(self):
         root = ElementTree.parse(SERVER_PLUGIN / "Devices.xml").getroot()
@@ -158,7 +222,8 @@ class ConfigurationTests(unittest.TestCase):
             "lcdInitialY": "0",
         }
         wrapper = mock.Mock()
-        with mock.patch.object(plugin, "LCDPhidget", return_value=wrapper) as factory:
+        with mock.patch.object(
+                device_factory, "LCDPhidget", return_value=wrapper) as factory:
             instance.deviceStartComm(device)
 
         wrapper.start.assert_called_once_with()
@@ -167,7 +232,7 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(factory.call_args.kwargs["screenSize"], 1)
         self.assertEqual(factory.call_args.kwargs["backlight"], 0.8)
 
-        active_lcd = object.__new__(plugin.LCDPhidget)
+        active_lcd = object.__new__(actions.LCDPhidget)
         active_lcd.writeText = mock.Mock()
         active_lcd.writeLines = mock.Mock()
         active_lcd.clear = mock.Mock()
