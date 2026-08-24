@@ -44,17 +44,15 @@ attachment.
 
 LCD commands are available under Indigo's **Device Actions**:
 
-- Write LCD text
-- Write LCD lines (one to four complete rows on a text LCD)
+- Write LCD text (automatically shows the attached text panel's rows)
 - Clear LCD
 - Set LCD backlight
 - Set LCD contrast
 - Put LCD to sleep or wake it, when supported by the hardware
 
-Text coordinates are character columns and rows on a text LCD. Graphic LCD
-coordinates are pixels. **Write LCD text** retains coordinate-based placement;
-**Write LCD lines** clears a text display and writes complete rows from the
-top. This first implementation uses the built-in 5×8 font.
+For a text LCD, **Write LCD text** clears the display and writes complete rows
+from the top. For a graphic LCD, the action instead shows text and pixel
+coordinates. This first implementation uses the built-in 5×8 font.
 
 ## Print the Phidgets network map
 

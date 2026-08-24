@@ -134,6 +134,9 @@ class LCDPhidget(PhidgetBase):
         y = int(y)
         self._validate_position(x, y)
         self.phidget.writeText(LCDFont.FONT_5x8, x, y, text)
+        # The 1204 accepts writeText without making it visible until flush is
+        # called, even when auto-flush has been enabled.
+        self.phidget.flush()
         self.lastText = text
 
     def writeText(self, text, x=0, y=0):
@@ -159,6 +162,7 @@ class LCDPhidget(PhidgetBase):
         for line_number, line in enumerate(normalized[:height]):
             if line:
                 self.phidget.writeText(LCDFont.FONT_5x8, 0, line_number, line)
+        self.phidget.flush()
         self.lastText = "\n".join(normalized[:height]).rstrip("\n")
 
     def writeLines(self, lines):
@@ -171,6 +175,7 @@ class LCDPhidget(PhidgetBase):
         with self._display_lock:
             self._ensure_attached()
             self.phidget.clear()
+            self.phidget.flush()
             self.lastText = ""
             self.updateIndigoStatus()
 

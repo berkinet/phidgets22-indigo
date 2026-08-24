@@ -169,7 +169,7 @@ class LCDTests(unittest.TestCase):
         self.assertEqual(native.backlight, 0.75)
         self.assertEqual(native.contrast, 0.4)
         self.assertEqual(native.writes, [(LCDFont.FONT_5x8, 1, 0, "Ready")])
-        self.assertEqual(native.flush_count, 0)
+        self.assertEqual(native.flush_count, 1)
         self.assertEqual(wrapper.lastText, "Ready")
         self.assertEqual((wrapper.screenWidth, wrapper.screenHeight), (16, 2))
 
@@ -182,6 +182,7 @@ class LCDTests(unittest.TestCase):
         wrapper.writeLines(["Flow 7.7 GPM", "38.6 gallons"])
 
         self.assertEqual(native.clear_count, 1)
+        self.assertEqual(native.flush_count, 1)
         self.assertEqual(native.writes, [
             (LCDFont.FONT_5x8, 0, 0, "Flow 7.7 GPM"),
             (LCDFont.FONT_5x8, 0, 1, "38.6 gallons"),
@@ -221,6 +222,7 @@ class LCDTests(unittest.TestCase):
         self.assertTrue(native.sleeping)
         self.assertEqual(native.clear_count, 1)
         self.assertEqual(wrapper.lastText, "")
+        self.assertEqual(native.flush_count, 2)
 
     def test_write_rejects_coordinates_outside_screen(self):
         native = FakeLCD(screen_size=LCDScreenSize.SCREEN_SIZE_2x16)

@@ -665,17 +665,17 @@ class Plugin(indigo.PluginBase):
         return lcd
 
     def lcdWriteText(self, action, device):
-        text = self.substitute(action.props.get("text", ""))
-        self._lcdForAction(device).writeText(
-            text, int(action.props.get("x", 0)), int(action.props.get("y", 0)))
-
-    def lcdWriteLines(self, action, device):
-        line_count = int(action.props.get("lineCount", 2))
-        lines = [
-            self.substitute(action.props.get("line%d" % line_number, ""))
-            for line_number in range(1, line_count + 1)
-        ]
-        self._lcdForAction(device).writeLines(lines)
+        line_count = int(action.props.get("lineCount", 0))
+        if line_count:
+            lines = [
+                self.substitute(action.props.get("line%d" % line_number, ""))
+                for line_number in range(1, line_count + 1)
+            ]
+            self._lcdForAction(device).writeLines(lines)
+        else:
+            text = self.substitute(action.props.get("text", ""))
+            self._lcdForAction(device).writeText(
+                text, int(action.props.get("x", 0)), int(action.props.get("y", 0)))
 
     def lcdClear(self, action, device):
         self._lcdForAction(device).clear()
@@ -692,25 +692,39 @@ class Plugin(indigo.PluginBase):
     def lcdWake(self, action, device):
         self._lcdForAction(device).setSleeping(False)
 
+    def _lcdActionLineCount(self, deviceId):
+        try:
+            device = indigo.devices[int(deviceId)]
+            if str(device.states.get("lcdType", "")) == "text":
+                height = int(device.states.get("screenHeight", 0))
+                if 1 <= height <= 4:
+                    return height
+            screen_size = int(device.pluginProps.get("lcdScreenSize", 1))
+            return {
+                2: 1, 3: 2, 4: 1, 5: 2, 6: 4, 7: 2,
+                8: 4, 9: 2, 10: 1, 11: 2, 12: 4,
+            }.get(screen_size, 0)
+        except (AttributeError, IndexError, KeyError, TypeError, ValueError):
+            return 0
+
+    def getActionConfigUiValues(self, pluginProps, typeId, deviceId):
+        errors = indigo.Dict()
+        if typeId == "lcdWriteText":
+            pluginProps["lineCount"] = str(self._lcdActionLineCount(deviceId))
+        return (pluginProps, errors)
+
     def validateActionConfigUi(self, valuesDict, typeId, deviceId):
         errors = indigo.Dict()
         if typeId == "lcdWriteText":
-            for field, label in (("x", "X"), ("y", "Y")):
-                try:
-                    value = int(valuesDict.get(field, "0"))
-                    if value < 0:
-                        raise ValueError
-                    valuesDict[field] = str(value)
-                except (TypeError, ValueError):
-                    errors[field] = "%s must be a whole number of zero or greater." % label
-        elif typeId == "lcdWriteLines":
-            try:
-                line_count = int(valuesDict.get("lineCount", "2"))
-                if line_count < 1 or line_count > 4:
-                    raise ValueError
-                valuesDict["lineCount"] = str(line_count)
-            except (TypeError, ValueError):
-                errors["lineCount"] = "Select from one to four display lines."
+            if int(valuesDict.get("lineCount", 0)) == 0:
+                for field, label in (("x", "X"), ("y", "Y")):
+                    try:
+                        value = int(valuesDict.get(field, "0"))
+                        if value < 0:
+                            raise ValueError
+                        valuesDict[field] = str(value)
+                    except (TypeError, ValueError):
+                        errors[field] = "%s must be a whole number of zero or greater." % label
         elif typeId in ("lcdSetBacklight", "lcdSetContrast"):
             field = "backlight" if typeId == "lcdSetBacklight" else "contrast"
             try:

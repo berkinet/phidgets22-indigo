@@ -4,32 +4,20 @@
 		<Name>Write LCD text</Name>
 		<CallbackMethod>lcdWriteText</CallbackMethod>
 		<ConfigUI>
-			<Field id="coordinateHelp" type="label"><Label>Positions are columns/rows on text LCDs and pixels on graphic LCDs.</Label></Field>
-			<Field id="text" type="textfield"><Label>Text:</Label></Field>
-			<Field id="x" type="textfield" defaultValue="0"><Label>X position:</Label></Field>
-			<Field id="y" type="textfield" defaultValue="0"><Label>Y position:</Label></Field>
+			<Field id="lineCount" type="textfield" defaultValue="0" hidden="true"/>
+			<Field id="line1" type="textfield" visibleBindingId="lineCount" visibleBindingValue="1,2,3,4" alwaysUseInDialogHeightCalc="true"><Label>Line 1:</Label></Field>
+			<Field id="line2" type="textfield" visibleBindingId="lineCount" visibleBindingValue="2,3,4" alwaysUseInDialogHeightCalc="true"><Label>Line 2:</Label></Field>
+			<Field id="line3" type="textfield" visibleBindingId="lineCount" visibleBindingValue="3,4" alwaysUseInDialogHeightCalc="true"><Label>Line 3:</Label></Field>
+			<Field id="line4" type="textfield" visibleBindingId="lineCount" visibleBindingValue="4" alwaysUseInDialogHeightCalc="true"><Label>Line 4:</Label></Field>
+			<Field id="coordinateHelp" type="label" visibleBindingId="lineCount" visibleBindingValue="0" alwaysUseInDialogHeightCalc="true"><Label>Positions are pixels on a graphic LCD.</Label></Field>
+			<Field id="text" type="textfield" visibleBindingId="lineCount" visibleBindingValue="0" alwaysUseInDialogHeightCalc="true"><Label>Text:</Label></Field>
+			<Field id="x" type="textfield" defaultValue="0" visibleBindingId="lineCount" visibleBindingValue="0" alwaysUseInDialogHeightCalc="true"><Label>X position:</Label></Field>
+			<Field id="y" type="textfield" defaultValue="0" visibleBindingId="lineCount" visibleBindingValue="0" alwaysUseInDialogHeightCalc="true"><Label>Y position:</Label></Field>
 		</ConfigUI>
 	</Action>
 	<Action id="lcdClear" deviceFilter="self.lcd" uiPath="DeviceActions">
 		<Name>Clear LCD</Name>
 		<CallbackMethod>lcdClear</CallbackMethod>
-	</Action>
-	<Action id="lcdWriteLines" deviceFilter="self.lcd" uiPath="DeviceActions">
-		<Name>Write LCD lines</Name>
-		<CallbackMethod>lcdWriteLines</CallbackMethod>
-		<ConfigUI>
-			<Field id="lineCount" type="menu" defaultValue="2">
-				<Label>Number of lines:</Label>
-				<List>
-					<Option value="1">1</Option><Option value="2">2</Option>
-					<Option value="3">3</Option><Option value="4">4</Option>
-				</List>
-			</Field>
-			<Field id="line1" type="textfield"><Label>Line 1:</Label></Field>
-			<Field id="line2" type="textfield" visibleBindingId="lineCount" visibleBindingValue="2,3,4" alwaysUseInDialogHeightCalc="true"><Label>Line 2:</Label></Field>
-			<Field id="line3" type="textfield" visibleBindingId="lineCount" visibleBindingValue="3,4" alwaysUseInDialogHeightCalc="true"><Label>Line 3:</Label></Field>
-			<Field id="line4" type="textfield" visibleBindingId="lineCount" visibleBindingValue="4" alwaysUseInDialogHeightCalc="true"><Label>Line 4:</Label></Field>
-		</ConfigUI>
 	</Action>
 	<Action id="lcdSetBacklight" deviceFilter="self.lcd" uiPath="DeviceActions">
 		<Name>Set LCD backlight</Name>

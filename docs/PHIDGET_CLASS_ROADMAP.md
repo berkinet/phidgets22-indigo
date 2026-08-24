@@ -103,8 +103,8 @@ detecting the attached channel's capabilities rather than assuming one model.
 
 ### Initial Indigo actions
 
-- Write text at an x/y position.
-- Clear and write one to four complete rows on a text LCD.
+- Write one to four complete rows on a text LCD, or text at an x/y pixel
+  position on a graphic LCD.
 - Clear the display.
 - Set backlight.
 - Set contrast.

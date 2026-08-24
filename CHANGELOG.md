@@ -1,5 +1,21 @@
 # Release notes
 
+## 0.2.1.37 — 2026-08-24
+
+### Fixed
+
+- Explicitly flush LCD writes and clears so text becomes visible on adapters
+  such as the 1204 instead of remaining buffered after a successful SDK call.
+- Make the **Write LCD text** action derive its fields from the selected
+  device: one, two, or four rows for text LCDs and text/x/y fields for graphic
+  LCDs.
+- Remove the redundant separate multiline action.
+
+### Testing
+
+- Add regression coverage for explicit flushes and selected-device action
+  field resolution.
+
 ## 0.2.1.36 — 2026-08-24
 
 ### Fixed

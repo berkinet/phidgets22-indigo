@@ -29,7 +29,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.2.1.36</string>", plist)
+        self.assertIn("<string>0.2.1.37</string>", plist)
 
     def test_device_menu_defaults_and_icon_labels(self):
         root = ElementTree.parse(SERVER_PLUGIN / "Devices.xml").getroot()
@@ -58,7 +58,7 @@ class ConfigurationTests(unittest.TestCase):
 
         actions = ElementTree.parse(SERVER_PLUGIN / "Actions.xml").getroot()
         action_ids = {action.get("id") for action in actions.findall("Action")}
-        self.assertEqual(action_ids, {"lcdWriteText", "lcdWriteLines", "lcdClear", "lcdSetBacklight",
+        self.assertEqual(action_ids, {"lcdWriteText", "lcdClear", "lcdSetBacklight",
                                       "lcdSetContrast", "lcdSleep", "lcdWake"})
         self.assertTrue(all(action.get("deviceFilter") == "self.lcd"
                             for action in actions.findall("Action")))
@@ -89,14 +89,8 @@ class ConfigurationTests(unittest.TestCase):
         self.assertTrue(valid)
         self.assertEqual(values, {"x": "3", "y": "4"})
 
-        valid, values = instance.validateActionConfigUi(
-            indigo.Dict({"lineCount": " 2 "}), "lcdWriteLines", 1)
-        self.assertTrue(valid)
-        self.assertEqual(values, {"lineCount": "2"})
-
         for action_type, field, value in (
                 ("lcdWriteText", "x", "-1"),
-                ("lcdWriteLines", "lineCount", "5"),
                 ("lcdSetBacklight", "backlight", "1.1"),
                 ("lcdSetContrast", "contrast", "dark")):
             values = indigo.Dict({field: value})
@@ -156,9 +150,10 @@ class ConfigurationTests(unittest.TestCase):
         instance.substitute = lambda value: value.replace("%%name%%", "Kitchen")
 
         instance.lcdWriteText(
-            types.SimpleNamespace(props={"text": "%%name%%", "x": "2", "y": "3"}),
+            types.SimpleNamespace(props={
+                "lineCount": "0", "text": "%%name%%", "x": "2", "y": "3"}),
             device)
-        instance.lcdWriteLines(
+        instance.lcdWriteText(
             types.SimpleNamespace(props={
                 "lineCount": "2", "line1": "%%name%%", "line2": "Ready"}),
             device)
@@ -177,6 +172,19 @@ class ConfigurationTests(unittest.TestCase):
         active_lcd.setContrast.assert_called_once_with(0.3)
         self.assertEqual(active_lcd.setSleeping.call_args_list,
                          [mock.call(True), mock.call(False)])
+
+    def test_lcd_action_fields_follow_selected_device_height(self):
+        instance = object.__new__(plugin.Plugin)
+        device = types.SimpleNamespace(
+            states={"lcdType": "text", "screenHeight": 2},
+            pluginProps={"lcdScreenSize": "7"})
+        indigo.devices = {42: device}
+
+        values, errors = instance.getActionConfigUiValues(
+            indigo.Dict({}), "lcdWriteText", 42)
+
+        self.assertEqual(values["lineCount"], "2")
+        self.assertEqual(errors, {})
 
 
 if __name__ == "__main__":
