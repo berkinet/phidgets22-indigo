@@ -18,22 +18,36 @@ class ActionsMixin(object):
             return self.activePhidgets[device.id].actionControlSensor(action)
         raise Exception("Unexpected device: %s" % device.id)
 
-    def _lcdForAction(self, device):
-        lcd = self.activePhidgets.get(device.id)
+    def _lcdForAction(self, action, device=None):
+        device_id = getattr(action, "deviceId", None)
+        if not device_id and device is not None:
+            device_id = getattr(device, "id", None)
+        try:
+            device_id = int(device_id)
+        except (TypeError, ValueError):
+            raise ValueError("LCD action has no target device")
+
+        lcd = self.activePhidgets.get(device_id)
         if lcd is None or not isinstance(lcd, LCDPhidget):
-            raise ValueError("LCD device '%s' is not active" % device.name)
+            device_name = getattr(device, "name", None)
+            if not device_name:
+                try:
+                    device_name = indigo.devices[device_id].name
+                except (AttributeError, IndexError, KeyError, TypeError):
+                    device_name = str(device_id)
+            raise ValueError("LCD device '%s' is not active" % device_name)
         return lcd
 
-    def lcdClear(self, action, device):
-        self._lcdForAction(device).clear()
+    def lcdClear(self, action, device=None):
+        self._lcdForAction(action, device).clear()
 
-    def lcdSleep(self, action, device):
-        self._lcdForAction(device).setSleeping(True)
+    def lcdSleep(self, action, device=None):
+        self._lcdForAction(action, device).setSleeping(True)
 
-    def lcdWake(self, action, device):
-        self._lcdForAction(device).setSleeping(False)
+    def lcdWake(self, action, device=None):
+        self._lcdForAction(action, device).setSleeping(False)
 
-    def lcdSetDisplay(self, action, device):
+    def lcdSetDisplay(self, action, device=None):
         line_count = int(action.props.get("lineCount", 0))
         mode = action.props.get("animationMode", "static")
         if mode == "virtualMarquee":
@@ -48,7 +62,7 @@ class ActionsMixin(object):
             self.substitute(action.props.get("alternateLine%d" % line_number, ""))
             for line_number in range(1, line_count + 1)
         ]
-        lcd = self._lcdForAction(device)
+        lcd = self._lcdForAction(action, device)
         lcd.setBacklight(float(action.props.get("backlight", 1.0)))
         lcd.setContrast(float(action.props.get("contrast", 0.5)))
         if mode == "static":
@@ -71,8 +85,8 @@ class ActionsMixin(object):
                 direction=action.props.get("marqueeDirection", "left"),
                 gap=int(action.props.get("marqueeGap", 3)))
 
-    def lcdStopAnimation(self, action, device):
-        self._lcdForAction(device).stopAnimation()
+    def lcdStopAnimation(self, action, device=None):
+        self._lcdForAction(action, device).stopAnimation()
 
     def _lcdActionLineCount(self, deviceId):
         try:

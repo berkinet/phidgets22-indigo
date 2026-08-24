@@ -42,7 +42,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.2.1.43</string>", plist)
+        self.assertIn("<string>0.2.1.44</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
         self.assertIs(plugin.Plugin.lcdSetDisplay, actions.ActionsMixin.lcdSetDisplay)
@@ -293,6 +293,17 @@ class ConfigurationTests(unittest.TestCase):
                 lines_b=["", ""], interval=0.6, direction="left", gap=5),
         ])
         active_lcd.stopAnimation.assert_called_once_with()
+
+    def test_lcd_action_resolves_target_from_action_when_device_is_none(self):
+        instance = object.__new__(plugin.Plugin)
+        active_lcd = object.__new__(actions.LCDPhidget)
+        active_lcd.setSleeping = mock.Mock()
+        instance.activePhidgets = {91: active_lcd}
+        action = types.SimpleNamespace(deviceId=91, props={})
+
+        instance.lcdSleep(action, None)
+
+        active_lcd.setSleeping.assert_called_once_with(True)
 
     def test_lcd_action_fields_follow_selected_device_height(self):
         instance = object.__new__(plugin.Plugin)

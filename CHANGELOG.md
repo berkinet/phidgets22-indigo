@@ -1,5 +1,23 @@
 # Release notes
 
+## 0.2.1.44 — 2026-08-24
+
+### Fixed
+
+- Resolve custom LCD action targets from Indigo's authoritative
+  `pluginAction.deviceId` instead of assuming the optional callback device
+  argument is populated. This fixes **Put LCD to sleep** from an Action Group,
+  where Indigo passed `device=None`.
+- Apply the same target resolution to Clear, Wake, Set display, and Stop
+  animation so all LCD custom actions behave consistently.
+- Retain the callback device as a compatibility fallback and report a clear
+  error when an action has no target or its LCD is inactive.
+
+### Testing
+
+- Add regression coverage for executing LCD Sleep with `device=None` and a
+  valid action `deviceId`.
+
 ## 0.2.1.43 — 2026-08-24
 
 ### Changed
