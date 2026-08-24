@@ -2,9 +2,15 @@
 
 """Indigo action dispatch and action-configuration UI callbacks."""
 
+import re
+
 import indigo
 
 from lcd import LCDPhidget
+
+
+SUBSTITUTION_PATTERN = re.compile(
+    r"%%(?:v:\d+|d:\d+:[^%]+)%%")
 
 
 class ActionsMixin(object):
@@ -73,7 +79,28 @@ class ActionsMixin(object):
         lcd.setContrast(float(action.props.get("contrast", 0.5)))
         if mode == "static":
             if line_count:
-                lcd.writeLines(lines_a)
+                screen_width = getattr(lcd, "screenWidth", None)
+                overflowing = any(
+                    screen_width is not None and len(line) > screen_width
+                    for line in lines_a)
+                overflow_behavior = action.props.get(
+                    "staticOverflowBehavior", "truncate")
+                if overflowing and overflow_behavior == "reject":
+                    raise ValueError(
+                        "Substituted static LCD text exceeds the %d-character row width" %
+                        screen_width)
+                if overflowing and overflow_behavior == "marquee":
+                    lcd.startAnimation(
+                        mode="marquee",
+                        lines_a=lines_a,
+                        lines_b=[""] * line_count,
+                        interval=float(action.props.get(
+                            "overflowMarqueeInterval", 0.4)),
+                        direction=action.props.get(
+                            "overflowMarqueeDirection", "left"),
+                        gap=int(action.props.get("overflowMarqueeGap", 3)))
+                else:
+                    lcd.writeLines(lines_a)
             else:
                 lcd.writeText(
                     self.substitute(action.props.get("graphicText", "")),
@@ -131,6 +158,20 @@ class ActionsMixin(object):
                     (len(text), "" if len(text) == 1 else "s"))
         return values
 
+    def _updateStaticOverflowLayout(self, values, mode, line_count):
+        contains_substitution = (
+            mode == "static" and line_count > 0 and
+            any(SUBSTITUTION_PATTERN.search(str(values.get(
+                "animationLine%d" % line_number, "") or ""))
+                for line_number in range(1, line_count + 1)))
+        if not contains_substitution:
+            values["staticOverflowLayout"] = "hidden"
+        elif values.get("staticOverflowBehavior", "truncate") == "marquee":
+            values["staticOverflowLayout"] = "marquee"
+        else:
+            values["staticOverflowLayout"] = "show"
+        return values
+
     def getActionConfigUiValues(self, pluginProps, typeId, deviceId):
         errors = indigo.Dict()
         if typeId == "lcdStartAnimation":
@@ -140,6 +181,14 @@ class ActionsMixin(object):
             pluginProps["animationMode"] = mode
             pluginProps["animationLayout"] = self._lcdDisplayLayout(mode, line_count)
             self._updateVirtualTextStatus(pluginProps)
+            for field, default in (
+                    ("staticOverflowBehavior", "truncate"),
+                    ("overflowMarqueeDirection", "left"),
+                    ("overflowMarqueeGap", "3"),
+                    ("overflowMarqueeInterval", "0.4")):
+                if field not in pluginProps:
+                    pluginProps[field] = default
+            self._updateStaticOverflowLayout(pluginProps, mode, line_count)
             try:
                 device = indigo.devices[int(deviceId)]
                 if "backlight" not in pluginProps:
@@ -160,7 +209,8 @@ class ActionsMixin(object):
         mode = valuesDict.get("animationMode", "static")
         valuesDict["lineCount"] = str(line_count)
         valuesDict["animationLayout"] = self._lcdDisplayLayout(mode, line_count)
-        return self._updateVirtualTextStatus(valuesDict)
+        self._updateVirtualTextStatus(valuesDict)
+        return self._updateStaticOverflowLayout(valuesDict, mode, line_count)
 
     def validateActionConfigUi(self, valuesDict, typeId, deviceId):
         errors = indigo.Dict()
@@ -185,6 +235,39 @@ class ActionsMixin(object):
                     except (TypeError, ValueError):
                         errors[field] = (
                             "%s must be a whole number of zero or greater." % label)
+            has_static_substitution = (
+                mode == "static" and line_count > 0 and
+                any(SUBSTITUTION_PATTERN.search(str(valuesDict.get(
+                    "animationLine%d" % line_number, "") or ""))
+                    for line_number in range(1, line_count + 1)))
+            if has_static_substitution:
+                overflow_behavior = valuesDict.get(
+                    "staticOverflowBehavior", "truncate")
+                if overflow_behavior not in ("truncate", "marquee", "reject"):
+                    errors["staticOverflowBehavior"] = (
+                        "Select Truncate, Marquee if needed, or Reject if too long.")
+                if overflow_behavior == "marquee":
+                    if valuesDict.get("overflowMarqueeDirection", "left") not in (
+                            "left", "right"):
+                        errors["overflowMarqueeDirection"] = (
+                            "Select Left or Right.")
+                    try:
+                        gap = int(valuesDict.get("overflowMarqueeGap", "3"))
+                        if gap < 1 or gap > 100:
+                            raise ValueError
+                        valuesDict["overflowMarqueeGap"] = str(gap)
+                    except (TypeError, ValueError):
+                        errors["overflowMarqueeGap"] = (
+                            "Enter a gap from 1 to 100 characters.")
+                    try:
+                        interval = float(valuesDict.get(
+                            "overflowMarqueeInterval", "0.4"))
+                        if interval < 0.1 or interval > 60.0:
+                            raise ValueError
+                        valuesDict["overflowMarqueeInterval"] = str(interval)
+                    except (TypeError, ValueError):
+                        errors["overflowMarqueeInterval"] = (
+                            "Enter an interval from 0.1 to 60 seconds.")
             if mode != "static" and line_count == 0:
                 errors["animationMode"] = (
                     "LCD animation currently requires a text LCD.")

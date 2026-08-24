@@ -10,16 +10,21 @@
 		<ConfigUI>
 			<Field id="lineCount" type="textfield" defaultValue="0" hidden="true"/>
 			<Field id="animationLayout" type="textfield" defaultValue="unsupported" hidden="true"/>
+			<Field id="staticOverflowLayout" type="textfield" defaultValue="hidden" hidden="true"/>
 			<Field id="animationMode" type="menu" defaultValue="static">
 				<Label>Display mode:</Label>
 				<List><Option value="static">Static</Option><Option value="marquee">Marquee — independent rows</Option><Option value="virtualMarquee">Virtual single-line marquee</Option><Option value="flash">Flash / alternate</Option></List>
 				<CallbackMethod>lcdAnimationConfigChanged</CallbackMethod>
 			</Field>
 			<Field id="unsupportedAnimation" type="label" visibleBindingId="animationLayout" visibleBindingValue="unsupported" alwaysUseInDialogHeightCalc="true"><Label>Marquee and Flash currently require a text LCD.</Label></Field>
-			<Field id="animationLine1" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="static1,static2,static3,static4,marquee1,marquee2,marquee3,marquee4,flash1,flash2,flash3,flash4" alwaysUseInDialogHeightCalc="true"><Label>Line 1:</Label></Field>
-			<Field id="animationLine2" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="static2,static3,static4,marquee2,marquee3,marquee4,flash2,flash3,flash4" alwaysUseInDialogHeightCalc="true"><Label>Line 2:</Label></Field>
-			<Field id="animationLine3" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="static3,static4,marquee3,marquee4,flash3,flash4" alwaysUseInDialogHeightCalc="true"><Label>Line 3:</Label></Field>
-			<Field id="animationLine4" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="static4,marquee4,flash4" alwaysUseInDialogHeightCalc="true"><Label>Line 4:</Label></Field>
+			<Field id="animationLine1" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="static1,static2,static3,static4,marquee1,marquee2,marquee3,marquee4,flash1,flash2,flash3,flash4" alwaysUseInDialogHeightCalc="true"><Label>Line 1:</Label><CallbackMethod>lcdAnimationConfigChanged</CallbackMethod></Field>
+			<Field id="animationLine2" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="static2,static3,static4,marquee2,marquee3,marquee4,flash2,flash3,flash4" alwaysUseInDialogHeightCalc="true"><Label>Line 2:</Label><CallbackMethod>lcdAnimationConfigChanged</CallbackMethod></Field>
+			<Field id="animationLine3" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="static3,static4,marquee3,marquee4,flash3,flash4" alwaysUseInDialogHeightCalc="true"><Label>Line 3:</Label><CallbackMethod>lcdAnimationConfigChanged</CallbackMethod></Field>
+			<Field id="animationLine4" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="static4,marquee4,flash4" alwaysUseInDialogHeightCalc="true"><Label>Line 4:</Label><CallbackMethod>lcdAnimationConfigChanged</CallbackMethod></Field>
+			<Field id="staticOverflowBehavior" type="menu" defaultValue="truncate" visibleBindingId="staticOverflowLayout" visibleBindingValue="show,marquee" alwaysUseInDialogHeightCalc="true"><Label>Overflow behavior:</Label><List><Option value="truncate">Truncate</Option><Option value="marquee">Marquee if needed</Option><Option value="reject">Reject if too long</Option></List><CallbackMethod>lcdAnimationConfigChanged</CallbackMethod></Field>
+			<Field id="overflowMarqueeDirection" type="menu" defaultValue="left" visibleBindingId="staticOverflowLayout" visibleBindingValue="marquee" alwaysUseInDialogHeightCalc="true"><Label>Overflow direction:</Label><List><Option value="left">Left</Option><Option value="right">Right</Option></List></Field>
+			<Field id="overflowMarqueeGap" type="textfield" defaultValue="3" visibleBindingId="staticOverflowLayout" visibleBindingValue="marquee" alwaysUseInDialogHeightCalc="true"><Label>Overflow repeat gap:</Label></Field>
+			<Field id="overflowMarqueeInterval" type="textfield" defaultValue="0.4" visibleBindingId="staticOverflowLayout" visibleBindingValue="marquee" alwaysUseInDialogHeightCalc="true"><Label>Overflow interval (seconds):</Label></Field>
 			<Field id="virtualText" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="virtualMarquee1,virtualMarquee2,virtualMarquee3,virtualMarquee4" alwaysUseInDialogHeightCalc="true"><Label>Text:</Label><CallbackMethod>lcdAnimationConfigChanged</CallbackMethod></Field>
 			<Field id="virtualTextStatus" type="textfield" readonly="true" defaultValue="∅ empty" visibleBindingId="animationLayout" visibleBindingValue="virtualMarquee1,virtualMarquee2,virtualMarquee3,virtualMarquee4" alwaysUseInDialogHeightCalc="true"><Label>Stored text:</Label></Field>
 			<Field id="virtualMarqueeHelp" type="label" visibleBindingId="animationLayout" visibleBindingValue="virtualMarquee1,virtualMarquee2,virtualMarquee3,virtualMarquee4" alwaysUseInDialogHeightCalc="true"><Label>Uses every row as one continuous line. Left enters at the lower right; Right enters at the upper left.</Label></Field>

@@ -1,5 +1,21 @@
 # Release notes
 
+## 0.2.1.49 — 2026-08-24
+
+### Added
+
+- Reveal a **Static overflow behavior** menu only when a static text-LCD line
+  contains a recognized Indigo variable or device-state substitution token.
+- Offer **Truncate**, **Marquee if needed**, and **Reject if too long** policies
+  after the substituted value is compared with the attached LCD row width.
+- Reveal direction, repeat-gap, and interval controls only when **Marquee if
+  needed** is selected. Short substituted values remain static.
+
+### Testing
+
+- Add UI callback coverage for conditional overflow controls and runtime
+  coverage for post-substitution marquee conversion and explicit rejection.
+
 ## 0.2.1.48 — 2026-08-24
 
 ### Added

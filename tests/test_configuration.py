@@ -42,7 +42,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.2.1.48</string>", plist)
+        self.assertIn("<string>0.2.1.49</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
         self.assertIs(plugin.Plugin.lcdSetDisplay, actions.ActionsMixin.lcdSetDisplay)
@@ -312,6 +312,43 @@ class ConfigurationTests(unittest.TestCase):
 
         active_lcd.setSleeping.assert_called_once_with(True)
 
+    def test_static_substitution_overflow_can_start_marquee_or_reject(self):
+        instance = object.__new__(plugin.Plugin)
+        active_lcd = object.__new__(actions.LCDPhidget)
+        active_lcd.screenWidth = 20
+        active_lcd.setSleeping = mock.Mock()
+        active_lcd.setBacklight = mock.Mock()
+        active_lcd.setContrast = mock.Mock()
+        active_lcd.writeLines = mock.Mock()
+        active_lcd.startAnimation = mock.Mock()
+        instance.activePhidgets = {42: active_lcd}
+        instance.substitute = lambda value: (
+            "This substituted value is longer than twenty characters"
+            if value == "%%v:12345%%" else value)
+        base_props = {
+            "lineCount": "1", "animationMode": "static",
+            "animationLine1": "%%v:12345%%",
+            "backlight": "1.0", "contrast": "0.5",
+        }
+
+        marquee_props = dict(base_props, staticOverflowBehavior="marquee",
+                              overflowMarqueeDirection="right",
+                              overflowMarqueeGap="4",
+                              overflowMarqueeInterval="0.6")
+        instance.lcdSetDisplay(
+            types.SimpleNamespace(deviceId=42, props=marquee_props), None)
+
+        active_lcd.startAnimation.assert_called_once_with(
+            mode="marquee",
+            lines_a=["This substituted value is longer than twenty characters"],
+            lines_b=[""], interval=0.6, direction="right", gap=4)
+        active_lcd.writeLines.assert_not_called()
+
+        reject_props = dict(base_props, staticOverflowBehavior="reject")
+        with self.assertRaisesRegex(ValueError, "exceeds the 20-character"):
+            instance.lcdSetDisplay(
+                types.SimpleNamespace(deviceId=42, props=reject_props), None)
+
     def test_lcd_action_fields_follow_selected_device_height(self):
         instance = object.__new__(plugin.Plugin)
         device = types.SimpleNamespace(
@@ -356,6 +393,23 @@ class ConfigurationTests(unittest.TestCase):
             values, "lcdStartAnimation", 42)
         self.assertEqual(returned["virtualTextStatus"],
                          "⚠ 14 characters stored across 2 lines")
+
+        values["animationMode"] = "static"
+        values["animationLine1"] = "Temperature: %%d:42:temperature%%"
+        values["staticOverflowBehavior"] = "truncate"
+        returned = instance.lcdAnimationConfigChanged(
+            values, "lcdStartAnimation", 42)
+        self.assertEqual(returned["staticOverflowLayout"], "show")
+
+        values["staticOverflowBehavior"] = "marquee"
+        returned = instance.lcdAnimationConfigChanged(
+            values, "lcdStartAnimation", 42)
+        self.assertEqual(returned["staticOverflowLayout"], "marquee")
+
+        values["animationLine1"] = "Plain text"
+        returned = instance.lcdAnimationConfigChanged(
+            values, "lcdStartAnimation", 42)
+        self.assertEqual(returned["staticOverflowLayout"], "hidden")
 
     def test_lcd_animation_validation(self):
         instance = object.__new__(plugin.Plugin)
