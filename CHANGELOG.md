@@ -1,5 +1,19 @@
 # Release notes
 
+## 0.2.1.40 — 2026-08-24
+
+### Fixed
+
+- Replace unsupported `setdefault()` calls in the action configuration
+  callback with Indigo-compatible mapping operations.
+- Restore the device-aware Static text fields that could not render after the
+  callback exception.
+
+### Testing
+
+- Add regression coverage using an Indigo-like `Dict` without `setdefault()`
+  and verify that a 2-row Static layout exposes both text fields.
+
 ## 0.2.1.39 — 2026-08-24
 
 ### Changed

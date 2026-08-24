@@ -739,15 +739,17 @@ class Plugin(indigo.PluginBase):
             pluginProps["animationLayout"] = self._lcdDisplayLayout(mode, line_count)
             try:
                 device = indigo.devices[int(deviceId)]
-                pluginProps.setdefault(
-                    "backlight", str(device.states.get(
-                        "backlight", device.pluginProps.get("lcdBacklight", 1.0))))
-                pluginProps.setdefault(
-                    "contrast", str(device.states.get(
-                        "contrast", device.pluginProps.get("lcdContrast", 0.5))))
+                if "backlight" not in pluginProps:
+                    pluginProps["backlight"] = str(device.states.get(
+                        "backlight", device.pluginProps.get("lcdBacklight", 1.0)))
+                if "contrast" not in pluginProps:
+                    pluginProps["contrast"] = str(device.states.get(
+                        "contrast", device.pluginProps.get("lcdContrast", 0.5)))
             except (AttributeError, IndexError, KeyError, TypeError, ValueError):
-                pluginProps.setdefault("backlight", "1.0")
-                pluginProps.setdefault("contrast", "0.5")
+                if "backlight" not in pluginProps:
+                    pluginProps["backlight"] = "1.0"
+                if "contrast" not in pluginProps:
+                    pluginProps["contrast"] = "0.5"
         return (pluginProps, errors)
 
     def lcdAnimationConfigChanged(self, valuesDict, typeId, deviceId):

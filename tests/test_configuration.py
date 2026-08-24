@@ -16,6 +16,15 @@ class FakePluginBase(object):
         pass
 
 
+class IndigoLikeDict(dict):
+    """Indigo's Dict supports mapping operations but not dict.setdefault."""
+
+    def __getattribute__(self, name):
+        if name == "setdefault":
+            raise AttributeError(name)
+        return super(IndigoLikeDict, self).__getattribute__(name)
+
+
 fake_indigo = types.ModuleType("indigo")
 fake_indigo.Dict = dict
 fake_indigo.PluginBase = FakePluginBase
@@ -29,7 +38,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.2.1.39</string>", plist)
+        self.assertIn("<string>0.2.1.40</string>", plist)
 
     def test_device_menu_defaults_and_icon_labels(self):
         root = ElementTree.parse(SERVER_PLUGIN / "Devices.xml").getroot()
@@ -62,6 +71,10 @@ class ConfigurationTests(unittest.TestCase):
                                       "lcdStopAnimation", "lcdSleep", "lcdWake"})
         self.assertTrue(all(action.get("deviceFilter") == "self.lcd"
                             for action in actions.findall("Action")))
+        display_action = actions.find("./Action[@id='lcdStartAnimation']")
+        fields = {field.get("id"): field for field in display_action.iter("Field")}
+        self.assertIn("static2", fields["animationLine1"].get("visibleBindingValue"))
+        self.assertIn("static2", fields["animationLine2"].get("visibleBindingValue"))
 
     def test_attach_timeout_accepts_positive_integer(self):
         instance = object.__new__(plugin.Plugin)
@@ -205,7 +218,7 @@ class ConfigurationTests(unittest.TestCase):
         indigo.devices = {42: device}
 
         values, errors = instance.getActionConfigUiValues(
-            indigo.Dict({}), "lcdStartAnimation", 42)
+            IndigoLikeDict({}), "lcdStartAnimation", 42)
 
         self.assertEqual(values["lineCount"], "2")
         self.assertEqual(values["animationLayout"], "static2")
