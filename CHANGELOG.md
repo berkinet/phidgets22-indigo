@@ -11,11 +11,16 @@
   level to restore on Wake, without prematurely illuminating the display.
 - Publish the emulated sleeping state to Indigo so action groups complete
   normally and device state remains accurate.
+- Flush the LCD clear operation before writing each replacement animation
+  frame. The 1204 text-LCD adapter can otherwise leave old glyph columns
+  visible as vertical bars in Virtual single-line marquee repeat gaps.
 
 ### Testing
 
 - Add regression coverage for emulated sleep, changing the desired backlight
   while asleep, wake restoration, and Indigo sleeping-state updates.
+- Strengthen animation sequencing coverage to require a committed clear before
+  each complete multi-row frame is written and flushed.
 
 ## 0.2.1.45 — 2026-08-24
 

@@ -275,10 +275,11 @@ class LCDPhidget(PhidgetBase):
                 else settings["lines_b"]
             rows = [line[:width].ljust(width) for line in source]
 
-        # Positively erase every cell before composing the next buffered frame.
-        # Some text-LCD adapters do not reliably replace existing glyphs with
-        # trailing spaces, which can otherwise leave remnants in marquee gaps.
+        # Commit the erase before composing the replacement frame. The 1204
+        # adapter can coalesce clear(), blank cells, and subsequent text when
+        # they share one flush, leaving the old glyphs visible in marquee gaps.
         self.phidget.clear()
+        self.phidget.flush()
         for row_number, row in enumerate(rows[:height]):
             self.phidget.writeText(LCDFont.FONT_5x8, 0, row_number, row)
         self.phidget.flush()

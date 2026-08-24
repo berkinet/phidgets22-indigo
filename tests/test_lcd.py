@@ -307,10 +307,10 @@ class LCDTests(unittest.TestCase):
             wrapper._virtual_marquee_rows("ABC", 16, 2, 17, "right", 2),
             [(" " * 15) + "A", "BC" + (" " * 14)])
         self.assertEqual(native.clear_count, 4)
-        self.assertEqual(native.flush_count, 4)
+        self.assertEqual(native.flush_count, 8)
         self.assertEqual(
             [operation[0] for operation in native.operations],
-            ["clear", "write", "write", "flush"] * 4)
+            ["clear", "flush", "write", "write", "flush"] * 4)
 
     def test_flash_alternates_all_rows_together_and_stop_leaves_last_frame(self):
         native = FakeLCD(screen_size=LCDScreenSize.SCREEN_SIZE_2x16)
