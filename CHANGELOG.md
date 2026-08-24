@@ -1,5 +1,29 @@
 # Release notes
 
+## 0.2.1.47 — 2026-08-24
+
+### Fixed
+
+- Explicitly disable the text controller's persistent cursor and cursor-blink
+  modes so cursor columns cannot appear among moving marquee text.
+- Treat every Set LCD display action as a wake operation before applying its
+  requested backlight, so a prior emulated Sleep cannot suppress brightness.
+- Repeat Virtual single-line marquee text after exactly the configured gap,
+  rather than adding another full 40-character display-capacity gap between
+  passages on a 2×20 LCD.
+- Reject multiline Virtual marquee text in the action editor and safely turn
+  legacy embedded newlines into spaces before display, preventing control-code
+  glyphs from appearing as vertical bars.
+- Show `∅ empty`, a right-arrow plus the stored character count, or a multiline
+  warning directly below the Virtual marquee text field so hidden content is
+  visible even when the single-line editor looks empty or truncated.
+
+### Testing
+
+- Add coverage for Set display waking an emulated sleeping LCD, continuous
+  40-cell Virtual marquee repetition with an exact configured gap, rejecting
+  embedded newlines, and reporting hidden text content in the action editor.
+
 ## 0.2.1.46 — 2026-08-24
 
 ### Fixed
@@ -11,25 +35,11 @@
   level to restore on Wake, without prematurely illuminating the display.
 - Publish the emulated sleeping state to Indigo so action groups complete
   normally and device state remains accurate.
-- Explicitly disable the text controller's persistent cursor and cursor-blink
-  modes so cursor columns cannot appear among moving marquee text.
-- Treat every Set LCD display action as a wake operation before applying its
-  requested backlight, so a prior emulated Sleep cannot suppress brightness.
-- Repeat Virtual single-line marquee text after exactly the configured gap,
-  rather than adding another full display-capacity gap between passages.
-- Reject multiline Virtual marquee text in the action editor and safely turn
-  legacy embedded newlines into spaces before display, preventing control-code
-  glyphs from appearing as vertical bars.
-- Show `∅ empty`, a right-arrow plus the stored character count, or a multiline
-  warning directly below the Virtual marquee text field so hidden content is
-  visible even when the single-line editor looks empty or truncated.
 
 ### Testing
 
 - Add regression coverage for emulated sleep, changing the desired backlight
   while asleep, wake restoration, and Indigo sleeping-state updates.
-- Add coverage for continuous 40-cell Virtual marquee repetition with an exact
-  configured gap and for rejecting embedded newlines.
 
 ## 0.2.1.45 — 2026-08-24
 
