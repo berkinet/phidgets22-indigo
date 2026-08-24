@@ -1,5 +1,20 @@
 # Release notes
 
+## 0.2.1.48 — 2026-08-24
+
+### Added
+
+- Document Indigo Variable and Device State Substitution directly in the Set
+  LCD display Action window, including `%%v:12345%%` variable and
+  `%%d:12345:someStateId%%` device-state examples.
+- Confirm substitution across the LCD action's static, marquee, Virtual
+  marquee, Flash, and graphic text fields before rendering.
+
+### Testing
+
+- Add action-dispatch coverage proving that Indigo device-state substitution
+  syntax is resolved before Virtual marquee text reaches the LCD wrapper.
+
 ## 0.2.1.47 — 2026-08-24
 
 ### Fixed

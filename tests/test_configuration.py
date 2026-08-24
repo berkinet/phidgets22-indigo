@@ -42,7 +42,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.2.1.47</string>", plist)
+        self.assertIn("<string>0.2.1.48</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
         self.assertIs(plugin.Plugin.lcdSetDisplay, actions.ActionsMixin.lcdSetDisplay)
@@ -242,7 +242,12 @@ class ConfigurationTests(unittest.TestCase):
         active_lcd.startAnimation = mock.Mock()
         active_lcd.stopAnimation = mock.Mock()
         instance.activePhidgets[device.id] = active_lcd
-        instance.substitute = lambda value: value.replace("%%name%%", "Kitchen")
+        substitutions = {
+            "%%name%%": "Kitchen",
+            "%%v:12345%%": "21.4",
+            "%%d:67890:temperature%%": "19.8",
+        }
+        instance.substitute = lambda value: substitutions.get(value, value)
 
         instance.lcdSetDisplay(
             types.SimpleNamespace(props={
@@ -261,13 +266,13 @@ class ConfigurationTests(unittest.TestCase):
         instance.lcdWake(types.SimpleNamespace(props={}), device)
         instance.lcdSetDisplay(types.SimpleNamespace(props={
             "lineCount": "2", "animationMode": "marquee",
-            "animationLine1": "%%name%%", "animationLine2": "Open",
+            "animationLine1": "%%v:12345%%", "animationLine2": "Open",
             "marqueeInterval": "0.5", "marqueeDirection": "right",
             "marqueeGap": "4", "backlight": "0.8", "contrast": "0.5",
         }), device)
         instance.lcdSetDisplay(types.SimpleNamespace(props={
             "lineCount": "2", "animationMode": "virtualMarquee",
-            "virtualText": "Welcome to %%name%%",
+            "virtualText": "%%d:67890:temperature%%",
             "marqueeInterval": "0.6", "marqueeDirection": "left",
             "marqueeGap": "5", "backlight": "0.9", "contrast": "0.6",
         }), device)
@@ -288,10 +293,10 @@ class ConfigurationTests(unittest.TestCase):
                           mock.call(False), mock.call(False)])
         self.assertEqual(active_lcd.startAnimation.call_args_list, [
             mock.call(
-                mode="marquee", lines_a=["Kitchen", "Open"],
+                mode="marquee", lines_a=["21.4", "Open"],
                 lines_b=["", ""], interval=0.5, direction="right", gap=4),
             mock.call(
-                mode="virtualMarquee", lines_a=["Welcome to Kitchen"],
+                mode="virtualMarquee", lines_a=["19.8"],
                 lines_b=["", ""], interval=0.6, direction="left", gap=5),
         ])
         active_lcd.stopAnimation.assert_called_once_with()
