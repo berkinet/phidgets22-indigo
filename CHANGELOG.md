@@ -1,5 +1,14 @@
 # Release notes
 
+## 0.3.0 — 2026-08-25
+
+### Changed
+
+- Adopt the three-part version scheme required by the Indigo Plugin Store.
+- Establish `com.berkinet.phidgets22` as the plugin's permanent Store identity.
+- Prepare the first published GitHub release for Indigo Plugin Store
+  distribution.
+
 ## 0.2.1.49 — 2026-08-24
 
 ### Added

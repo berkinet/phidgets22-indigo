@@ -348,6 +348,6 @@ class DiscoveryUiMixin(object):
                              typeId="", targetId=0):
         result = []
         for device in indigo.devices:
-            if device.pluginId == "com.yikes.eric.phidgets-indigo":
+            if device.pluginId == "com.berkinet.phidgets22":
                 result.append((device.id, device.name))
         return result
