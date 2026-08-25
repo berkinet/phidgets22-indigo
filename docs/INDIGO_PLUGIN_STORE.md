@@ -77,7 +77,8 @@ contains the installable bundle at the repository's top level.
 - Plist, XML, and diff validation passed.
 - Commit `268e8b99af1b0fcb3918b32ec5d10f158d015265` published to `main`.
 - Annotated tag `v0.3.0` published and verified against that commit.
-- A published GitHub Release still needs to be created from `v0.3.0`.
+- Published GitHub Release `v0.3.0` created and verified as the latest
+  production release (not a prerelease).
 
 ## Indigo account steps
 
