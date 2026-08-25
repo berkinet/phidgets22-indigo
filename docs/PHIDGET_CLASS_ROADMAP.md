@@ -78,6 +78,11 @@ Phidget22 package.
 
 ## LCD implementation notes
 
+Future compatibility with character displays connected through the Phidget
+ADP0001 I2C Adapter is documented separately in
+[`I2C_LCD_COMPATIBILITY_DESIGN.md`](I2C_LCD_COMPATIBILITY_DESIGN.md). That work
+is intentionally deferred until representative hardware is available.
+
 Phidget22 exposes both text and graphic displays through the `LCD` channel
 class. The initial implementation supports the useful common subset while
 detecting the attached channel's capabilities rather than assuming one model.
