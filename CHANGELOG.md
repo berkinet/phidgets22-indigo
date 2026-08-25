@@ -1,5 +1,20 @@
 # Release notes
 
+## 0.3.1 — 2026-08-25
+
+### Fixed
+
+- Queue an LCD display action that arrives before its remote LCD channel has
+  attached, instead of raising an Indigo plugin-execution error during plugin
+  reloads, upgrades, server restarts, or brief network outages.
+- Retain only the newest detached display request and apply it once immediately
+  after the LCD attaches, preventing stale display updates from being replayed.
+
+### Testing
+
+- Add regression coverage for immediate attached display requests and
+  latest-request replacement and replay while detached.
+
 ## 0.3.0 — 2026-08-25
 
 ### Changed

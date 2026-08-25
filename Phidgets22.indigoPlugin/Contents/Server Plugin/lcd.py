@@ -43,6 +43,7 @@ class LCDPhidget(PhidgetBase):
         self._animation_mode = "off"
         self._animation_frame = 0
         self._animation_settings = None
+        self._pending_display_request = None
 
     def addPhidgetHandlers(self):
         self.phidget.setOnErrorHandler(self.onErrorHandler)
@@ -139,6 +140,7 @@ class LCDPhidget(PhidgetBase):
         super(LCDPhidget, self).onAttachHandler(ph)
         if self._state == "attached":
             self.updateIndigoStatus()
+            self._replay_pending_display_request()
 
     def onDetachHandler(self, ph):
         with self._display_lock:
@@ -148,7 +150,38 @@ class LCDPhidget(PhidgetBase):
     def stop(self):
         with self._display_lock:
             self._cancel_animation_locked()
+            self._pending_display_request = None
         super(LCDPhidget, self).stop()
+
+    def runDisplayWhenAttached(self, callback):
+        """Run a display request now or retain only the newest detached request."""
+        with self._display_lock:
+            if self._state != "attached":
+                replaced = self._pending_display_request is not None
+                self._pending_display_request = callback
+                self.logger.warning(
+                    "LCD display request %s until attachment: device='%s'",
+                    "replaced the previously queued request" if replaced else "queued",
+                    self.indigoDevice.name)
+                return False
+            callback()
+            return True
+
+    def _replay_pending_display_request(self):
+        with self._display_lock:
+            callback = self._pending_display_request
+            self._pending_display_request = None
+            if callback is None:
+                return
+            try:
+                callback()
+                self.logger.info(
+                    "Queued LCD display request applied after attachment: device='%s'",
+                    self.indigoDevice.name)
+            except Exception:
+                self.logger.error(
+                    "Queued LCD display request failed after attachment: device='%s'\n%s",
+                    self.indigoDevice.name, traceback.format_exc())
 
     def _ensure_attached(self):
         if self._state != "attached":

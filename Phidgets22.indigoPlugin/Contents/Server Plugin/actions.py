@@ -72,51 +72,63 @@ class ActionsMixin(object):
             for line_number in range(1, line_count + 1)
         ]
         lcd = self._lcdForAction(action, device)
-        # A display action implies that the panel should be visible. This also
-        # exits backlight-based sleep emulation before applying its brightness.
-        lcd.setSleeping(False)
-        lcd.setBacklight(float(action.props.get("backlight", 1.0)))
-        lcd.setContrast(float(action.props.get("contrast", 0.5)))
-        if mode == "static":
-            if line_count:
-                screen_width = getattr(lcd, "screenWidth", None)
-                overflowing = any(
-                    screen_width is not None and len(line) > screen_width
-                    for line in lines_a)
-                overflow_behavior = action.props.get(
-                    "staticOverflowBehavior", "truncate")
-                if overflowing and overflow_behavior == "reject":
-                    raise ValueError(
-                        "Substituted static LCD text exceeds the %d-character row width" %
-                        screen_width)
-                if overflowing and overflow_behavior == "marquee":
-                    lcd.startAnimation(
-                        mode="marquee",
-                        lines_a=lines_a,
-                        lines_b=[""] * line_count,
-                        interval=float(action.props.get(
-                            "overflowMarqueeInterval", 0.4)),
-                        direction=action.props.get(
-                            "overflowMarqueeDirection", "left"),
-                        gap=int(action.props.get("overflowMarqueeGap", 3)))
+        backlight = float(action.props.get("backlight", 1.0))
+        contrast = float(action.props.get("contrast", 0.5))
+        overflow_behavior = action.props.get(
+            "staticOverflowBehavior", "truncate")
+        overflow_interval = float(action.props.get(
+            "overflowMarqueeInterval", 0.4))
+        overflow_direction = action.props.get(
+            "overflowMarqueeDirection", "left")
+        overflow_gap = int(action.props.get("overflowMarqueeGap", 3))
+        animation_interval = float(action.props.get(
+            "marqueeInterval" if mode in ("marquee", "virtualMarquee")
+            else "flashInterval",
+            0.4 if mode in ("marquee", "virtualMarquee") else 1.0))
+        animation_direction = action.props.get("marqueeDirection", "left")
+        animation_gap = int(action.props.get("marqueeGap", 3))
+        graphic_text = self.substitute(action.props.get("graphicText", ""))
+        graphic_x = int(action.props.get("graphicX", 0))
+        graphic_y = int(action.props.get("graphicY", 0))
+
+        def apply_display():
+            # A display action implies that the panel should be visible. This
+            # exits backlight-based sleep emulation before setting brightness.
+            lcd.setSleeping(False)
+            lcd.setBacklight(backlight)
+            lcd.setContrast(contrast)
+            if mode == "static":
+                if line_count:
+                    screen_width = getattr(lcd, "screenWidth", None)
+                    overflowing = any(
+                        screen_width is not None and len(line) > screen_width
+                        for line in lines_a)
+                    if overflowing and overflow_behavior == "reject":
+                        raise ValueError(
+                            "Substituted static LCD text exceeds the "
+                            "%d-character row width" % screen_width)
+                    if overflowing and overflow_behavior == "marquee":
+                        lcd.startAnimation(
+                            mode="marquee",
+                            lines_a=lines_a,
+                            lines_b=[""] * line_count,
+                            interval=overflow_interval,
+                            direction=overflow_direction,
+                            gap=overflow_gap)
+                    else:
+                        lcd.writeLines(lines_a)
                 else:
-                    lcd.writeLines(lines_a)
+                    lcd.writeText(graphic_text, graphic_x, graphic_y)
             else:
-                lcd.writeText(
-                    self.substitute(action.props.get("graphicText", "")),
-                    int(action.props.get("graphicX", 0)),
-                    int(action.props.get("graphicY", 0)))
-        else:
-            lcd.startAnimation(
-                mode=mode,
-                lines_a=lines_a,
-                lines_b=lines_b,
-                interval=float(action.props.get(
-                    "marqueeInterval" if mode in ("marquee", "virtualMarquee")
-                    else "flashInterval",
-                    0.4 if mode in ("marquee", "virtualMarquee") else 1.0)),
-                direction=action.props.get("marqueeDirection", "left"),
-                gap=int(action.props.get("marqueeGap", 3)))
+                lcd.startAnimation(
+                    mode=mode,
+                    lines_a=lines_a,
+                    lines_b=lines_b,
+                    interval=animation_interval,
+                    direction=animation_direction,
+                    gap=animation_gap)
+
+        lcd.runDisplayWhenAttached(apply_display)
 
     def lcdStopAnimation(self, action, device=None):
         self._lcdForAction(action, device).stopAnimation()

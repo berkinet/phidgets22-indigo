@@ -42,7 +42,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.0</string>", plist)
+        self.assertIn("<string>0.3.1</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -242,6 +242,8 @@ class ConfigurationTests(unittest.TestCase):
         active_lcd.setSleeping = mock.Mock()
         active_lcd.startAnimation = mock.Mock()
         active_lcd.stopAnimation = mock.Mock()
+        active_lcd.runDisplayWhenAttached = mock.Mock(
+            side_effect=lambda callback: callback())
         instance.activePhidgets[device.id] = active_lcd
         substitutions = {
             "%%name%%": "Kitchen",
@@ -322,6 +324,8 @@ class ConfigurationTests(unittest.TestCase):
         active_lcd.setContrast = mock.Mock()
         active_lcd.writeLines = mock.Mock()
         active_lcd.startAnimation = mock.Mock()
+        active_lcd.runDisplayWhenAttached = mock.Mock(
+            side_effect=lambda callback: callback())
         instance.activePhidgets = {42: active_lcd}
         instance.substitute = lambda value: (
             "This substituted value is longer than twenty characters"

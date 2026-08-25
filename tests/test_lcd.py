@@ -184,6 +184,38 @@ class LCDTests(unittest.TestCase):
         self.assertEqual(set(native.handlers), {
             "setOnErrorHandler", "setOnAttachHandler", "setOnDetachHandler"})
 
+    def test_detached_display_queue_replays_only_the_latest_request(self):
+        native = FakeLCD()
+        logger = mock.Mock()
+        wrapper = make_wrapper(native, logger=logger)
+        first = mock.Mock()
+        latest = mock.Mock()
+
+        self.assertFalse(wrapper.runDisplayWhenAttached(first))
+        self.assertFalse(wrapper.runDisplayWhenAttached(latest))
+        self.assertIs(wrapper._pending_display_request, latest)
+
+        wrapper._state = "attached"
+        wrapper._replay_pending_display_request()
+
+        first.assert_not_called()
+        latest.assert_called_once_with()
+        self.assertIsNone(wrapper._pending_display_request)
+        logger.info.assert_called_once_with(
+            "Queued LCD display request applied after attachment: device='%s'",
+            wrapper.indigoDevice.name)
+
+    def test_attached_display_request_runs_immediately(self):
+        native = FakeLCD()
+        wrapper = make_wrapper(native)
+        callback = mock.Mock()
+        wrapper._state = "attached"
+
+        self.assertTrue(wrapper.runDisplayWhenAttached(callback))
+
+        callback.assert_called_once_with()
+        self.assertIsNone(wrapper._pending_display_request)
+
     def test_configures_text_adapter_and_restores_initial_text(self):
         native = FakeLCD()
         wrapper = make_wrapper(
