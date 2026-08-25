@@ -35,6 +35,10 @@ device creation, and printing a Phidgets network map.
 
 See [Release notes](CHANGELOG.md) for changes in each published version.
 
+Maintainers should follow the
+[Indigo Plugin Store publication guide](docs/INDIGO_PLUGIN_STORE.md) for the
+permanent plugin identity, release procedure, and Store submission checklist.
+
 ## Status
 
 The following Phidget classes are currently supported:
@@ -64,3 +68,4 @@ configuration and discovery callbacks.
 - [Read-only discovery inventory](docs/DISCOVERY_INVENTORY.md)
 - [Preparatory cleanup audit](docs/CLEANUP_AUDIT.md)
 - [Phidget class support roadmap](docs/PHIDGET_CLASS_ROADMAP.md)
+- [Indigo Plugin Store publication](docs/INDIGO_PLUGIN_STORE.md)

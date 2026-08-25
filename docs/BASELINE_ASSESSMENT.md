@@ -14,9 +14,7 @@ No runtime code, Indigo XML, bundled Phidget22 code, or plugin metadata was chan
 
 ## Product baseline
 
-- Indigo plugin identifier at the time of this baseline: `com.yikes.eric.phidgets-indigo`
-  (changed to the permanent Plugin Store identifier `com.berkinet.phidgets22`
-  in version 0.3.0)
+- Indigo plugin identifier: `com.yikes.eric.phidgets-indigo`
 - Display name: `Phidgets 22`
 - Plugin version: `0.2.0`
 - Indigo Server API version: `3.0`

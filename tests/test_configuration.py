@@ -43,7 +43,7 @@ class ConfigurationTests(unittest.TestCase):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
         self.assertIn("<string>0.3.0</string>", plist)
-        self.assertIn("<string>com.berkinet.phidgets22</string>", plist)
+        self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
         self.assertIs(plugin.Plugin.lcdSetDisplay, actions.ActionsMixin.lcdSetDisplay)

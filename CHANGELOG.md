@@ -5,7 +5,8 @@
 ### Changed
 
 - Adopt the three-part version scheme required by the Indigo Plugin Store.
-- Establish `com.berkinet.phidgets22` as the plugin's permanent Store identity.
+- Preserve `com.yikes.eric.phidgets-indigo` as the permanent plugin identity so
+  existing Indigo devices and actions remain associated with the plugin.
 - Prepare the first published GitHub release for Indigo Plugin Store
   distribution.
 
