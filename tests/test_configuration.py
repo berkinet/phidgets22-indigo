@@ -42,7 +42,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.3</string>", plist)
+        self.assertIn("<string>0.3.4</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -107,18 +107,18 @@ class ConfigurationTests(unittest.TestCase):
                 types.SimpleNamespace(
                     deviceTypeId="unknown", pluginProps=dict(props)))
 
-    def test_missing_model_discovery_returns_model_specific_alert(self):
+    def test_missing_model_discovery_reveals_model_specific_notice(self):
         instance = object.__new__(plugin.Plugin)
         inventory = mock.Mock()
         inventory.resolve_channel.return_value = None
         inventory.selection_for_saved_address.return_value = None
         inventory.server_choices.return_value = []
         instance.discoveryInventory = inventory
-        instance.menuChanged = lambda values, type_id, device_id: values
 
         values, errors = instance.getDeviceConfigUiValues({}, "lcd", 0)
 
-        self.assertIn('No model type "LCD"', errors["showAlertText"])
+        self.assertFalse(values["compatibleModelFound"])
+        self.assertEqual(errors, {})
         inventory.server_choices.assert_called_once_with("lcd")
 
     def test_data_adapter_device_is_declared(self):
@@ -127,7 +127,10 @@ class ConfigurationTests(unittest.TestCase):
 
         self.assertIsNotNone(adapter)
         fields = {field.get("id") for field in adapter.iter("Field")}
-        self.assertTrue({"dataAdapterVoltage", "dataAdapterFrequency"} <= fields)
+        self.assertTrue({"dataAdapterVoltage", "dataAdapterFrequency",
+                         "compatibleModelFound", "missingModelNotice"} <= fields)
+        notice = adapter.find(".//Field[@id='missingModelNotice']/Label")
+        self.assertIn("No I2C Data Adapter device", notice.text)
 
     def test_device_menu_defaults_and_icon_labels(self):
         root = ElementTree.parse(SERVER_PLUGIN / "Devices.xml").getroot()

@@ -1,5 +1,21 @@
 # Release notes
 
+## 0.3.4 — 2026-08-26
+
+### Fixed
+
+- Render the model-specific missing-device notice as a visible field inside
+  every device configuration pane. Indigo does not display `showAlertText`
+  returned while initially loading device configuration values, so the 0.3.3
+  alert was calculated but never shown.
+- Keep the notice synchronized with the discovery inventory and hide it as
+  soon as at least one compatible channel is available.
+
+### Testing
+
+- Confirm a missing model sets the shared visibility binding and that the I2C
+  Data Adapter pane contains the correct model-specific notice.
+
 ## 0.3.3 — 2026-08-26
 
 ### Added

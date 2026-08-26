@@ -10,18 +10,6 @@ from discovery import (CHANNEL_CLASSES_BY_DEVICE_TYPE, device_token,
 
 
 class DiscoveryUiMixin(object):
-    DEVICE_TYPE_NAMES = {
-        "voltageInput": "Voltage Input",
-        "voltageRatioInput": "Voltage Ratio Input",
-        "digitalInput": "Digital Input",
-        "digitalOutput": "Digital Output",
-        "temperatureSensor": "Temperature Sensor",
-        "humiditySensor": "Humidity Sensor",
-        "frequencyCounter": "Frequency Counter",
-        "lcd": "LCD",
-        "dataAdapter": "I2C Data Adapter",
-    }
-
     def validatePrefsConfigUi(self, valuesDict):
         try:
             attach_timeout = int(valuesDict.get("attachTimeout", "5"))
@@ -61,16 +49,7 @@ class DiscoveryUiMixin(object):
                 for key, value in recovered.items():
                     values[key] = value
                 values["configurationMigrated"] = True
-        values = self.menuChanged(values, typeId, devId)
-        errors = indigo.Dict()
-        if (self.discoveryInventory is not None and
-                not self.discoveryInventory.server_choices(typeId)):
-            model = self.DEVICE_TYPE_NAMES.get(typeId, typeId)
-            errors["showAlertText"] = (
-                'No model type "%s" was automatically found. '
-                "Please configure it manually, or install an appropriate device."
-                % model)
-        return (values, errors)
+        return (self.menuChanged(values, typeId, devId), indigo.Dict())
 
     def _observedConnectionForDevice(self, devId):
         if devId:
@@ -278,9 +257,11 @@ class DiscoveryUiMixin(object):
         """Refresh dependent menus and auto-select every unambiguous level."""
         inventory = self.discoveryInventory
         if inventory is None:
+            valuesDict["compatibleModelFound"] = False
             return valuesDict
 
         valid_servers = inventory.server_choices(typeId)
+        valuesDict["compatibleModelFound"] = bool(valid_servers)
         selected_server = valuesDict.get("discoveredServer", "")
         if (selected_server not in [choice[0] for choice in valid_servers] and
                 len(valid_servers) == 1):
