@@ -14,6 +14,10 @@ from phidget import PhidgetBase
 class DataAdapterPhidget(PhidgetBase):
     """Own one physical DataAdapter channel and serialize access to its bus."""
 
+    AVAILABLE_FUNCTIONS = {
+        "lcd": "LCD display transport",
+    }
+
     def __init__(self, voltage, frequency, *args, **kwargs):
         super(DataAdapterPhidget, self).__init__(
             phidget=DataAdapter(), *args, **kwargs)
@@ -36,11 +40,21 @@ class DataAdapterPhidget(PhidgetBase):
         ph.getMaxReceivePacketLength()
         for key, value in (
                 ("adapterStatus", "I2C ready"),
+                ("availableFunctions", self.availableFunctionsText()),
                 ("dataAdapterVoltage", int(ph.getDataAdapterVoltage())),
                 ("dataAdapterFrequency", int(ph.getFrequency())),
                 ("maxSendPacketLength", int(ph.getMaxSendPacketLength())),
                 ("maxReceivePacketLength", int(ph.getMaxReceivePacketLength()))):
             self.indigoDevice.updateStateOnServer(key, value=value)
+
+    @classmethod
+    def supportsFunction(cls, function_id):
+        return str(function_id) in cls.AVAILABLE_FUNCTIONS
+
+    @classmethod
+    def availableFunctionsText(cls):
+        return ", ".join(cls.AVAILABLE_FUNCTIONS[key]
+                         for key in sorted(cls.AVAILABLE_FUNCTIONS))
 
     def _validate_transaction(self, address, data, receive_length=None):
         if self._state != "attached":
@@ -81,6 +95,8 @@ class DataAdapterPhidget(PhidgetBase):
         states = indigo.List()
         states.append(self.indigo_plugin.getDeviceStateDictForStringType(
             "adapterStatus", "Adapter status", "adapterStatus"))
+        states.append(self.indigo_plugin.getDeviceStateDictForStringType(
+            "availableFunctions", "Available functions", "availableFunctions"))
         for state_id, label in (
                 ("dataAdapterVoltage", "Data adapter voltage"),
                 ("dataAdapterFrequency", "Data adapter frequency"),

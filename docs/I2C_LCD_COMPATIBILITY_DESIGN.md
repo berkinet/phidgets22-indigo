@@ -9,6 +9,12 @@ configures a physical ADP0001 DataAdapter channel as a shared I2C bus. Display
 protocol support remains pending representative hardware. This document does
 not commit the plugin to a particular I2C LCD, backpack, or pin mapping.
 
+Version 0.3.6 adds provider awareness. DataAdapter devices advertise readable
+available functions, initially `LCD display transport`, and the LCD layer can
+combine native channels and configured capable adapters into one internal
+provider inventory. The adapter-backed choice is not shown in the LCD pane
+until at least one tested controller profile can render through it.
+
 ## Motivation
 
 Phidgets identifies the 1204 PhidgetTextLCD Adapter as not recommended for new
@@ -90,8 +96,11 @@ Likely hardware hooks include:
 
 ## Indigo configuration model
 
-Native LCD discovery continues unchanged. I2C configuration uses two Indigo
-devices so one physical bus can safely serve more than one peripheral:
+The user-facing LCD workflow uses one display selector. It searches native LCD
+channels first, then configured adapters that advertise the `lcd` function,
+and combines both results without asking the user to choose a transport.
+Internally, I2C configuration still uses two Indigo devices so one physical
+bus can safely serve more than one peripheral:
 
 ```text
 Create I2C Data Adapter

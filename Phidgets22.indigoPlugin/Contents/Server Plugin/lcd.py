@@ -24,6 +24,23 @@ class LCDPhidget(PhidgetBase):
     the transport-specific hooks while retaining this public action contract.
     """
 
+    PROVIDER_FUNCTION = "lcd"
+
+    @classmethod
+    def resolveAdapterProvider(cls, indigo_plugin, adapter_device_id):
+        """Resolve an LCD-capable shared adapter without reopening its channel."""
+        try:
+            adapter_device_id = int(adapter_device_id)
+        except (TypeError, ValueError):
+            raise ValueError("Select an available display provider")
+        adapter = indigo_plugin.activePhidgets.get(adapter_device_id)
+        if adapter is None:
+            raise RuntimeError("The selected display provider is not active")
+        supports = getattr(adapter, "supportsFunction", None)
+        if supports is None or not supports(cls.PROVIDER_FUNCTION):
+            raise ValueError("The selected provider does not support LCD displays")
+        return adapter
+
     def __init__(self, screenSize, backlight, contrast,
                  restoreInitialText, initialText, initialLines, initialX, initialY,
                  *args, **kwargs):

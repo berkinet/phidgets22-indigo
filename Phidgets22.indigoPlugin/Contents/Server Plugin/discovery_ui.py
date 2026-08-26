@@ -7,9 +7,17 @@ import indigo
 from discovery import (CHANNEL_CLASSES_BY_DEVICE_TYPE, device_token,
                        format_channel, format_network_diagram, server_token,
                        target_token)
+from display_providers import available_display_providers
 
 
 class DiscoveryUiMixin(object):
+    def getAvailableDisplayMenu(self, filter="", valuesDict=None,
+                                typeId="", targetId=0):
+        """Supply one future LCD selector without exposing its transport."""
+        providers = available_display_providers(self)
+        return [("selectDisplay", "Select a display")] + [
+            (provider["id"], provider["name"]) for provider in providers]
+
     def validatePrefsConfigUi(self, valuesDict):
         try:
             attach_timeout = int(valuesDict.get("attachTimeout", "5"))

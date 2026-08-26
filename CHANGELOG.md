@@ -1,5 +1,26 @@
 # Release notes
 
+## 0.3.6 — 2026-08-26
+
+### Added
+
+- Advertise each configured DataAdapter's available logical functions through
+  the `availableFunctions` Indigo state, initially including LCD display
+  transport.
+- Add a transport-neutral display-provider inventory that searches native
+  Phidget LCD channels and configured LCD-capable adapters and returns one
+  friendly list without exposing native versus I2C implementation choices.
+- Add an LCD contract resolver that obtains the already-open shared adapter
+  from the plugin rather than reopening its physical DataAdapter channel.
+- Add the future `getAvailableDisplayMenu` callback. It remains intentionally
+  absent from the LCD pane until a tested controller profile can make an
+  adapter-backed selection operational.
+
+### Testing
+
+- Cover adapter capability advertisement, unified native/adapter inventory,
+  friendly provider names, filtering, and shared-provider resolution.
+
 ## 0.3.5 — 2026-08-26
 
 ### Fixed

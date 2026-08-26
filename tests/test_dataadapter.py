@@ -68,11 +68,16 @@ class DataAdapterTests(unittest.TestCase):
                        for call in wrapper.indigoDevice.updateStateOnServer.call_args_list)
         self.assertEqual(updates, {
             "adapterStatus": "I2C ready",
+            "availableFunctions": "LCD display transport",
             "dataAdapterVoltage": 5,
             "dataAdapterFrequency": 2,
             "maxSendPacketLength": 8,
             "maxReceivePacketLength": 6,
         })
+
+    def test_adapter_advertises_lcd_provider_capability(self):
+        self.assertTrue(dataadapter.DataAdapterPhidget.supportsFunction("lcd"))
+        self.assertFalse(dataadapter.DataAdapterPhidget.supportsFunction("humidity"))
 
     def test_send_receive_validates_and_forwards_transaction(self):
         wrapper = self.wrapper()
