@@ -64,6 +64,24 @@ class DiscoveryUiMixin(object):
 
     def validateDeviceConfigUi(self, valuesDict, typeId, devId):
         valuesDict["observedConnection"] = self._observedConnectionForDevice(devId)
+        inventory = getattr(self, "discoveryInventory", None)
+        compatible_available = bool(
+            inventory is not None and inventory.server_choices(typeId))
+        has_saved_address = bool(
+            str(valuesDict.get("serialNumber", "")).strip() and
+            str(valuesDict.get("channel", "")).strip())
+        if not has_saved_address:
+            errors = indigo.Dict()
+            if compatible_available:
+                errors["discoveredServer"] = "Select a compatible device."
+                errors["showAlertText"] = (
+                    "Select an available device and channel before saving.")
+            else:
+                errors["discoveredServer"] = "No compatible device is available."
+                errors["showAlertText"] = (
+                    "Connect and install an appropriate device before saving.")
+            return (False, valuesDict, errors)
+
         selected_channel = valuesDict.get("discoveredChannel", "")
         description = None
         if selected_channel and selected_channel not in (

@@ -1,5 +1,20 @@
 # Release notes
 
+## 0.3.5 — 2026-08-26
+
+### Fixed
+
+- Remove the misleading manual-configuration instruction from missing-model
+  notices because the discovery address fields are read-only.
+- Reject Save for a new device when no compatible channel is available or
+  selected, while continuing to permit edits to an already configured device
+  that is temporarily offline and retains its saved address.
+
+### Testing
+
+- Cover new-device rejection, offline configured-device preservation, and the
+  corrected I2C Data Adapter notice.
+
 ## 0.3.4 — 2026-08-26
 
 ### Fixed

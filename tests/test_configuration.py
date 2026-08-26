@@ -42,7 +42,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.4</string>", plist)
+        self.assertIn("<string>0.3.5</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -131,6 +131,57 @@ class ConfigurationTests(unittest.TestCase):
                          "compatibleModelFound", "missingModelNotice"} <= fields)
         notice = adapter.find(".//Field[@id='missingModelNotice']/Label")
         self.assertIn("No I2C Data Adapter device", notice.text)
+        self.assertNotIn("manually", notice.text)
+
+    def test_new_device_cannot_save_without_a_compatible_channel(self):
+        instance = object.__new__(plugin.Plugin)
+        inventory = mock.Mock()
+        inventory.server_choices.return_value = []
+        instance.discoveryInventory = inventory
+        instance._observedConnectionForDevice = lambda device_id: "Not yet observed"
+        values = indigo.Dict({"serialNumber": "", "channel": ""})
+
+        valid, returned_values, errors = instance.validateDeviceConfigUi(
+            values, "dataAdapter", 0)
+
+        self.assertFalse(valid)
+        self.assertIs(returned_values, values)
+        self.assertIn("discoveredServer", errors)
+        self.assertIn("before saving", errors["showAlertText"])
+
+    def test_new_device_must_select_one_of_several_available_channels(self):
+        instance = object.__new__(plugin.Plugin)
+        inventory = mock.Mock()
+        inventory.server_choices.return_value = [("server-token", "Server")]
+        instance.discoveryInventory = inventory
+        instance._observedConnectionForDevice = lambda device_id: "Not yet observed"
+        values = indigo.Dict({"serialNumber": "", "channel": ""})
+
+        valid, returned_values, errors = instance.validateDeviceConfigUi(
+            values, "dataAdapter", 0)
+
+        self.assertFalse(valid)
+        self.assertIs(returned_values, values)
+        self.assertIn("Select an available device", errors["showAlertText"])
+
+    def test_configured_offline_device_retains_saved_address(self):
+        instance = object.__new__(plugin.Plugin)
+        indigo.variables = {}
+        inventory = mock.Mock()
+        inventory.server_choices.return_value = []
+        instance.discoveryInventory = inventory
+        instance._observedConnectionForDevice = lambda device_id: "Previously observed"
+        values = indigo.Dict({
+            "serialNumber": "123456", "channel": "0", "serverName": "",
+            "isVintHub": False, "isVintDevice": False,
+            "dataAdapterVoltage": "5", "dataAdapterFrequency": "2",
+        })
+
+        valid, returned_values = instance.validateDeviceConfigUi(
+            values, "dataAdapter", 42)
+
+        self.assertTrue(valid)
+        self.assertEqual(returned_values["address"], "123456|p-0")
 
     def test_device_menu_defaults_and_icon_labels(self):
         root = ElementTree.parse(SERVER_PLUGIN / "Devices.xml").getroot()
