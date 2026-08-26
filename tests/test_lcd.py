@@ -171,10 +171,22 @@ def make_wrapper(native, **overrides):
     }
     settings.update(overrides)
     with mock.patch.object(lcd, "LCD", return_value=native):
-        return lcd.LCDPhidget(**settings)
+        return lcd.NativeLCDPhidget(**settings)
 
 
 class LCDTests(unittest.TestCase):
+    def test_native_lcd_implements_the_common_lcd_contract(self):
+        self.assertTrue(issubclass(lcd.NativeLCDPhidget, lcd.LCDPhidget))
+        with self.assertRaisesRegex(TypeError, "concrete Phidget22 channel"):
+            lcd.LCDPhidget(
+                screenSize=LCDScreenSize.SCREEN_SIZE_NONE,
+                backlight=0.75, contrast=0.4,
+                restoreInitialText=False, initialText="", initialLines=[],
+                initialX=0, initialY=0,
+                indigo_plugin=FakePlugin(),
+                indigoDevice=mock.Mock(id=42),
+                logger=logging.getLogger("test.lcd.contract"))
+
     def test_registers_lifecycle_handlers(self):
         native = FakeLCD()
         wrapper = make_wrapper(native)

@@ -16,12 +16,21 @@ from phidget import PhidgetBase
 
 
 class LCDPhidget(PhidgetBase):
-    """Indigo wrapper for Phidget22 text and graphic LCD channels."""
+    """Common Indigo LCD contract shared by native and adapter displays.
+
+    Concrete subclasses supply the Phidget22 channel used to reach the
+    display. The current native subclass uses ``Phidget22.Devices.LCD``; a
+    future I2C subclass will use ``Phidget22.Devices.DataAdapter`` and override
+    the transport-specific hooks while retaining this public action contract.
+    """
 
     def __init__(self, screenSize, backlight, contrast,
                  restoreInitialText, initialText, initialLines, initialX, initialY,
                  *args, **kwargs):
-        super(LCDPhidget, self).__init__(phidget=LCD(), *args, **kwargs)
+        phidget = kwargs.pop("phidget", None)
+        if phidget is None:
+            raise TypeError("LCDPhidget requires a concrete Phidget22 channel")
+        super(LCDPhidget, self).__init__(phidget=phidget, *args, **kwargs)
         self.screenSize = LCDScreenSize(int(screenSize))
         self.backlight = float(backlight)
         self.contrast = float(contrast)
@@ -510,3 +519,11 @@ class LCDPhidget(PhidgetBase):
 
     def getDeviceDisplayStateId(self):
         return "lastText"
+
+
+class NativeLCDPhidget(LCDPhidget):
+    """LCD contract implemented by a native Phidget22 LCD channel."""
+
+    def __init__(self, *args, **kwargs):
+        kwargs["phidget"] = LCD()
+        super(NativeLCDPhidget, self).__init__(*args, **kwargs)

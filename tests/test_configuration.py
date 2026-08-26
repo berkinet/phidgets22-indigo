@@ -42,7 +42,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.1</string>", plist)
+        self.assertIn("<string>0.3.2</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -71,7 +71,7 @@ class ConfigurationTests(unittest.TestCase):
             "temperatureSensor": "TemperatureSensorPhidget",
             "frequencyCounter": "FrequencyCounterPhidget",
             "humiditySensor": "HumiditySensorPhidget",
-            "lcd": "LCDPhidget",
+            "lcd": "NativeLCDPhidget",
         }
         props = {
             "serialNumber": "123456", "channel": "2",
@@ -224,7 +224,7 @@ class ConfigurationTests(unittest.TestCase):
         }
         wrapper = mock.Mock()
         with mock.patch.object(
-                device_factory, "LCDPhidget", return_value=wrapper) as factory:
+                device_factory, "NativeLCDPhidget", return_value=wrapper) as factory:
             instance.deviceStartComm(device)
 
         wrapper.start.assert_called_once_with()

@@ -10,7 +10,7 @@ from temperaturesensor import TemperatureSensorPhidget
 from digitalinput import DigitalInputPhidget
 from frequencycounter import FrequencyCounterPhidget
 from humiditysensor import HumiditySensorPhidget
-from lcd import LCDPhidget
+from lcd import NativeLCDPhidget
 
 
 def _saved_bool(value):
@@ -141,7 +141,7 @@ def _humidity_sensor(plugin, device, common):
 
 def _lcd(plugin, device, common):
     props = device.pluginProps
-    return LCDPhidget(
+    return NativeLCDPhidget(
         **common["base"],
         screenSize=int(props.get("lcdScreenSize", 1)),
         backlight=float(props.get("lcdBacklight", 1.0)),

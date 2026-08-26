@@ -1,5 +1,24 @@
 # Release notes
 
+## 0.3.2 — 2026-08-26
+
+### Changed
+
+- Establish `LCDPhidget` as the common plugin-level display contract for all
+  Phidgets-connected LCD transports.
+- Add `NativeLCDPhidget` as the concrete implementation backed by
+  `Phidget22.Devices.LCD`, and make the device factory select it for every
+  existing LCD device without changing Indigo actions, states, or saved
+  configuration.
+- Require future display subclasses to provide their concrete Phidget22
+  channel, creating the construction seam needed by an I2C `DataAdapter`
+  implementation.
+
+### Testing
+
+- Add inheritance and factory coverage for the common/native LCD boundary.
+- Confirm all existing native text and graphic LCD behavior remains unchanged.
+
 ## 0.3.1 — 2026-08-25
 
 ### Fixed

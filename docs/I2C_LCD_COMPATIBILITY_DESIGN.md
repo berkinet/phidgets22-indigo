@@ -2,9 +2,11 @@
 
 ## Status
 
-Discussion note for future implementation after representative hardware is
-available. This document does not commit the plugin to a particular I2C LCD,
-backpack, or pin mapping.
+Phase 1 implemented in version 0.3.2. `LCDPhidget` is now the common
+plugin-level contract, and `NativeLCDPhidget` is the concrete implementation
+selected for existing native LCD devices. I2C transport support remains
+pending representative hardware. This document does not commit the plugin to
+a particular I2C LCD, backpack, or pin mapping.
 
 ## Motivation
 
@@ -66,6 +68,12 @@ The exact class names may change, but these constraints should not:
 4. Hardware calls move behind small overridable hooks only where required.
 5. The device factory selects the concrete implementation from saved device
    configuration; callers do not branch on the transport.
+
+Version 0.3.2 establishes this inheritance and construction boundary without
+changing the existing device type or saved properties. The native subclass
+supplies a `Phidget22.Devices.LCD` channel to the common contract. The I2C
+subclass and its transport hooks will be added after the ADP0001 and display
+profile can be exercised on real hardware.
 
 Likely hardware hooks include:
 
