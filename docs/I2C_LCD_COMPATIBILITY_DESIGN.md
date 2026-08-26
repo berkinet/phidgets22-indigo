@@ -2,11 +2,12 @@
 
 ## Status
 
-Phase 1 implemented in version 0.3.2. `LCDPhidget` is now the common
+Phase 2 implemented in version 0.3.3. `LCDPhidget` is the common
 plugin-level contract, and `NativeLCDPhidget` is the concrete implementation
-selected for existing native LCD devices. I2C transport support remains
-pending representative hardware. This document does not commit the plugin to
-a particular I2C LCD, backpack, or pin mapping.
+selected for existing native LCD devices. `DataAdapterPhidget` now owns and
+configures a physical ADP0001 DataAdapter channel as a shared I2C bus. Display
+protocol support remains pending representative hardware. This document does
+not commit the plugin to a particular I2C LCD, backpack, or pin mapping.
 
 ## Motivation
 
@@ -53,9 +54,11 @@ LCDPhidget (existing plugin contract and shared display behavior)
 │   └── Phidget22.Devices.LCD
 │       ├── 1204 legacy text adapter
 │       └── LCD1100 graphic display
-└── I2CLCDPhidget
-    └── Phidget22.Devices.DataAdapter
-        └── supported I2C controller/backpack and display
+DataAdapterPhidget
+└── Phidget22.Devices.DataAdapter (one open physical channel)
+    ├── I2CLCDPhidget (future logical child)
+    ├── I2CTemperaturePhidget (possible future logical child)
+    └── other addressed I2C peripheral profiles
 ```
 
 The exact class names may change, but these constraints should not:
@@ -87,17 +90,24 @@ Likely hardware hooks include:
 
 ## Indigo configuration model
 
-Native LCD discovery continues unchanged. I2C configuration would resemble a
-device attached behind a selected port:
+Native LCD discovery continues unchanged. I2C configuration uses two Indigo
+devices so one physical bus can safely serve more than one peripheral:
 
 ```text
-Select Phidget server
-  → Select ADP0001 DataAdapter channel
-    → Select supported I2C display profile
-      → Configure I2C address
-      → Configure dimensions
-      → Select backpack/pin-mapping preset if required
+Create I2C Data Adapter
+  → Select server and ADP0001 DataAdapter channel
+  → Configure voltage and frequency
+Create LCD
+  → Select I2C display transport
+  → Select the configured I2C Data Adapter
+  → Select supported display profile and address
+  → Configure dimensions and backpack/pin-mapping preset
 ```
+
+The adapter device exclusively owns the Phidget22 channel and serializes all
+transactions. Logical peripherals reference it by Indigo device ID. The
+ADP0001's DigitalInput and DigitalOutput channels continue to use the existing
+device types and are created only when the user wants them.
 
 The I2C peripheral generally cannot identify its display type, dimensions, or
 backpack wiring. Discovery therefore ends at the DataAdapter. Probing common
@@ -155,18 +165,20 @@ Transport tests should separately verify native LCD method calls and exact I2C
 byte/command sequences. Real-hardware acceptance testing is required before an
 I2C profile is released.
 
-## Implementation sequence when hardware is available
+## Implementation sequence
 
-1. Inventory the ADP0001 and display/backpack model, address, voltage, and pin
+1. **Complete in 0.3.3:** add the shared ADP0001 DataAdapter device, discovery,
+   bus configuration, locking, validation, and transaction boundary.
+2. Inventory the ADP0001 and display/backpack model, address, voltage, and pin
    mapping.
-2. Capture working initialization and write transactions in a standalone
+3. Capture working initialization and write transactions in a standalone
    Phidget22 Python experiment.
-3. Add transport hooks to `LCDPhidget` without changing its public behavior.
-4. Run the complete existing LCD suite against the unchanged native path.
-5. Implement `I2CLCDPhidget` and its profile-specific transport.
-6. Add shared-contract, I2C-sequence, discovery, configuration, and migration
+4. Add transport hooks to `LCDPhidget` without changing its public behavior.
+5. Run the complete existing LCD suite against the unchanged native path.
+6. Implement `I2CLCDPhidget` and its profile-specific transport.
+7. Add shared-contract, I2C-sequence, discovery, configuration, and migration
    tests.
-7. Validate the full Indigo action set on hardware before publishing support.
+8. Validate the full Indigo action set on hardware before publishing support.
 
 ## Non-goals for the first implementation
 

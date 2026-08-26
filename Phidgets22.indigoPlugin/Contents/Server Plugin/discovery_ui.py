@@ -10,6 +10,18 @@ from discovery import (CHANNEL_CLASSES_BY_DEVICE_TYPE, device_token,
 
 
 class DiscoveryUiMixin(object):
+    DEVICE_TYPE_NAMES = {
+        "voltageInput": "Voltage Input",
+        "voltageRatioInput": "Voltage Ratio Input",
+        "digitalInput": "Digital Input",
+        "digitalOutput": "Digital Output",
+        "temperatureSensor": "Temperature Sensor",
+        "humiditySensor": "Humidity Sensor",
+        "frequencyCounter": "Frequency Counter",
+        "lcd": "LCD",
+        "dataAdapter": "I2C Data Adapter",
+    }
+
     def validatePrefsConfigUi(self, valuesDict):
         try:
             attach_timeout = int(valuesDict.get("attachTimeout", "5"))
@@ -49,7 +61,16 @@ class DiscoveryUiMixin(object):
                 for key, value in recovered.items():
                     values[key] = value
                 values["configurationMigrated"] = True
-        return (self.menuChanged(values, typeId, devId), indigo.Dict())
+        values = self.menuChanged(values, typeId, devId)
+        errors = indigo.Dict()
+        if (self.discoveryInventory is not None and
+                not self.discoveryInventory.server_choices(typeId)):
+            model = self.DEVICE_TYPE_NAMES.get(typeId, typeId)
+            errors["showAlertText"] = (
+                'No model type "%s" was automatically found. '
+                "Please configure it manually, or install an appropriate device."
+                % model)
+        return (values, errors)
 
     def _observedConnectionForDevice(self, devId):
         if devId:
@@ -139,6 +160,25 @@ class DiscoveryUiMixin(object):
 
             if errors:
                 errors["showAlertText"] = "Correct the LCD settings before saving."
+                return (False, valuesDict, errors)
+
+        if typeId == "dataAdapter":
+            errors = indigo.Dict()
+            try:
+                voltage = int(valuesDict.get("dataAdapterVoltage", ""))
+                if voltage not in (1, 3, 4, 5):
+                    raise ValueError
+            except (TypeError, ValueError):
+                errors["dataAdapterVoltage"] = "Select a supported bus voltage."
+            try:
+                frequency = int(valuesDict.get("dataAdapterFrequency", ""))
+                if frequency not in (1, 2, 3):
+                    raise ValueError
+            except (TypeError, ValueError):
+                errors["dataAdapterFrequency"] = "Select a supported I2C frequency."
+            if errors:
+                errors["showAlertText"] = (
+                    "Correct the I2C adapter settings before saving.")
                 return (False, valuesDict, errors)
 
         address_index = str(valuesDict["serialNumber"])

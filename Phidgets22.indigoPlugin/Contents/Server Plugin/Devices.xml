@@ -547,4 +547,24 @@
 		</ConfigUI>
 	</Device>
 
+	<Device id="dataAdapter" type="custom">
+		<Name>I2C Data Adapter</Name>
+		<ConfigUI>
+			<Field id="configurationMigrated" type="checkbox" defaultValue="false" hidden="true"/>
+			<Field id="serverSelected" type="checkbox" defaultValue="false" hidden="true"/><Field id="deviceSelected" type="checkbox" defaultValue="false" hidden="true"/><Field id="vintSelected" type="checkbox" defaultValue="false" hidden="true"/><Field id="portSelected" type="checkbox" defaultValue="false" hidden="true"/><Field id="targetSelected" type="checkbox" defaultValue="false" hidden="true"/><Field id="channelParentSelected" type="checkbox" defaultValue="false" hidden="true"/><Field id="channelChoiceRequired" type="checkbox" defaultValue="false" hidden="true"/><Field id="derivedFieldsEnabled" type="checkbox" defaultValue="false" hidden="true"/>
+			<Field id="exampleLabel" type="label"><Label>Select a server, Phidget, and DataAdapter channel. This device owns the shared I2C bus; attached peripheral devices will reference it.</Label></Field>
+			<Field id="discoveredServer" type="menu" defaultValue="manual"><Label>Discovered server:</Label><List class="self" method="getDiscoveredServerMenu" dynamicReload="true"/><CallbackMethod>menuChanged</CallbackMethod></Field>
+			<Field id="discoveredDevice" type="menu" defaultValue="selectServer" enabledBindingId="serverSelected"><Label>Phidget:</Label><List class="self" method="getDiscoveredDeviceMenu" dynamicReload="true"/><CallbackMethod>menuChanged</CallbackMethod></Field>
+			<Field id="discoveredPort" type="menu" defaultValue="selectDevice" visibleBindingId="vintSelected" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true" enabledBindingId="deviceSelected"><Label>VINT port:</Label><List class="self" method="getDiscoveredPortMenu" dynamicReload="true"/><CallbackMethod>menuChanged</CallbackMethod></Field>
+			<Field id="discoveredTarget" type="menu" defaultValue="selectPort" visibleBindingId="vintSelected" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true" enabledBindingId="portSelected"><Label>Port device/function:</Label><List class="self" method="getDiscoveredTargetMenu" dynamicReload="true"/><CallbackMethod>menuChanged</CallbackMethod></Field>
+			<Field id="discoveredChannel" type="menu" defaultValue="" enabledBindingId="channelParentSelected" visibleBindingId="channelChoiceRequired" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Discovered channel:</Label><List class="self" method="getDiscoveredChannelMenu" dynamicReload="true"/><CallbackMethod>menuChanged</CallbackMethod></Field>
+			<Field id="serverName" type="textfield" hidden="true"/><Field id="serialNumber" type="textfield" readonly="true"><Label>Serial number:</Label></Field><Field id="channel" type="textfield" hidden="true"/>
+			<Field id="isVintHub" type="checkbox" defaultValue="False" enabledBindingId="derivedFieldsEnabled"><Label>Connected to a VINT hub?</Label></Field><Field id="isVintDevice" type="checkbox" defaultValue="False" enabledBindingId="derivedFieldsEnabled" visibleBindingId="isVintHub" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Is this a VINT device?</Label></Field><Field id="hubPort" type="textfield" enabledBindingId="derivedFieldsEnabled" visibleBindingId="isVintHub" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Hub port:</Label></Field>
+			<Field id="observedConnection" type="textfield"><Label>Phidgets path:</Label></Field>
+			<Field id="discoverySeparator" type="separator"/>
+			<Field id="dataAdapterVoltage" type="menu" defaultValue="5"><Label>I2C bus voltage:</Label><List><Option value="3">2.5 V</Option><Option value="4">3.3 V</Option><Option value="5">5.0 V</Option><Option value="1">External supply</Option></List></Field>
+			<Field id="dataAdapterFrequency" type="menu" defaultValue="2"><Label>I2C bus frequency:</Label><List><Option value="1">10 kHz</Option><Option value="2">100 kHz</Option><Option value="3">400 kHz</Option></List></Field>
+		</ConfigUI>
+	</Device>
+
 </Devices>

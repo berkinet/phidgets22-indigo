@@ -4,7 +4,7 @@ This inventory is based on the hardware/channel classes exposed by the locally
 installed Phidget22 1.26 Python package. Recheck the package when Phidget22 is
 upgraded because new channel classes may be added.
 
-The plugin currently supports 8 of the 35 hardware/channel classes, leaving 27
+The plugin currently supports 9 of the 35 hardware/channel classes, leaving 26
 possible additions.
 
 | Phidget22 class | Plugin support |
@@ -14,7 +14,7 @@ possible additions.
 | CapacitiveTouch | Not supported |
 | CurrentInput | Not supported |
 | DCMotor | Not supported |
-| DataAdapter | Not supported |
+| DataAdapter | Supported as shared I2C transport |
 | DigitalInput | Supported |
 | DigitalOutput | Supported |
 | DistanceSensor | Not supported |
@@ -68,7 +68,7 @@ The initial `LCD` support is complete. The remaining suggested sequence is:
 4. `RCServo`, `Stepper`, `DCMotor`, `BLDCMotor`, `MotorPositionController`, and
    `MotorVelocityController`: outputs requiring careful safety, limit, and
    action design.
-5. `IR`, `LEDArray`, `DataAdapter`, `PowerGuard`, and `Hub`: remaining
+5. `IR`, `LEDArray`, `PowerGuard`, and `Hub`: remaining
    specialized interfaces.
 
 `CurrentInput`, `VoltageOutput`, and `ResistanceInput` are intentionally not
@@ -78,10 +78,10 @@ Phidget22 package.
 
 ## LCD implementation notes
 
-Future compatibility with character displays connected through the Phidget
-ADP0001 I2C Adapter is documented separately in
+The shared ADP0001 DataAdapter foundation and future compatibility with
+character displays connected through it are documented separately in
 [`I2C_LCD_COMPATIBILITY_DESIGN.md`](I2C_LCD_COMPATIBILITY_DESIGN.md). That work
-is intentionally deferred until representative hardware is available.
+requires real-hardware verification before a display profile is released.
 
 Phidget22 exposes both text and graphic displays through the `LCD` channel
 class. The initial implementation supports the useful common subset while

@@ -1,5 +1,26 @@
 # Release notes
 
+## 0.3.3 — 2026-08-26
+
+### Added
+
+- Add the ADP0001 as an **I2C Data Adapter** Indigo device, including standard
+  local/remote/VINT discovery, selectable bus voltage, and 10, 100, or 400 kHz
+  I2C frequency.
+- Add a locked, validated DataAdapter transaction interface that future LCD,
+  temperature, humidity, and other logical peripheral devices can share
+  without opening the physical channel more than once.
+- Publish configured voltage, frequency, and packet-size capabilities as
+  Indigo states after attachment.
+- Show a model-specific alert when no compatible channel was automatically
+  discovered instead of opening a configuration pane without an explanation.
+
+### Testing
+
+- Add adapter configuration, transaction, validation, factory, discovery, XML,
+  and missing-model alert coverage. Real ADP0001 hardware verification remains
+  required before adding an I2C peripheral profile.
+
 ## 0.3.2 — 2026-08-26
 
 ### Changed

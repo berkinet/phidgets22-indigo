@@ -64,6 +64,11 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(
             discovery.CHANNEL_CLASSES_BY_DEVICE_TYPE["lcd"], "PhidgetLCD")
 
+    def test_data_adapter_type_maps_to_data_adapter_channel_class(self):
+        self.assertEqual(
+            discovery.CHANNEL_CLASSES_BY_DEVICE_TYPE["dataAdapter"],
+            "PhidgetDataAdapter")
+
     def test_describe_remote_channel(self):
         description = discovery.describe_channel(FakeChannel())
         self.assertEqual(description["serverName"], "phidget-server")

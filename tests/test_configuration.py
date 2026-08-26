@@ -42,7 +42,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.2</string>", plist)
+        self.assertIn("<string>0.3.3</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -54,6 +54,7 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(set(device_factory._BUILDERS), {
             "voltageInput", "voltageRatioInput", "digitalOutput", "digitalInput",
             "temperatureSensor", "frequencyCounter", "humiditySensor", "lcd",
+            "dataAdapter",
         })
 
     def test_factory_constructs_every_supported_wrapper(self):
@@ -72,6 +73,7 @@ class ConfigurationTests(unittest.TestCase):
             "frequencyCounter": "FrequencyCounterPhidget",
             "humiditySensor": "HumiditySensorPhidget",
             "lcd": "NativeLCDPhidget",
+            "dataAdapter": "DataAdapterPhidget",
         }
         props = {
             "serialNumber": "123456", "channel": "2",
@@ -104,6 +106,28 @@ class ConfigurationTests(unittest.TestCase):
                 instance,
                 types.SimpleNamespace(
                     deviceTypeId="unknown", pluginProps=dict(props)))
+
+    def test_missing_model_discovery_returns_model_specific_alert(self):
+        instance = object.__new__(plugin.Plugin)
+        inventory = mock.Mock()
+        inventory.resolve_channel.return_value = None
+        inventory.selection_for_saved_address.return_value = None
+        inventory.server_choices.return_value = []
+        instance.discoveryInventory = inventory
+        instance.menuChanged = lambda values, type_id, device_id: values
+
+        values, errors = instance.getDeviceConfigUiValues({}, "lcd", 0)
+
+        self.assertIn('No model type "LCD"', errors["showAlertText"])
+        inventory.server_choices.assert_called_once_with("lcd")
+
+    def test_data_adapter_device_is_declared(self):
+        devices = ElementTree.parse(SERVER_PLUGIN / "Devices.xml").getroot()
+        adapter = devices.find("./Device[@id='dataAdapter']")
+
+        self.assertIsNotNone(adapter)
+        fields = {field.get("id") for field in adapter.iter("Field")}
+        self.assertTrue({"dataAdapterVoltage", "dataAdapterFrequency"} <= fields)
 
     def test_device_menu_defaults_and_icon_labels(self):
         root = ElementTree.parse(SERVER_PLUGIN / "Devices.xml").getroot()

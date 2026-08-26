@@ -18,6 +18,7 @@ CHANNEL_CLASSES_BY_DEVICE_TYPE = {
     "humiditySensor": "PhidgetHumiditySensor",
     "frequencyCounter": "PhidgetFrequencyCounter",
     "lcd": "PhidgetLCD",
+    "dataAdapter": "PhidgetDataAdapter",
 }
 
 

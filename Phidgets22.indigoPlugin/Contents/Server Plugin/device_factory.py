@@ -11,6 +11,7 @@ from digitalinput import DigitalInputPhidget
 from frequencycounter import FrequencyCounterPhidget
 from humiditysensor import HumiditySensorPhidget
 from lcd import NativeLCDPhidget
+from dataadapter import DataAdapterPhidget
 
 
 def _saved_bool(value):
@@ -154,6 +155,14 @@ def _lcd(plugin, device, common):
         initialY=int(props.get("lcdInitialY", 0)))
 
 
+def _data_adapter(plugin, device, common):
+    props = device.pluginProps
+    return DataAdapterPhidget(
+        **common["base"],
+        voltage=int(props.get("dataAdapterVoltage", 5)),
+        frequency=int(props.get("dataAdapterFrequency", 2)))
+
+
 _BUILDERS = {
     "voltageInput": _voltage_input,
     "voltageRatioInput": _voltage_ratio_input,
@@ -163,6 +172,7 @@ _BUILDERS = {
     "frequencyCounter": _frequency_counter,
     "humiditySensor": _humidity_sensor,
     "lcd": _lcd,
+    "dataAdapter": _data_adapter,
 }
 
 
