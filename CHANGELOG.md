@@ -1,5 +1,29 @@
 # Release notes
 
+## 0.3.9 — 2026-08-27
+
+### Added
+
+- Generalize the fixed Freenove LCD2004 implementation into one configurable
+  HD44780/PCF8574-compatible display family.
+- Add selectable 16×2 and 20×4 geometries so the integrated-expander Freenove
+  LCD1602 and backpack-based LCD2004 share the same driver and wiring preset.
+- Add an editable 7-bit I2C address and a Custom / advanced wiring option for
+  RS, RW, Enable, backlight, D4–D7, and backlight polarity.
+- Prevent enabled LCD devices from claiming the same address on one adapter.
+
+### Changed
+
+- Migrate the original `freenove-lcd2004-pcf8574t` saved profile to the generic
+  Freenove wiring preset without changing existing 20×4 behavior.
+- Present adapter-backed displays as I2C character LCDs rather than assuming
+  that every selected adapter owns an LCD2004.
+
+### Testing
+
+- Verify both 16×2 and 20×4 DDRAM layouts, configurable addresses, custom
+  expander pin mappings, legacy defaults, and the existing LCD action contract.
+
 ## 0.3.8 — 2026-08-27
 
 ### Fixed

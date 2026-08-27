@@ -27,11 +27,13 @@ class FakeAdapter(object):
 
 
 class I2CLCDTests(unittest.TestCase):
-    def channel(self):
+    def channel(self, screen_size=8, address=0x27, pin_mapping=None):
         adapter = FakeAdapter()
         plugin = types.SimpleNamespace(activePhidgets={42: adapter})
         parent = types.SimpleNamespace(indigo_plugin=plugin)
-        channel = i2c_lcd.FreenoveLCD2004Channel(42)
+        channel = i2c_lcd.HD44780PCF8574Channel(
+            42, screen_size=screen_size, address=address,
+            pin_mapping=pin_mapping)
         channel.parent = parent
         channel.setOnAttachHandler(mock.Mock())
         channel.open()
@@ -51,6 +53,45 @@ class I2CLCDTests(unittest.TestCase):
         # First initialization nibble is 0x3 with backlight, then enable high,
         # then enable low: P4-P7 data, P2 enable, P3 backlight.
         self.assertEqual(adapter.transactions[0][1], b"8<8")
+
+    def test_1602_uses_same_freenove_mapping_with_16x2_geometry(self):
+        channel, adapter = self.channel(screen_size=5)
+        channel.writeText(None, 0, 0, "Sixteen columns")
+        channel.writeText(None, 0, 1, "Second row")
+
+        with mock.patch.object(i2c_lcd.time, "sleep"):
+            channel.flush()
+
+        self.assertEqual(channel.getWidth(), 16)
+        self.assertEqual(channel.getHeight(), 2)
+        payload = b"".join(transaction[1]
+                           for transaction in adapter.transactions[2:])
+        triples = [payload[offset:offset + 3]
+                   for offset in range(0, len(payload), 3)]
+        commands = []
+        for index in range(len(triples) - 1):
+            high = triples[index][0] & 0xf0
+            low = triples[index + 1][0] & 0xf0
+            commands.append(high | (low >> 4))
+        self.assertIn(0x80, commands)
+        self.assertIn(0xc0, commands)
+        self.assertNotIn(0x94, commands)
+
+    def test_address_and_advanced_pin_mapping_are_configurable(self):
+        mapping = {
+            "rs": 7, "rw": 6, "enable": 5, "backlight": 4,
+            "d4": 0, "d5": 1, "d6": 2, "d7": 3,
+        }
+        channel, adapter = self.channel(
+            screen_size=5, address=0x3f, pin_mapping=mapping)
+
+        with mock.patch.object(i2c_lcd.time, "sleep"):
+            channel.initialize()
+
+        self.assertTrue(all(transaction[0] == 0x3f
+                            for transaction in adapter.transactions))
+        # Nibble 0x3 maps to D4/P0 + D5/P1, with backlight/P4 and E/P5.
+        self.assertEqual(adapter.transactions[0][1], bytes((0x13, 0x33, 0x13)))
 
     def test_complete_frame_uses_20x4_ddram_row_addresses(self):
         channel, adapter = self.channel()

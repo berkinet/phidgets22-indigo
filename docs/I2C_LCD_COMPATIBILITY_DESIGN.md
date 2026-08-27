@@ -2,13 +2,15 @@
 
 ## Status
 
-The first complete adapter-backed display profile is implemented in version
-0.3.7. `LCDPhidget` is the common
+The first complete adapter-backed display profile was implemented in version
+0.3.7 and generalized in version 0.3.9. `LCDPhidget` is the common
 plugin-level contract, and `NativeLCDPhidget` is the concrete implementation
 selected for existing native LCD devices. `DataAdapterPhidget` now owns and
-configures a physical ADP0001 DataAdapter channel as a shared I2C bus. Display
-The initial verified target is a Freenove LCD2004 with PCF8574T backpack at
-address `0x27`, using a configured ADP0001 at 5 V and 100 kHz.
+configures a physical ADP0001 DataAdapter channel as a shared I2C bus. The
+family includes the hardware-verified Freenove LCD2004 with PCF8574T backpack
+and the pending-hardware-validation Freenove LCD1602 with an integrated
+HLF8574T-compatible expander, normally at address `0x27`, using a configured
+ADP0001 at 5 V and 100 kHz.
 
 Version 0.3.6 added provider awareness. DataAdapter devices advertise readable
 available functions, initially `LCD display transport`, and the LCD layer can
@@ -65,7 +67,7 @@ LCDPhidget (existing plugin contract and shared display behavior)
 │       └── LCD1100 graphic display
 DataAdapterPhidget
 └── Phidget22.Devices.DataAdapter (one open physical channel)
-    ├── I2CLCDPhidget (future logical child)
+    ├── I2CLCDPhidget (logical child)
     ├── I2CTemperaturePhidget (possible future logical child)
     └── other addressed I2C peripheral profiles
 ```
@@ -140,12 +142,19 @@ The Indigo configuration and Action windows should reveal only meaningful
 controls. Unsupported operations should either use an explicitly documented
 emulation or produce a clear validation/runtime error.
 
-## Initial I2C target
+## HD44780/PCF8574-compatible family
 
-The first target is the Freenove LCD2004: an HD44780-compatible 20×4 character
-LCD connected through a PCF8574T backpack. Its verified profile is fixed at
-address `0x27` with `RS=P0`, `RW=P1`, `E=P2`, backlight `P3`, and data
-`D4–D7=P4–P7`. The implementation provides:
+The first target was the Freenove LCD2004: an HD44780-compatible 20×4
+character LCD connected through a PCF8574T backpack. The same family now also
+covers the Freenove 16×2 module with its integrated HLF8574T-compatible
+expander. The Freenove wiring preset uses address `0x27` by default with
+`RS=P0`, `RW=P1`, `E=P2`, backlight `P3`, and data `D4–D7=P4–P7`.
+
+Screen geometry and I2C address are separate configuration properties. The
+standard preset currently offers 16×2 and 20×4 geometry, while the Advanced
+choice exposes the eight expander signal assignments and backlight polarity.
+This lets related modules share one driver without claiming that every
+PCF8574-compatible board uses the Freenove wiring. The implementation provides:
 
 - Four-bit HD44780 initialization and command timing.
 - PCF8574 bit mapping for `RS`, `E`, backlight, and data lines.
@@ -189,12 +198,14 @@ I2C profile is released.
    native configuration compatibility.
 5. **Complete in 0.3.7:** add native regression, I2C sequence, discovery,
    configuration, startup-order, and profile tests.
-6. Validate the full Indigo action set on hardware.
+6. **Complete for 20×4 in 0.3.7–0.3.8:** validate the full Indigo action set on
+   hardware.
+7. Validate the 16×2 integrated-expander module on hardware.
 
 ## Non-goals for the first implementation
 
 - Replacing or removing 1204 support.
 - Reimplementing the LCD1100 native graphic path over I2C.
 - Automatic identification of arbitrary I2C displays.
-- Universal support for every PCF8574 backpack mapping.
+- Automatic selection of every PCF8574-compatible wiring arrangement.
 - Changing existing Indigo LCD Action Group identifiers or semantics.

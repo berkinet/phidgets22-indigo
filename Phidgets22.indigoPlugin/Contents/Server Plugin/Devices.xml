@@ -521,30 +521,35 @@
 			<Field id="compatibleModelFound" type="checkbox" defaultValue="true" hidden="true"/>
 			<Field id="missingModelNotice" type="label" visibleBindingId="compatibleModelFound" visibleBindingValue="false" alwaysUseInDialogHeightCalc="true"><Label>No LCD device was automatically discovered. Connect and install an appropriate device first.</Label></Field>
 			<Field id="lcdDisplayProvider" type="menu" defaultValue="selectDisplay"><Label>Available display:</Label><List class="self" method="getAvailableDisplayMenu" dynamicReload="true"/><CallbackMethod>displayProviderChanged</CallbackMethod></Field>
-			<Field id="lcdProviderKind" type="textfield" hidden="true"/><Field id="lcdAdapterDeviceId" type="textfield" hidden="true"/><Field id="lcdProfile" type="textfield" hidden="true"/>
+			<Field id="lcdProviderKind" type="textfield" hidden="true"/><Field id="lcdAdapterDeviceId" type="textfield" hidden="true"/>
 			<Field id="discoveredServer" type="textfield" hidden="true"/><Field id="discoveredDevice" type="textfield" hidden="true"/><Field id="discoveredPort" type="textfield" hidden="true"/><Field id="discoveredTarget" type="textfield" hidden="true"/><Field id="discoveredChannel" type="textfield" hidden="true"/>
 			<Field id="serverName" type="textfield" hidden="true"/><Field id="serialNumber" type="textfield" hidden="true"/><Field id="channel" type="textfield" hidden="true"/>
 			<Field id="isVintHub" type="checkbox" defaultValue="False" hidden="true"/><Field id="isVintDevice" type="checkbox" defaultValue="False" hidden="true"/><Field id="hubPort" type="textfield" hidden="true"/>
 			<Field id="observedConnection" type="textfield" readonly="true"><Label>Display path:</Label></Field>
 			<Field id="discoverySeparator" type="separator"/>
-			<Field id="i2cDisplayNotice" type="label" visibleBindingId="lcdProviderKind" visibleBindingValue="adapter" alwaysUseInDialogHeightCalc="true"><Label>Freenove LCD2004: backlight values are on/off. Contrast is adjusted with the potentiometer on the display backpack.</Label></Field>
-
-			<Field id="lcdScreenSize" type="menu" defaultValue="1" visibleBindingId="lcdProviderKind" visibleBindingValue="native" alwaysUseInDialogHeightCalc="true">
-				<Label>Text LCD screen size:</Label>
+			<Field id="i2cDisplayNotice" type="label" visibleBindingId="lcdProviderKind" visibleBindingValue="adapter" alwaysUseInDialogHeightCalc="true"><Label>HD44780 / PCF8574-compatible display: backlight values are on/off. Contrast is adjusted on the display hardware.</Label></Field>
+			<Field id="lcdProfile" type="menu" defaultValue="freenove-hd44780-pcf8574" visibleBindingId="lcdProviderKind" visibleBindingValue="adapter" alwaysUseInDialogHeightCalc="true">
+				<Label>Wiring preset:</Label>
 				<List>
-					<Option value="1">Automatic / graphic LCD</Option>
-					<Option value="2">1 row × 8 characters</Option>
-					<Option value="3">2 rows × 8 characters</Option>
-					<Option value="4">1 row × 16 characters</Option>
-					<Option value="5">2 rows × 16 characters</Option>
-					<Option value="6">4 rows × 16 characters</Option>
-					<Option value="7">2 rows × 20 characters</Option>
-					<Option value="8">4 rows × 20 characters</Option>
-					<Option value="9">2 rows × 24 characters</Option>
-					<Option value="10">1 row × 40 characters</Option>
-					<Option value="11">2 rows × 40 characters</Option>
-					<Option value="12">4 rows × 40 characters</Option>
+					<Option value="freenove-hd44780-pcf8574">Freenove standard</Option>
+					<Option value="custom">Custom / advanced</Option>
 				</List>
+				<CallbackMethod>lcdProfileChanged</CallbackMethod>
+			</Field>
+			<Field id="lcdI2CAddress" type="textfield" defaultValue="0x27" visibleBindingId="lcdProviderKind" visibleBindingValue="adapter" alwaysUseInDialogHeightCalc="true"><Label>I2C address:</Label></Field>
+			<Field id="lcdI2CRSPin" type="textfield" defaultValue="0" visibleBindingId="lcdProfile" visibleBindingValue="custom" alwaysUseInDialogHeightCalc="true"><Label>RS expander pin:</Label></Field>
+			<Field id="lcdI2CRWPin" type="textfield" defaultValue="1" visibleBindingId="lcdProfile" visibleBindingValue="custom" alwaysUseInDialogHeightCalc="true"><Label>RW expander pin:</Label></Field>
+			<Field id="lcdI2CEnablePin" type="textfield" defaultValue="2" visibleBindingId="lcdProfile" visibleBindingValue="custom" alwaysUseInDialogHeightCalc="true"><Label>Enable expander pin:</Label></Field>
+			<Field id="lcdI2CBacklightPin" type="textfield" defaultValue="3" visibleBindingId="lcdProfile" visibleBindingValue="custom" alwaysUseInDialogHeightCalc="true"><Label>Backlight expander pin:</Label></Field>
+			<Field id="lcdI2CD4Pin" type="textfield" defaultValue="4" visibleBindingId="lcdProfile" visibleBindingValue="custom" alwaysUseInDialogHeightCalc="true"><Label>D4 expander pin:</Label></Field>
+			<Field id="lcdI2CD5Pin" type="textfield" defaultValue="5" visibleBindingId="lcdProfile" visibleBindingValue="custom" alwaysUseInDialogHeightCalc="true"><Label>D5 expander pin:</Label></Field>
+			<Field id="lcdI2CD6Pin" type="textfield" defaultValue="6" visibleBindingId="lcdProfile" visibleBindingValue="custom" alwaysUseInDialogHeightCalc="true"><Label>D6 expander pin:</Label></Field>
+			<Field id="lcdI2CD7Pin" type="textfield" defaultValue="7" visibleBindingId="lcdProfile" visibleBindingValue="custom" alwaysUseInDialogHeightCalc="true"><Label>D7 expander pin:</Label></Field>
+			<Field id="lcdI2CBacklightActiveHigh" type="checkbox" defaultValue="true" visibleBindingId="lcdProfile" visibleBindingValue="custom" alwaysUseInDialogHeightCalc="true"><Label>Backlight is active high?</Label></Field>
+
+			<Field id="lcdScreenSize" type="menu" defaultValue="1">
+				<Label>Text LCD screen size:</Label>
+				<List class="self" method="getLCDScreenSizeMenu" dynamicReload="true"/>
 			</Field>
 			<Field id="lcdBacklight" type="textfield" defaultValue="1.0"><Label>Initial backlight (0.0–1.0):</Label></Field>
 			<Field id="lcdContrast" type="textfield" defaultValue="0.5" visibleBindingId="lcdProviderKind" visibleBindingValue="native" alwaysUseInDialogHeightCalc="true"><Label>Initial contrast (0.0–1.0):</Label></Field>

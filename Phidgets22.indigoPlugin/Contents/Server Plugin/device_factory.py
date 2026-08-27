@@ -146,7 +146,20 @@ def _lcd(plugin, device, common):
     lcd_class = (I2CLCDPhidget
                  if props.get("lcdProviderKind") == "adapter"
                  else NativeLCDPhidget)
-    extra = ({"adapterDeviceId": int(props["lcdAdapterDeviceId"])}
+    extra = ({
+        "adapterDeviceId": int(props["lcdAdapterDeviceId"]),
+        "i2cAddress": int(str(props.get("lcdI2CAddress", "0x27")), 0),
+        "pinMapping": {
+            key: int(props.get("lcdI2C%sPin" % label, default))
+            for key, label, default in (
+                ("rs", "RS", 0), ("rw", "RW", 1),
+                ("enable", "Enable", 2), ("backlight", "Backlight", 3),
+                ("d4", "D4", 4), ("d5", "D5", 5),
+                ("d6", "D6", 6), ("d7", "D7", 7))
+        },
+        "backlightActiveHigh": _saved_bool(
+            props.get("lcdI2CBacklightActiveHigh", True)),
+    }
              if lcd_class is I2CLCDPhidget else {})
     return lcd_class(
         **common["base"],

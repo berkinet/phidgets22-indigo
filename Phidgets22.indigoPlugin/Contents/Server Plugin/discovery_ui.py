@@ -10,7 +10,35 @@ from discovery import (CHANNEL_CLASSES_BY_DEVICE_TYPE, device_token,
 from display_providers import available_display_providers
 
 
+FREENOVE_I2C_PROFILE = "freenove-hd44780-pcf8574"
+FREENOVE_I2C_DEFAULTS = {
+    "lcdI2CAddress": "0x27",
+    "lcdI2CRSPin": "0", "lcdI2CRWPin": "1",
+    "lcdI2CEnablePin": "2", "lcdI2CBacklightPin": "3",
+    "lcdI2CD4Pin": "4", "lcdI2CD5Pin": "5",
+    "lcdI2CD6Pin": "6", "lcdI2CD7Pin": "7",
+    "lcdI2CBacklightActiveHigh": True,
+}
+
+
 class DiscoveryUiMixin(object):
+    LCD_SCREEN_SIZES = [
+        ("1", "Automatic / graphic LCD"),
+        ("2", "1 row × 8 characters"), ("3", "2 rows × 8 characters"),
+        ("4", "1 row × 16 characters"), ("5", "2 rows × 16 characters"),
+        ("6", "4 rows × 16 characters"), ("7", "2 rows × 20 characters"),
+        ("8", "4 rows × 20 characters"), ("9", "2 rows × 24 characters"),
+        ("10", "1 row × 40 characters"), ("11", "2 rows × 40 characters"),
+        ("12", "4 rows × 40 characters"),
+    ]
+
+    def getLCDScreenSizeMenu(self, filter="", valuesDict=None,
+                             typeId="", targetId=0):
+        if valuesDict is not None and valuesDict.get("lcdProviderKind") == "adapter":
+            return [choice for choice in self.LCD_SCREEN_SIZES
+                    if choice[0] in ("5", "8")]
+        return list(self.LCD_SCREEN_SIZES)
+
     def getAvailableDisplayMenu(self, filter="", valuesDict=None,
                                 typeId="", targetId=0):
         """Supply one future LCD selector without exposing its transport."""
@@ -43,13 +71,25 @@ class DiscoveryUiMixin(object):
         adapter_device = indigo.devices[adapter_id]
         adapter_props = adapter_device.pluginProps
         valuesDict["lcdAdapterDeviceId"] = str(adapter_id)
-        valuesDict["lcdProfile"] = "freenove-lcd2004-pcf8574t"
-        valuesDict["lcdScreenSize"] = "8"
+        old_profile = valuesDict.get("lcdProfile", "")
+        if old_profile in ("", "freenove-lcd2004-pcf8574t"):
+            valuesDict["lcdProfile"] = FREENOVE_I2C_PROFILE
+        if not valuesDict.get("lcdScreenSize", ""):
+            valuesDict["lcdScreenSize"] = "8"
+        for key, default in FREENOVE_I2C_DEFAULTS.items():
+            if valuesDict.get(key, None) in (None, ""):
+                valuesDict[key] = default
         valuesDict["discoveredChannel"] = "manual"
         valuesDict["serialNumber"] = str(adapter_props.get("serialNumber", ""))
         valuesDict["channel"] = str(adapter_props.get("channel", "0"))
         valuesDict["serverName"] = str(adapter_props.get("serverName", ""))
-        valuesDict["observedConnection"] = "%s→Freenove LCD2004" % adapter_device.name
+        valuesDict["observedConnection"] = "%s→I2C character LCD" % adapter_device.name
+        return valuesDict
+
+    def lcdProfileChanged(self, valuesDict, typeId, devId):
+        if valuesDict.get("lcdProfile") == FREENOVE_I2C_PROFILE:
+            for key, default in FREENOVE_I2C_DEFAULTS.items():
+                valuesDict[key] = default
         return valuesDict
 
     def displayProviderChanged(self, valuesDict, typeId, devId):
@@ -199,6 +239,64 @@ class DiscoveryUiMixin(object):
                 errors["lcdScreenSize"] = "Select a valid LCD screen size."
                 screen_size = 1
 
+            if valuesDict.get("lcdProviderKind") == "adapter":
+                if valuesDict.get("lcdProfile") == FREENOVE_I2C_PROFILE:
+                    for key, default in FREENOVE_I2C_DEFAULTS.items():
+                        if key != "lcdI2CAddress":
+                            valuesDict[key] = default
+                if screen_size not in (5, 8):
+                    errors["lcdScreenSize"] = (
+                        "Select 2 rows × 16 characters or 4 rows × 20 characters.")
+                i2c_address = None
+                try:
+                    i2c_address = int(str(valuesDict.get(
+                        "lcdI2CAddress", "0x27")).strip(), 0)
+                    if i2c_address < 0x08 or i2c_address > 0x77:
+                        raise ValueError
+                    valuesDict["lcdI2CAddress"] = "0x%02X" % i2c_address
+                except (TypeError, ValueError):
+                    errors["lcdI2CAddress"] = (
+                        "Enter a 7-bit I2C address from 0x08 through 0x77.")
+
+                if i2c_address is not None:
+                    adapter_id = str(valuesDict.get("lcdAdapterDeviceId", ""))
+                    for other in getattr(indigo, "devices", ()):
+                        other_props = getattr(other, "pluginProps", {})
+                        if (getattr(other, "id", None) == devId or
+                                getattr(other, "pluginId", None) != self.pluginId or
+                                getattr(other, "deviceTypeId", None) != "lcd" or
+                                not getattr(other, "enabled", True) or
+                                other_props.get("lcdProviderKind") != "adapter" or
+                                str(other_props.get("lcdAdapterDeviceId", "")) != adapter_id):
+                            continue
+                        try:
+                            other_address = int(str(other_props.get(
+                                "lcdI2CAddress", "0x27")), 0)
+                        except (TypeError, ValueError):
+                            continue
+                        if other_address == i2c_address:
+                            errors["lcdI2CAddress"] = (
+                                "That address is already used by '%s' on this adapter." %
+                                getattr(other, "name", "another LCD"))
+                            break
+
+                pins = []
+                for field in ("lcdI2CRSPin", "lcdI2CRWPin",
+                              "lcdI2CEnablePin", "lcdI2CBacklightPin",
+                              "lcdI2CD4Pin", "lcdI2CD5Pin",
+                              "lcdI2CD6Pin", "lcdI2CD7Pin"):
+                    try:
+                        pin = int(valuesDict.get(field, ""))
+                        if pin < 0 or pin > 7:
+                            raise ValueError
+                        valuesDict[field] = str(pin)
+                        pins.append(pin)
+                    except (TypeError, ValueError):
+                        errors[field] = "Enter an expander pin number from 0 through 7."
+                if len(pins) == 8 and len(set(pins)) != 8:
+                    errors["lcdI2CRSPin"] = (
+                        "Each LCD signal must use a different expander pin.")
+
             for field, label in (("lcdBacklight", "backlight"),
                                  ("lcdContrast", "contrast")):
                 try:
@@ -287,7 +385,9 @@ class DiscoveryUiMixin(object):
 
         valuesDict["configurationMigrated"] = False
         if typeId == "lcd" and valuesDict.get("lcdProviderKind") == "adapter":
-            valuesDict["address"] = "lcd-i2c-%s-27" % valuesDict["lcdAdapterDeviceId"]
+            valuesDict["address"] = "lcd-i2c-%s-%02x" % (
+                valuesDict["lcdAdapterDeviceId"],
+                int(valuesDict.get("lcdI2CAddress", "0x27"), 0))
         return (True, valuesDict)
 
     def getPhidgetTypeMenu(self, filter="", valuesDict=None, typeId="", targetId=0):

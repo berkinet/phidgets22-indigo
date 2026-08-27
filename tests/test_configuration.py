@@ -47,7 +47,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.8</string>", plist)
+        self.assertIn("<string>0.3.9</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -413,11 +413,13 @@ class ConfigurationTests(unittest.TestCase):
 
         self.assertEqual(returned["lcdProviderKind"], "adapter")
         self.assertEqual(returned["lcdAdapterDeviceId"], "42")
-        self.assertEqual(returned["lcdProfile"], "freenove-lcd2004-pcf8574t")
+        self.assertEqual(returned["lcdProfile"], "freenove-hd44780-pcf8574")
         self.assertEqual(returned["lcdScreenSize"], "8")
-        self.assertIn("Freenove LCD2004", returned["observedConnection"])
+        self.assertEqual(returned["lcdI2CAddress"], "0x27")
+        self.assertIn("I2C character LCD", returned["observedConnection"])
 
         returned.update({
+            "lcdScreenSize": "5",
             "lcdBacklight": "1.0", "lcdContrast": "0.5",
             "lcdInitialX": "0", "lcdInitialY": "0",
             "isVintHub": False, "isVintDevice": False,
@@ -440,7 +442,12 @@ class ConfigurationTests(unittest.TestCase):
 
         self.assertIs(result, mock.sentinel.i2c_lcd)
         self.assertEqual(constructor.call_args.kwargs["adapterDeviceId"], 42)
-        self.assertEqual(constructor.call_args.kwargs["screenSize"], 8)
+        self.assertEqual(constructor.call_args.kwargs["screenSize"], 5)
+        self.assertEqual(constructor.call_args.kwargs["i2cAddress"], 0x27)
+        self.assertEqual(constructor.call_args.kwargs["pinMapping"], {
+            "rs": 0, "rw": 1, "enable": 2, "backlight": 3,
+            "d4": 4, "d5": 5, "d6": 6, "d7": 7,
+        })
 
     def test_adapter_attachment_starts_a_dependent_i2c_display(self):
         instance = object.__new__(plugin.Plugin)

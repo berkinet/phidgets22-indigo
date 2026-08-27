@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-"""Freenove LCD2004 transport over a shared Phidget DataAdapter."""
+"""Configurable HD44780/PCF8574 transport over a shared DataAdapter."""
 
 import time
 
@@ -10,20 +10,30 @@ from Phidget22.LCDScreenSize import LCDScreenSize
 from lcd import LCDPhidget
 
 
-class FreenoveLCD2004Channel(object):
-    """LCD-like compatibility channel backed by PCF8574T at address 0x27."""
+class HD44780PCF8574Channel(object):
+    """LCD-like channel backed by a PCF8574-compatible I2C expander."""
 
-    ADDRESS = 0x27
-    WIDTH = 20
-    HEIGHT = 4
-    ROW_ADDRESSES = (0x00, 0x40, 0x14, 0x54)
-    ENABLE = 0x04
-    BACKLIGHT = 0x08
-    REGISTER_SELECT = 0x01
+    GEOMETRIES = {
+        int(LCDScreenSize.SCREEN_SIZE_2x16): (16, 2, (0x00, 0x40)),
+        int(LCDScreenSize.SCREEN_SIZE_4x20): (20, 4, (0x00, 0x40, 0x14, 0x54)),
+    }
 
-    def __init__(self, adapter_device_id):
+    def __init__(self, adapter_device_id, screen_size=8, address=0x27,
+                 pin_mapping=None, backlight_active_high=True):
         self.parent = None
         self.adapterDeviceId = int(adapter_device_id)
+        self.address = int(address)
+        mapping = dict(pin_mapping or {
+            "rs": 0, "rw": 1, "enable": 2, "backlight": 3,
+            "d4": 4, "d5": 5, "d6": 6, "d7": 7,
+        })
+        self.pinMapping = mapping
+        self._rs_mask = 1 << mapping["rs"]
+        self._enable_mask = 1 << mapping["enable"]
+        self._backlight_mask = 1 << mapping["backlight"]
+        self._data_masks = tuple(1 << mapping["d%d" % bit]
+                                 for bit in range(4, 8))
+        self.backlightActiveHigh = bool(backlight_active_high)
         self.adapter = None
         self._attach_handler = None
         self._detach_handler = None
@@ -31,7 +41,7 @@ class FreenoveLCD2004Channel(object):
         self._backlight = 1.0
         self._contrast = 0.5
         self._sleeping = False
-        self._buffer = [[" "] * self.WIDTH for _ in range(self.HEIGHT)]
+        self.setScreenSize(screen_size)
         self._pending_bytes = None
 
     # PhidgetBase addressing/lifecycle compatibility. The physical channel is
@@ -66,8 +76,8 @@ class FreenoveLCD2004Channel(object):
     def close(self):
         self.adapter = None
 
-    def getDeviceName(self): return "Freenove LCD2004"
-    def getDeviceSKU(self): return "FREENOVE-LCD2004-PCF8574T"
+    def getDeviceName(self): return "HD44780 / PCF8574-compatible LCD"
+    def getDeviceSKU(self): return "HD44780-PCF8574-COMPATIBLE"
     def getChannelName(self): return "LCD"
 
     def _send(self, values):
@@ -76,7 +86,7 @@ class FreenoveLCD2004Channel(object):
         if self._pending_bytes is not None:
             self._pending_bytes.extend(values)
             return b""
-        return self.adapter.i2cSendReceive(self.ADDRESS, values, 0)
+        return self.adapter.i2cSendReceive(self.address, values, 0)
 
     def _send_batched(self, values):
         maximum = int(self.adapter.phidget.getMaxSendPacketLength()) \
@@ -88,22 +98,28 @@ class FreenoveLCD2004Channel(object):
             raise ValueError("DataAdapter packet size is too small for LCD pulses")
         for offset in range(0, len(values), maximum):
             self.adapter.i2cSendReceive(
-                self.ADDRESS, values[offset:offset + maximum], 0)
+                self.address, values[offset:offset + maximum], 0)
+
+    def _backlight_bits(self):
+        lit = self._backlight > 0 and not self._sleeping
+        return self._backlight_mask if lit == self.backlightActiveHigh else 0
 
     def _expander(self, value):
-        if self._backlight > 0 and not self._sleeping:
-            value |= self.BACKLIGHT
+        value |= self._backlight_bits()
         self._send([value])
 
     def _nibble(self, nibble, register_select=False):
-        value = ((int(nibble) & 0x0f) << 4)
+        value = 0
+        for bit, mask in enumerate(self._data_masks):
+            if int(nibble) & (1 << bit):
+                value |= mask
         if register_select:
-            value |= self.REGISTER_SELECT
+            value |= self._rs_mask
+        value |= self._backlight_bits()
         self._send([
-            value | (self.BACKLIGHT if self._backlight > 0 and not self._sleeping else 0),
-            value | self.ENABLE |
-            (self.BACKLIGHT if self._backlight > 0 and not self._sleeping else 0),
-            value | (self.BACKLIGHT if self._backlight > 0 and not self._sleeping else 0),
+            value,
+            value | self._enable_mask,
+            value,
         ])
 
     def _byte(self, value, register_select=False):
@@ -132,10 +148,15 @@ class FreenoveLCD2004Channel(object):
         return ChannelSubclass.PHIDCHSUBCLASS_LCD_TEXT
 
     def setScreenSize(self, value):
-        if LCDScreenSize(int(value)) != LCDScreenSize.SCREEN_SIZE_4x20:
-            raise ValueError("Freenove LCD2004 requires the 4 rows × 20 characters size")
+        screen_size = int(value)
+        if screen_size not in self.GEOMETRIES:
+            raise ValueError("This I2C LCD supports 2 rows × 16 characters or "
+                             "4 rows × 20 characters")
+        self.screenSize = screen_size
+        self.WIDTH, self.HEIGHT, self.ROW_ADDRESSES = self.GEOMETRIES[screen_size]
+        self._buffer = [[" "] * self.WIDTH for _ in range(self.HEIGHT)]
 
-    def getScreenSize(self): return LCDScreenSize.SCREEN_SIZE_4x20
+    def getScreenSize(self): return LCDScreenSize(self.screenSize)
     def setAutoFlush(self, value): pass
     def getWidth(self): return self.WIDTH
     def getHeight(self): return self.HEIGHT
@@ -150,7 +171,7 @@ class FreenoveLCD2004Channel(object):
         self._backlight = float(value)
         self._expander(0)
 
-    # Contrast is adjusted by the physical potentiometer on this backpack.
+    # Contrast is adjusted by the physical potentiometer on these modules.
     # Retain the requested value so the existing LCD contract remains stable.
     def getMinContrast(self): return 0.0
     def getMaxContrast(self): return 1.0
@@ -194,13 +215,21 @@ class FreenoveLCD2004Channel(object):
 class I2CLCDPhidget(LCDPhidget):
     """Existing LCD action contract implemented by a shared I2C adapter."""
 
-    PROFILE = "freenove-lcd2004-pcf8574t"
+    PROFILE = "hd44780-pcf8574-compatible"
 
-    def __init__(self, adapterDeviceId, *args, **kwargs):
-        kwargs["phidget"] = FreenoveLCD2004Channel(adapterDeviceId)
+    def __init__(self, adapterDeviceId, i2cAddress=0x27, pinMapping=None,
+                 backlightActiveHigh=True, *args, **kwargs):
+        kwargs["phidget"] = HD44780PCF8574Channel(
+            adapterDeviceId, screen_size=kwargs.get("screenSize", 8),
+            address=i2cAddress, pin_mapping=pinMapping,
+            backlight_active_high=backlightActiveHigh)
         super(I2CLCDPhidget, self).__init__(*args, **kwargs)
         self.adapterDeviceId = int(adapterDeviceId)
 
     def providerReattached(self):
         """Reinitialize the controller after its shared adapter reconnects."""
         return self.phidget.providerAttached()
+
+
+# Source compatibility for code written against the first fixed profile.
+FreenoveLCD2004Channel = HD44780PCF8574Channel
