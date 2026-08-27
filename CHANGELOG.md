@@ -1,5 +1,23 @@
 # Release notes
 
+## 0.3.8 — 2026-08-27
+
+### Fixed
+
+- Wait for the selected shared DataAdapter to become fully attached before
+  initializing an adapter-backed LCD. Indigo may start the logical LCD after
+  creating the adapter wrapper but before its physical channel attachment has
+  completed.
+- Complete the deferred logical LCD attachment as soon as the adapter reports
+  ready, and use the same path to reinitialize the controller after adapter
+  reattachment.
+
+### Testing
+
+- Reproduce the real startup ordering where the LCD starts against an adapter
+  in `starting` state, confirm that no premature I2C transaction occurs, then
+  confirm initialization completes after the adapter reaches `attached`.
+
 ## 0.3.7 — 2026-08-27
 
 ### Added

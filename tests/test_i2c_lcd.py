@@ -16,6 +16,7 @@ from phidget import ChannelInfo
 class FakeAdapter(object):
     def __init__(self):
         self.transactions = []
+        self._state = "attached"
 
     def supportsFunction(self, function_id):
         return function_id == "lcd"
@@ -115,6 +116,34 @@ class I2CLCDTests(unittest.TestCase):
         self.assertTrue(adapter.transactions)
         lcd.stop()
         self.assertEqual(lcd._state, "stopped")
+
+    def test_lcd_waits_until_shared_adapter_is_fully_attached(self):
+        adapter = FakeAdapter()
+        adapter._state = "starting"
+        plugin = types.SimpleNamespace(
+            activePhidgets={42: adapter}, pluginPrefs={"attachTimeout": "60"},
+            triggerEvent=mock.Mock(), phidgetAttachCompleted=mock.Mock())
+        device = mock.Mock()
+        device.name = "Deferred LCD"
+        device.id = 100
+        device.pluginProps = {}
+        lcd = i2c_lcd.I2CLCDPhidget(
+            adapterDeviceId=42, screenSize=8, backlight=1.0, contrast=0.5,
+            restoreInitialText=False, initialText="", initialLines=[],
+            initialX=0, initialY=0, indigo_plugin=plugin,
+            channelInfo=ChannelInfo(), indigoDevice=device, logger=mock.Mock())
+
+        lcd.start()
+        self.assertEqual(lcd._state, "starting")
+        self.assertEqual(adapter.transactions, [])
+
+        adapter._state = "attached"
+        with mock.patch.object(i2c_lcd.time, "sleep"):
+            self.assertTrue(lcd.providerReattached())
+
+        self.assertEqual(lcd._state, "attached")
+        self.assertTrue(adapter.transactions)
+        lcd.stop()
 
 
 if __name__ == "__main__":

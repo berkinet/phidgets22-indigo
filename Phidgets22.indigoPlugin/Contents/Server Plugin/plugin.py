@@ -163,7 +163,8 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                 dependent = self.activePhidgets.get(device.id)
                 if dependent is None:
                     self.deviceStartComm(device)
-                elif attach_count > 1:
+                elif (getattr(dependent, "_state", None) != "attached" or
+                      attach_count > 1):
                     callback = getattr(dependent, "providerReattached", None)
                     if callback is not None:
                         callback()

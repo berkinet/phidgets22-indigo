@@ -49,8 +49,19 @@ class FreenoveLCD2004Channel(object):
     def open(self):
         self.adapter = LCDPhidget.resolveAdapterProvider(
             self.parent.indigo_plugin, self.adapterDeviceId)
+        if (getattr(self.adapter, "_state", None) == "attached" and
+                self._attach_handler is not None):
+            self._attach_handler(self)
+
+    def providerAttached(self):
+        """Complete logical attachment after the shared adapter is ready."""
+        self.adapter = LCDPhidget.resolveAdapterProvider(
+            self.parent.indigo_plugin, self.adapterDeviceId)
+        if getattr(self.adapter, "_state", None) != "attached":
+            return False
         if self._attach_handler is not None:
             self._attach_handler(self)
+        return True
 
     def close(self):
         self.adapter = None
@@ -192,9 +203,4 @@ class I2CLCDPhidget(LCDPhidget):
 
     def providerReattached(self):
         """Reinitialize the controller after its shared adapter reconnects."""
-        with self._display_lock:
-            self.phidget.adapter = self.resolveAdapterProvider(
-                self.indigo_plugin, self.adapterDeviceId)
-            self.configureAttachedPhidget(self.phidget)
-            self.updateIndigoStatus()
-            self._replay_pending_display_request()
+        return self.phidget.providerAttached()
