@@ -131,7 +131,7 @@ class ActionsMixin(object):
         lcd.runDisplayWhenAttached(apply_display)
 
     def lcdStopAnimation(self, action, device=None):
-        self._lcdForAction(action, device).stopAnimation()
+        self._lcdForAction(action, device).turnOff()
 
     def _lcdActionLineCount(self, deviceId):
         try:

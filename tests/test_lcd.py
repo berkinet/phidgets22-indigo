@@ -438,6 +438,25 @@ class LCDTests(unittest.TestCase):
         self.assertEqual(wrapper.lastText, "")
         self.assertEqual(native.flush_count, 2)
 
+    def test_turn_off_stops_animation_clears_and_extinguishes_backlight(self):
+        native = FakeLCD(screen_size=LCDScreenSize.SCREEN_SIZE_2x16)
+        wrapper = make_wrapper(native)
+        wrapper.configureAttachedPhidget(native)
+        wrapper._state = "attached"
+        wrapper._animation_mode = "marquee"
+        wrapper.lastText = "Old text"
+        native.backlight = 0.75
+
+        wrapper.turnOff()
+
+        self.assertEqual(wrapper._animation_mode, "off")
+        self.assertEqual(wrapper.lastText, "")
+        self.assertEqual(native.clear_count, 1)
+        self.assertEqual(native.flush_count, 1)
+        self.assertEqual(native.backlight, native.getMinBacklight())
+        wrapper.indigoDevice.updateStateOnServer.assert_any_call(
+            "backlight", value=native.getMinBacklight())
+
     def test_write_rejects_coordinates_outside_screen(self):
         native = FakeLCD(screen_size=LCDScreenSize.SCREEN_SIZE_2x16)
         wrapper = make_wrapper(native)

@@ -47,7 +47,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.11</string>", plist)
+        self.assertIn("<string>0.3.12</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -327,7 +327,7 @@ class ConfigurationTests(unittest.TestCase):
         active_lcd.setContrast = mock.Mock()
         active_lcd.setSleeping = mock.Mock()
         active_lcd.startAnimation = mock.Mock()
-        active_lcd.stopAnimation = mock.Mock()
+        active_lcd.turnOff = mock.Mock()
         active_lcd.runDisplayWhenAttached = mock.Mock(
             side_effect=lambda callback: callback())
         instance.activePhidgets[device.id] = active_lcd
@@ -369,6 +369,7 @@ class ConfigurationTests(unittest.TestCase):
 
         active_lcd.writeText.assert_called_once_with("Kitchen", 2, 3)
         active_lcd.writeLines.assert_called_once_with(["Kitchen", "Ready"])
+        active_lcd.turnOff.assert_called_once_with()
         active_lcd.clear.assert_called_once_with()
         self.assertEqual(active_lcd.setBacklight.call_args_list,
                          [mock.call(0.6), mock.call(0.7), mock.call(0.8),
@@ -388,7 +389,7 @@ class ConfigurationTests(unittest.TestCase):
                 mode="virtualMarquee", lines_a=["19.8"],
                 lines_b=["", ""], interval=0.6, direction="left", gap=5),
         ])
-        active_lcd.stopAnimation.assert_called_once_with()
+        active_lcd.turnOff.assert_called_once_with()
 
     def test_i2c_display_selection_populates_profile_and_factory(self):
         instance = object.__new__(plugin.Plugin)

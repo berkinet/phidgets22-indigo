@@ -1,5 +1,13 @@
 # Release notes
 
+## 0.3.12 — 2026-08-27
+
+### Changed
+
+- Replace the ambiguous Stop LCD animation behavior with **Stop and turn off
+  LCD**, which cancels animation, clears the panel, and sets its backlight to
+  the hardware minimum.
+
 ## 0.3.11 — 2026-08-27
 
 ### Fixed

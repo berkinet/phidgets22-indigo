@@ -448,6 +448,19 @@ class LCDPhidget(PhidgetBase):
             self._cancel_animation_locked()
             self.updateIndigoStatus()
 
+    def turnOff(self):
+        """Stop animation, erase the panel, and turn off its backlight."""
+        with self._display_lock:
+            self._ensure_attached()
+            self._cancel_animation_locked()
+            self.phidget.clear()
+            self.phidget.flush()
+            self.lastText = ""
+            self._set_bounded(
+                "Backlight", self.phidget.getMinBacklight(),
+                "getMinBacklight", "getMaxBacklight", "setBacklight")
+            self.updateIndigoStatus()
+
     def clear(self):
         with self._display_lock:
             self._ensure_attached()

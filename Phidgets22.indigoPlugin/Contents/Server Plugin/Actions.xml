@@ -47,7 +47,7 @@
 		</ConfigUI>
 	</Action>
 	<Action id="lcdStopAnimation" deviceFilter="self.lcd" uiPath="DeviceActions">
-		<Name>Stop LCD animation</Name>
+		<Name>Stop and turn off LCD</Name>
 		<CallbackMethod>lcdStopAnimation</CallbackMethod>
 	</Action>
 	<Action id="lcdSleep" deviceFilter="self.lcd" uiPath="DeviceActions">
