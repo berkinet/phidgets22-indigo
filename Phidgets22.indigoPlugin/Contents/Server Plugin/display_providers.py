@@ -51,7 +51,7 @@ def available_display_providers(plugin):
         providers.append({
             "id": "adapter:%s" % device.id,
             "kind": "adapter",
-            "name": device.name,
+            "name": "Freenove LCD2004 — %s" % device.name,
             "adapterDeviceId": int(device.id),
         })
 

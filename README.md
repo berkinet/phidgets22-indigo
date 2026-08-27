@@ -47,6 +47,9 @@ The following Phidget classes are currently supported:
 * FrequencyCounter
 * HumiditySensor
 * LCD
+  * Native Phidget LCD channels
+  * Freenove LCD2004 with PCF8574T backpack through an ADP0001 DataAdapter
+* DataAdapter (shared I2C transport)
 * TemperatureSensor
 * VoltageInput
 * VoltageRatioInput

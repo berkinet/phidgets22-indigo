@@ -26,6 +26,11 @@ class IndigoLikeDict(dict):
         return super(IndigoLikeDict, self).__getattribute__(name)
 
 
+class DeviceCollection(dict):
+    def __iter__(self):
+        return iter(self.values())
+
+
 fake_indigo = types.ModuleType("indigo")
 fake_indigo.Dict = dict
 fake_indigo.PluginBase = FakePluginBase
@@ -42,7 +47,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.6</string>", plist)
+        self.assertIn("<string>0.3.7</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -113,7 +118,10 @@ class ConfigurationTests(unittest.TestCase):
         inventory.resolve_channel.return_value = None
         inventory.selection_for_saved_address.return_value = None
         inventory.server_choices.return_value = []
+        inventory.compatible_channels.return_value = []
         instance.discoveryInventory = inventory
+        instance.pluginId = "com.yikes.eric.phidgets-indigo"
+        instance.activePhidgets = {}
 
         values, errors = instance.getDeviceConfigUiValues({}, "lcd", 0)
 
@@ -381,6 +389,79 @@ class ConfigurationTests(unittest.TestCase):
                 lines_b=["", ""], interval=0.6, direction="left", gap=5),
         ])
         active_lcd.stopAnimation.assert_called_once_with()
+
+    def test_i2c_display_selection_populates_profile_and_factory(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.pluginId = "com.yikes.eric.phidgets-indigo"
+        instance.pluginPrefs = {"networkPhidgets": True,
+                                "enableServerDiscovery": True}
+        instance.logger = logging.getLogger("test.configuration.i2c-lcd")
+        instance.discoveryInventory = mock.Mock()
+        instance.discoveryInventory.compatible_channels.return_value = []
+        adapter_wrapper = mock.Mock()
+        adapter_wrapper.supportsFunction.side_effect = lambda value: value == "lcd"
+        instance.activePhidgets = {42: adapter_wrapper}
+        adapter_device = types.SimpleNamespace(
+            id=42, name="Library display bus", enabled=True,
+            pluginId=instance.pluginId, deviceTypeId="dataAdapter", states={},
+            pluginProps={"serialNumber": "729035", "channel": "0",
+                         "serverName": "CM-Library Mac"})
+        indigo.devices = DeviceCollection({42: adapter_device})
+        values = indigo.Dict({"lcdDisplayProvider": "adapter:42"})
+
+        returned = instance.displayProviderChanged(values, "lcd", 0)
+
+        self.assertEqual(returned["lcdProviderKind"], "adapter")
+        self.assertEqual(returned["lcdAdapterDeviceId"], "42")
+        self.assertEqual(returned["lcdProfile"], "freenove-lcd2004-pcf8574t")
+        self.assertEqual(returned["lcdScreenSize"], "8")
+        self.assertIn("Freenove LCD2004", returned["observedConnection"])
+
+        returned.update({
+            "lcdBacklight": "1.0", "lcdContrast": "0.5",
+            "lcdInitialX": "0", "lcdInitialY": "0",
+            "isVintHub": False, "isVintDevice": False,
+        })
+        indigo.variables = {}
+        valid, saved = instance.validateDeviceConfigUi(returned, "lcd", 0)
+        self.assertTrue(valid)
+        self.assertEqual(saved["address"], "lcd-i2c-42-27")
+
+        device = types.SimpleNamespace(
+            deviceTypeId="lcd", pluginProps=dict(returned,
+                lcdBacklight="1.0", lcdContrast="0.5",
+                lcdRestoreInitialText=False, lcdInitialText="",
+                lcdInitialLine1="", lcdInitialLine2="",
+                lcdInitialLine3="", lcdInitialLine4="",
+                lcdInitialX="0", lcdInitialY="0"))
+        with mock.patch.object(device_factory, "I2CLCDPhidget",
+                               return_value=mock.sentinel.i2c_lcd) as constructor:
+            result = device_factory.create_phidget(instance, device)
+
+        self.assertIs(result, mock.sentinel.i2c_lcd)
+        self.assertEqual(constructor.call_args.kwargs["adapterDeviceId"], 42)
+        self.assertEqual(constructor.call_args.kwargs["screenSize"], 8)
+
+    def test_adapter_attachment_starts_a_dependent_i2c_display(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.pluginId = "com.yikes.eric.phidgets-indigo"
+        instance.logger = mock.Mock()
+        instance.activePhidgets = {42: mock.sentinel.adapter}
+        instance.deviceStartComm = mock.Mock()
+        lcd_device = types.SimpleNamespace(
+            id=99, enabled=True, pluginId=instance.pluginId,
+            deviceTypeId="lcd", pluginProps={"lcdAdapterDeviceId": "42"})
+        indigo.devices = DeviceCollection({99: lcd_device})
+        adapter = types.SimpleNamespace(
+            indigoDevice=types.SimpleNamespace(id=42),
+            supportsFunction=lambda value: value == "lcd",
+            _identity=lambda: "adapter")
+
+        instance.phidgetAttachCompleted(
+            adapter, detached_for=0.1, attach_count=1,
+            detach_announced=False)
+
+        instance.deviceStartComm.assert_called_once_with(lcd_device)
 
     def test_lcd_action_resolves_target_from_action_when_device_is_none(self):
         instance = object.__new__(plugin.Plugin)

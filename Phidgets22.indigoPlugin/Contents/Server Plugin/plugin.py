@@ -145,6 +145,28 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
 
     def phidgetAttachCompleted(self, phidget, detached_for, attach_count,
                                detach_announced):
+        supports = getattr(phidget, "supportsFunction", None)
+        if supports is not None and supports("lcd"):
+            adapter_id = phidget.indigoDevice.id
+            for device in indigo.devices:
+                if (getattr(device, "pluginId", None) != self.pluginId or
+                        getattr(device, "deviceTypeId", None) != "lcd" or
+                        not getattr(device, "enabled", True)):
+                    continue
+                try:
+                    selected_adapter = int(device.pluginProps.get(
+                        "lcdAdapterDeviceId", 0))
+                except (TypeError, ValueError):
+                    continue
+                if selected_adapter != adapter_id:
+                    continue
+                dependent = self.activePhidgets.get(device.id)
+                if dependent is None:
+                    self.deviceStartComm(device)
+                elif attach_count > 1:
+                    callback = getattr(dependent, "providerReattached", None)
+                    if callback is not None:
+                        callback()
         if not detach_announced:
             self.logger.debug(
                 "Phidget %s in %.1f seconds (attach #%d): %s",
@@ -205,8 +227,8 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
     def deviceStartComm(self, device):
         try:
             new_phidget = create_phidget(self, device)
-            new_phidget.start()
             self.activePhidgets[device.id] = new_phidget
+            new_phidget.start()
             device.stateListOrDisplayStateIdChanged()
         except PhidgetException as error:
             self.activePhidgets.pop(device.id, None)

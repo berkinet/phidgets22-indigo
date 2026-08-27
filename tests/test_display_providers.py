@@ -51,7 +51,8 @@ class DisplayProviderTests(unittest.TestCase):
 
         self.assertEqual([provider["kind"] for provider in providers],
                          ["adapter", "native"])
-        self.assertEqual(providers[0]["name"], "Kitchen display bus")
+        self.assertEqual(providers[0]["name"],
+                         "Freenove LCD2004 — Kitchen display bus")
         self.assertEqual(providers[0]["adapterDeviceId"], 42)
         self.assertEqual(providers[1]["name"], "Native screen — Workshop")
 

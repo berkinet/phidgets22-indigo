@@ -520,20 +520,16 @@
 			<Field id="serverSelected" type="checkbox" defaultValue="false" hidden="true"/><Field id="deviceSelected" type="checkbox" defaultValue="false" hidden="true"/><Field id="vintSelected" type="checkbox" defaultValue="false" hidden="true"/><Field id="portSelected" type="checkbox" defaultValue="false" hidden="true"/><Field id="targetSelected" type="checkbox" defaultValue="false" hidden="true"/><Field id="channelParentSelected" type="checkbox" defaultValue="false" hidden="true"/><Field id="channelChoiceRequired" type="checkbox" defaultValue="false" hidden="true"/><Field id="derivedFieldsEnabled" type="checkbox" defaultValue="false" hidden="true"/>
 			<Field id="compatibleModelFound" type="checkbox" defaultValue="true" hidden="true"/>
 			<Field id="missingModelNotice" type="label" visibleBindingId="compatibleModelFound" visibleBindingValue="false" alwaysUseInDialogHeightCalc="true"><Label>No LCD device was automatically discovered. Connect and install an appropriate device first.</Label></Field>
-			<Field id="exampleLabel" type="label"><Label>Select a server, Phidget, and LCD channel.</Label></Field>
-			<Field id="discoveredServer" type="menu" defaultValue="manual"><Label>Discovered server:</Label><List class="self" method="getDiscoveredServerMenu" dynamicReload="true"/><CallbackMethod>menuChanged</CallbackMethod></Field>
-			<Field id="discoveredDevice" type="menu" defaultValue="selectServer" enabledBindingId="serverSelected"><Label>Phidget:</Label><List class="self" method="getDiscoveredDeviceMenu" dynamicReload="true"/><CallbackMethod>menuChanged</CallbackMethod></Field>
-			<Field id="discoveredPort" type="menu" defaultValue="selectDevice" visibleBindingId="vintSelected" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true" enabledBindingId="deviceSelected"><Label>VINT port:</Label><List class="self" method="getDiscoveredPortMenu" dynamicReload="true"/><CallbackMethod>menuChanged</CallbackMethod></Field>
-			<Field id="discoveredTarget" type="menu" defaultValue="selectPort" visibleBindingId="vintSelected" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true" enabledBindingId="portSelected"><Label>Port device/function:</Label><List class="self" method="getDiscoveredTargetMenu" dynamicReload="true"/><CallbackMethod>menuChanged</CallbackMethod></Field>
-			<Field id="discoveredChannel" type="menu" defaultValue="" enabledBindingId="channelParentSelected" visibleBindingId="channelChoiceRequired" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Discovered channel:</Label><List class="self" method="getDiscoveredChannelMenu" dynamicReload="true"/><CallbackMethod>menuChanged</CallbackMethod></Field>
-			<Field id="serverName" type="textfield" hidden="true"/><Field id="serialNumber" type="textfield" readonly="true"><Label>Serial number:</Label></Field><Field id="channel" type="textfield" hidden="true"/>
-			<Field id="isVintHub" type="checkbox" defaultValue="False" enabledBindingId="derivedFieldsEnabled"><Label>Connected to a VINT hub?</Label></Field>
-			<Field id="isVintDevice" type="checkbox" defaultValue="False" enabledBindingId="derivedFieldsEnabled" visibleBindingId="isVintHub" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Is this a VINT device?</Label></Field>
-			<Field id="hubPort" type="textfield" enabledBindingId="derivedFieldsEnabled" visibleBindingId="isVintHub" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Hub port:</Label></Field>
-			<Field id="observedConnection" type="textfield"><Label>Phidgets path:</Label></Field>
+			<Field id="lcdDisplayProvider" type="menu" defaultValue="selectDisplay"><Label>Available display:</Label><List class="self" method="getAvailableDisplayMenu" dynamicReload="true"/><CallbackMethod>displayProviderChanged</CallbackMethod></Field>
+			<Field id="lcdProviderKind" type="textfield" hidden="true"/><Field id="lcdAdapterDeviceId" type="textfield" hidden="true"/><Field id="lcdProfile" type="textfield" hidden="true"/>
+			<Field id="discoveredServer" type="textfield" hidden="true"/><Field id="discoveredDevice" type="textfield" hidden="true"/><Field id="discoveredPort" type="textfield" hidden="true"/><Field id="discoveredTarget" type="textfield" hidden="true"/><Field id="discoveredChannel" type="textfield" hidden="true"/>
+			<Field id="serverName" type="textfield" hidden="true"/><Field id="serialNumber" type="textfield" hidden="true"/><Field id="channel" type="textfield" hidden="true"/>
+			<Field id="isVintHub" type="checkbox" defaultValue="False" hidden="true"/><Field id="isVintDevice" type="checkbox" defaultValue="False" hidden="true"/><Field id="hubPort" type="textfield" hidden="true"/>
+			<Field id="observedConnection" type="textfield" readonly="true"><Label>Display path:</Label></Field>
 			<Field id="discoverySeparator" type="separator"/>
+			<Field id="i2cDisplayNotice" type="label" visibleBindingId="lcdProviderKind" visibleBindingValue="adapter" alwaysUseInDialogHeightCalc="true"><Label>Freenove LCD2004: backlight values are on/off. Contrast is adjusted with the potentiometer on the display backpack.</Label></Field>
 
-			<Field id="lcdScreenSize" type="menu" defaultValue="1">
+			<Field id="lcdScreenSize" type="menu" defaultValue="1" visibleBindingId="lcdProviderKind" visibleBindingValue="native" alwaysUseInDialogHeightCalc="true">
 				<Label>Text LCD screen size:</Label>
 				<List>
 					<Option value="1">Automatic / graphic LCD</Option>
@@ -551,7 +547,7 @@
 				</List>
 			</Field>
 			<Field id="lcdBacklight" type="textfield" defaultValue="1.0"><Label>Initial backlight (0.0–1.0):</Label></Field>
-			<Field id="lcdContrast" type="textfield" defaultValue="0.5"><Label>Initial contrast (0.0–1.0):</Label></Field>
+			<Field id="lcdContrast" type="textfield" defaultValue="0.5" visibleBindingId="lcdProviderKind" visibleBindingValue="native" alwaysUseInDialogHeightCalc="true"><Label>Initial contrast (0.0–1.0):</Label></Field>
 			<Field id="lcdRestoreInitialText" type="checkbox" defaultValue="false"><Label>Write the initial text below after every attachment?</Label></Field>
 			<Field id="lcdInitialText" type="textfield" visibleBindingId="lcdScreenSize" visibleBindingValue="1" alwaysUseInDialogHeightCalc="true"><Label>Initial graphic text:</Label></Field>
 			<Field id="lcdInitialX" type="textfield" defaultValue="0" visibleBindingId="lcdScreenSize" visibleBindingValue="1" alwaysUseInDialogHeightCalc="true"><Label>Initial X position:</Label></Field>

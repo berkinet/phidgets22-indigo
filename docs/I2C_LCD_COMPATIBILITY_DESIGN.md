@@ -2,18 +2,21 @@
 
 ## Status
 
-Phase 2 implemented in version 0.3.3. `LCDPhidget` is the common
+The first complete adapter-backed display profile is implemented in version
+0.3.7. `LCDPhidget` is the common
 plugin-level contract, and `NativeLCDPhidget` is the concrete implementation
 selected for existing native LCD devices. `DataAdapterPhidget` now owns and
 configures a physical ADP0001 DataAdapter channel as a shared I2C bus. Display
-protocol support remains pending representative hardware. This document does
-not commit the plugin to a particular I2C LCD, backpack, or pin mapping.
+The initial verified target is a Freenove LCD2004 with PCF8574T backpack at
+address `0x27`, using a configured ADP0001 at 5 V and 100 kHz.
 
-Version 0.3.6 adds provider awareness. DataAdapter devices advertise readable
+Version 0.3.6 added provider awareness. DataAdapter devices advertise readable
 available functions, initially `LCD display transport`, and the LCD layer can
 combine native channels and configured capable adapters into one internal
 provider inventory. The adapter-backed choice is not shown in the LCD pane
-until at least one tested controller profile can render through it.
+until at least one controller profile can render through it. Version 0.3.7
+activates that selector and retains the native Phidget LCD path as another
+provider in the same list.
 
 ## Motivation
 
@@ -107,10 +110,8 @@ Create I2C Data Adapter
   → Select server and ADP0001 DataAdapter channel
   → Configure voltage and frequency
 Create LCD
-  → Select I2C display transport
-  → Select the configured I2C Data Adapter
-  → Select supported display profile and address
-  → Configure dimensions and backpack/pin-mapping preset
+  → Select a friendly available display
+  → Plugin retains the native channel or adapter/profile reference internally
 ```
 
 The adapter device exclusively owns the Phidget22 channel and serializes all
@@ -141,9 +142,10 @@ emulation or produce a clear validation/runtime error.
 
 ## Initial I2C target
 
-A likely first target is an HD44780-compatible character LCD connected through
-a PCF8574 I2C backpack, such as common LCD1602 modules. Implementation requires
-the plugin to provide:
+The first target is the Freenove LCD2004: an HD44780-compatible 20×4 character
+LCD connected through a PCF8574T backpack. Its verified profile is fixed at
+address `0x27` with `RS=P0`, `RW=P1`, `E=P2`, backlight `P3`, and data
+`D4–D7=P4–P7`. The implementation provides:
 
 - Four-bit HD44780 initialization and command timing.
 - PCF8574 bit mapping for `RS`, `E`, backlight, and data lines.
@@ -153,8 +155,8 @@ the plugin to provide:
 - Appropriate DataAdapter voltage, frequency, I2C address, and transaction
   behavior.
 
-Support should begin with one verified hardware/profile combination rather
-than claiming compatibility with every product sold as `LiquidCrystal_I2C`.
+This profile does not claim compatibility with every product sold as
+`LiquidCrystal_I2C`.
 
 ## Testing requirements
 
@@ -178,16 +180,16 @@ I2C profile is released.
 
 1. **Complete in 0.3.3:** add the shared ADP0001 DataAdapter device, discovery,
    bus configuration, locking, validation, and transaction boundary.
-2. Inventory the ADP0001 and display/backpack model, address, voltage, and pin
+2. **Complete in 0.3.7:** inventory the ADP0001 and display/backpack model,
+   address, voltage, and pin
    mapping.
-3. Capture working initialization and write transactions in a standalone
-   Phidget22 Python experiment.
-4. Add transport hooks to `LCDPhidget` without changing its public behavior.
-5. Run the complete existing LCD suite against the unchanged native path.
-6. Implement `I2CLCDPhidget` and its profile-specific transport.
-7. Add shared-contract, I2C-sequence, discovery, configuration, and migration
-   tests.
-8. Validate the full Indigo action set on hardware before publishing support.
+3. **Complete in 0.3.7:** implement the initialization and exact PCF8574T
+   transaction sequence behind the existing LCD contract.
+4. **Complete in 0.3.7:** activate unified provider selection and retain saved
+   native configuration compatibility.
+5. **Complete in 0.3.7:** add native regression, I2C sequence, discovery,
+   configuration, startup-order, and profile tests.
+6. Validate the full Indigo action set on hardware.
 
 ## Non-goals for the first implementation
 

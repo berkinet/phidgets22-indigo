@@ -1,5 +1,37 @@
 # Release notes
 
+## 0.3.7 — 2026-08-27
+
+### Added
+
+- Add the first operational adapter-backed display profile: Freenove LCD2004,
+  20×4 HD44780-compatible controller, PCF8574T backpack, address `0x27`, and
+  the documented Freenove P0–P7 mapping.
+- Replace transport-specific LCD discovery controls with one **Available
+  display** selector populated by native Phidget LCDs and supported displays
+  behind configured adapters.
+- Implement four-bit controller initialization, exact 20×4 DDRAM row mapping,
+  complete-frame writes, binary backlight, display sleep/wake, and all existing
+  static, marquee, Virtual marquee, and Flash actions through the shared
+  adapter transaction lock.
+- Persist only the selected provider/profile reference while retaining the
+  existing native LCD properties and Action identifiers.
+- Start dependent displays regardless of Indigo device startup order and
+  reinitialize them after their shared adapter reattaches.
+
+### Notes
+
+- Contrast on this display is adjusted with the backpack potentiometer. Saved
+  contrast values remain compatible with existing actions but have no physical
+  effect on this profile.
+- Real-hardware validation is required after installation of this release.
+
+### Testing
+
+- Add byte-level PCF8574T initialization, address, pin mapping, row-address,
+  frame, backlight, sleep, unified selection, profile, and factory coverage.
+- Run the complete native LCD regression suite unchanged.
+
 ## 0.3.6 — 2026-08-26
 
 ### Added

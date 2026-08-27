@@ -11,6 +11,7 @@ from digitalinput import DigitalInputPhidget
 from frequencycounter import FrequencyCounterPhidget
 from humiditysensor import HumiditySensorPhidget
 from lcd import NativeLCDPhidget
+from i2c_lcd import I2CLCDPhidget
 from dataadapter import DataAdapterPhidget
 
 
@@ -142,8 +143,14 @@ def _humidity_sensor(plugin, device, common):
 
 def _lcd(plugin, device, common):
     props = device.pluginProps
-    return NativeLCDPhidget(
+    lcd_class = (I2CLCDPhidget
+                 if props.get("lcdProviderKind") == "adapter"
+                 else NativeLCDPhidget)
+    extra = ({"adapterDeviceId": int(props["lcdAdapterDeviceId"])}
+             if lcd_class is I2CLCDPhidget else {})
+    return lcd_class(
         **common["base"],
+        **extra,
         screenSize=int(props.get("lcdScreenSize", 1)),
         backlight=float(props.get("lcdBacklight", 1.0)),
         contrast=float(props.get("lcdContrast", 0.5)),

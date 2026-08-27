@@ -5,8 +5,8 @@
 import indigo
 
 from discovery import (CHANNEL_CLASSES_BY_DEVICE_TYPE, device_token,
-                       format_channel, format_network_diagram, server_token,
-                       target_token)
+                       channel_token, format_channel, format_network_diagram,
+                       port_token, server_token, target_token)
 from display_providers import available_display_providers
 
 
@@ -17,6 +17,44 @@ class DiscoveryUiMixin(object):
         providers = available_display_providers(self)
         return [("selectDisplay", "Select a display")] + [
             (provider["id"], provider["name"]) for provider in providers]
+
+    def _applyDisplayProvider(self, valuesDict, selection, devId=0):
+        providers = {provider["id"]: provider
+                     for provider in available_display_providers(self)}
+        provider = providers.get(selection)
+        valuesDict["compatibleModelFound"] = bool(providers)
+        if provider is None:
+            return valuesDict
+        valuesDict["lcdDisplayProvider"] = provider["id"]
+        valuesDict["lcdProviderKind"] = provider["kind"]
+        if provider["kind"] == "native":
+            description = provider["channel"]
+            valuesDict["lcdAdapterDeviceId"] = ""
+            valuesDict["lcdProfile"] = "native"
+            valuesDict["discoveredServer"] = server_token(description)
+            valuesDict["discoveredDevice"] = device_token(description)
+            valuesDict["discoveredChannel"] = channel_token(description)
+            if description.get("deviceClass") == 21:
+                valuesDict["discoveredPort"] = port_token(description)
+                valuesDict["discoveredTarget"] = target_token(description)
+            return self.menuChanged(valuesDict, "lcd", devId)
+
+        adapter_id = int(provider["adapterDeviceId"])
+        adapter_device = indigo.devices[adapter_id]
+        adapter_props = adapter_device.pluginProps
+        valuesDict["lcdAdapterDeviceId"] = str(adapter_id)
+        valuesDict["lcdProfile"] = "freenove-lcd2004-pcf8574t"
+        valuesDict["lcdScreenSize"] = "8"
+        valuesDict["discoveredChannel"] = "manual"
+        valuesDict["serialNumber"] = str(adapter_props.get("serialNumber", ""))
+        valuesDict["channel"] = str(adapter_props.get("channel", "0"))
+        valuesDict["serverName"] = str(adapter_props.get("serverName", ""))
+        valuesDict["observedConnection"] = "%s→Freenove LCD2004" % adapter_device.name
+        return valuesDict
+
+    def displayProviderChanged(self, valuesDict, typeId, devId):
+        return self._applyDisplayProvider(
+            valuesDict, valuesDict.get("lcdDisplayProvider", ""), devId)
 
     def validatePrefsConfigUi(self, valuesDict):
         try:
@@ -57,7 +95,22 @@ class DiscoveryUiMixin(object):
                 for key, value in recovered.items():
                     values[key] = value
                 values["configurationMigrated"] = True
-        return (self.menuChanged(values, typeId, devId), indigo.Dict())
+        values = self.menuChanged(values, typeId, devId)
+        if typeId == "lcd":
+            providers = available_display_providers(self)
+            values["compatibleModelFound"] = bool(providers)
+            selection = values.get("lcdDisplayProvider", "")
+            if not selection:
+                description = (self.discoveryInventory.resolve_channel(
+                    values.get("discoveredChannel", ""))
+                    if self.discoveryInventory is not None else None)
+                if description is not None:
+                    selection = "native:%s" % channel_token(description)
+                elif len(providers) == 1:
+                    selection = providers[0]["id"]
+            if selection:
+                values = self._applyDisplayProvider(values, selection, devId)
+        return (values, indigo.Dict())
 
     def _observedConnectionForDevice(self, devId):
         if devId:
@@ -72,6 +125,20 @@ class DiscoveryUiMixin(object):
 
     def validateDeviceConfigUi(self, valuesDict, typeId, devId):
         valuesDict["observedConnection"] = self._observedConnectionForDevice(devId)
+        if typeId == "lcd":
+            selection = valuesDict.get("lcdDisplayProvider", "")
+            providers = {provider["id"]: provider
+                         for provider in available_display_providers(self)}
+            saved_native_offline = bool(
+                devId and valuesDict.get("lcdProviderKind", "native") == "native" and
+                str(valuesDict.get("serialNumber", "")).strip() and
+                str(valuesDict.get("channel", "")).strip())
+            if selection not in providers and not saved_native_offline:
+                errors = indigo.Dict()
+                errors["lcdDisplayProvider"] = "Select an available display."
+                errors["showAlertText"] = "Select an available display before saving."
+                return (False, valuesDict, errors)
+            valuesDict = self._applyDisplayProvider(valuesDict, selection, devId)
         inventory = getattr(self, "discoveryInventory", None)
         compatible_available = bool(
             inventory is not None and inventory.server_choices(typeId))
@@ -219,6 +286,8 @@ class DiscoveryUiMixin(object):
             valuesDict["address"] = address_index
 
         valuesDict["configurationMigrated"] = False
+        if typeId == "lcd" and valuesDict.get("lcdProviderKind") == "adapter":
+            valuesDict["address"] = "lcd-i2c-%s-27" % valuesDict["lcdAdapterDeviceId"]
         return (True, valuesDict)
 
     def getPhidgetTypeMenu(self, filter="", valuesDict=None, typeId="", targetId=0):
