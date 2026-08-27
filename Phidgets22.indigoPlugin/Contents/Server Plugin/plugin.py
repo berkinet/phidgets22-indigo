@@ -264,12 +264,25 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                 indigo.trigger.execute(trigger_id)
 
     def deviceStopComm(self, device):
-        phidget = self.activePhidgets.pop(device.id, None)
+        phidget = self.activePhidgets.get(device.id)
         if phidget is None:
             self.logger.debug(
                 "Stop requested for inactive Phidget device='%s' id=%s",
                 device.name, device.id)
             return
+        supports = getattr(phidget, "supportsFunction", None)
+        if supports is not None and supports("lcd"):
+            # Indigo may stop a shared DataAdapter before its logical LCD.
+            # Quiesce dependent timers while the provider is still attached so
+            # an in-flight frame finishes before the bus is closed.
+            for dependent in list(self.activePhidgets.values()):
+                if (dependent is phidget or
+                        getattr(dependent, "adapterDeviceId", None) != device.id):
+                    continue
+                callback = getattr(dependent, "providerStopping", None)
+                if callback is not None:
+                    callback()
+        self.activePhidgets.pop(device.id, None)
         try:
             phidget.stop()
         except Exception:

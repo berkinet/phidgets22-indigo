@@ -47,7 +47,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.10</string>", plist)
+        self.assertIn("<string>0.3.11</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -638,6 +638,22 @@ class ConfigurationTests(unittest.TestCase):
                       "alternateLine4", "virtualText", "graphicText"):
             self.assertIn(field, returned)
             self.assertEqual(returned[field], "")
+
+    def test_stopping_adapter_quiesces_dependent_lcd_first(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.logger = mock.Mock()
+        provider = mock.Mock()
+        provider.supportsFunction.return_value = True
+        dependent = mock.Mock()
+        dependent.adapterDeviceId = 42
+        instance.activePhidgets = {42: provider, 91: dependent}
+        device = mock.Mock(id=42, name="I2C Adapter 1")
+
+        instance.deviceStopComm(device)
+
+        dependent.providerStopping.assert_called_once_with()
+        provider.stop.assert_called_once_with()
+        self.assertNotIn(42, instance.activePhidgets)
 
 
 if __name__ == "__main__":

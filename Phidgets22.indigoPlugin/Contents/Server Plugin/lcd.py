@@ -179,6 +179,12 @@ class LCDPhidget(PhidgetBase):
             self._pending_display_request = None
         super(LCDPhidget, self).stop()
 
+    def providerStopping(self):
+        """Quiesce background display work before a shared provider stops."""
+        with self._display_lock:
+            self._cancel_animation_locked()
+            self._pending_display_request = None
+
     def runDisplayWhenAttached(self, callback):
         """Run a display request now or retain only the newest detached request."""
         with self._display_lock:

@@ -1,5 +1,13 @@
 # Release notes
 
+## 0.3.11 — 2026-08-27
+
+### Fixed
+
+- Stop adapter-backed LCD animation timers before Indigo closes their shared
+  DataAdapter, preventing a spurious write-error traceback during plugin
+  shutdown.
+
 ## 0.3.10 — 2026-08-27
 
 ### Fixed
