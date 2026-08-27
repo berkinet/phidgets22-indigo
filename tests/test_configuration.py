@@ -47,7 +47,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.9</string>", plist)
+        self.assertIn("<string>0.3.10</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -618,6 +618,26 @@ class ConfigurationTests(unittest.TestCase):
         self.assertFalse(valid)
         self.assertIn("marqueeInterval", errors)
         self.assertIn("marqueeGap", errors)
+
+    def test_lcd_action_validation_persists_cleared_text_fields(self):
+        instance = object.__new__(plugin.Plugin)
+        values = indigo.Dict({
+            "lineCount": "4", "animationMode": "marquee",
+            "animationLine1": "Current", "marqueeDirection": "left",
+            "marqueeGap": "3", "marqueeInterval": "0.4",
+            "backlight": "1.0", "contrast": "0.5",
+        })
+
+        valid, returned = instance.validateActionConfigUi(
+            values, "lcdStartAnimation", 42)
+
+        self.assertTrue(valid)
+        self.assertEqual(returned["animationLine1"], "Current")
+        for field in ("animationLine2", "animationLine3", "animationLine4",
+                      "alternateLine1", "alternateLine2", "alternateLine3",
+                      "alternateLine4", "virtualText", "graphicText"):
+            self.assertIn(field, returned)
+            self.assertEqual(returned[field], "")
 
 
 if __name__ == "__main__":

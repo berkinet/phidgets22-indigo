@@ -1,5 +1,13 @@
 # Release notes
 
+## 0.3.10 — 2026-08-27
+
+### Fixed
+
+- Persist cleared LCD action text fields as explicit empty values so stale
+  lines from an earlier action configuration cannot remain in Indigo device
+  state or continue scrolling on the display.
+
 ## 0.3.9 — 2026-08-27
 
 ### Added

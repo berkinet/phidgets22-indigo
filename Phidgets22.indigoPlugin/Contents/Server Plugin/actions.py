@@ -227,6 +227,13 @@ class ActionsMixin(object):
     def validateActionConfigUi(self, valuesDict, typeId, deviceId):
         errors = indigo.Dict()
         if typeId == "lcdStartAnimation":
+            # Indigo can omit a text field after an existing action value is
+            # cleared. Return every LCD text property explicitly so an empty
+            # field replaces the previously saved value.
+            for field in (["virtualText", "graphicText"] +
+                          ["animationLine%d" % line for line in range(1, 5)] +
+                          ["alternateLine%d" % line for line in range(1, 5)]):
+                valuesDict[field] = str(valuesDict.get(field, "") or "")
             line_count = int(valuesDict.get("lineCount", 0))
             mode = valuesDict.get("animationMode", "static")
             for field in ("backlight", "contrast"):
