@@ -57,7 +57,14 @@ These package modules are not counted as user-facing hardware classes:
 
 ## Suggested implementation order
 
-The initial `LCD` support is complete. The remaining suggested sequence is:
+The initial `LCD` support is complete. The remaining pre-1.0 hardware work is:
+
+1. Add and hardware-test an I2C BME280 5 V barometric/environmental sensor
+   profile on the ADP0001.
+2. Add and hardware-test an I2C SGP41 air-quality sensor profile on the
+   ADP0001.
+
+After the 1.0 Store publication, the suggested sequence is:
 
 1. Add access to GPIO 0 and GPIO 1 on the ADP0001 DataAdapter, as described
    below. This is an extension of the existing `DigitalInput` and
@@ -78,6 +85,24 @@ The initial `LCD` support is complete. The remaining suggested sequence is:
 on the implementation roadmap at present. They remain in the inventory above
 so the document continues to accurately describe the classes exposed by the
 Phidget22 package.
+
+## ADP0001 I2C environmental sensors required before 1.0
+
+The ordered SGP41 and 5 V BME280 boards are the remaining planned hardware
+profiles before the first public Store release. Confirm each board's exact
+identity, address options, electrical requirements, and observed responses on
+arrival rather than assuming that all breakout boards use the same design.
+
+- BME280: expose temperature, relative humidity, and barometric pressure as
+  Indigo states, with a configurable polling interval and actionable address
+  validation.
+- SGP41: expose the supported VOC/NOx measurements. Decide from the actual
+  board and tested driver whether the first profile publishes raw signals,
+  processed gas indices, or both, and how temperature/humidity compensation is
+  supplied.
+- Both profiles must share an ADP0001 with existing I2C displays and sensors,
+  reject address collisions, recover after adapter/server detach, and avoid
+  blocking Indigo while measurements are pending.
 
 ## ADP0001 GPIO 0 and GPIO 1
 

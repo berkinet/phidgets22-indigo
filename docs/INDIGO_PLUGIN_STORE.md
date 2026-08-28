@@ -25,8 +25,13 @@ the tested release candidate to `1.0.0` and publish its matching tag and GitHub
 Release. Do not bump the plugin, tag `v1.0.0`, or create that release before the
 submission milestone.
 
-The LCD1100 does not block the initial Store submission. Support can be tested
-and extended after the hardware arrives.
+The remaining planned hardware work before that milestone is support and
+real-hardware verification for the ordered SGP41 I2C sensor and 5 V BME280
+barometric sensor. ADP0001 GPIO support remains on the post-publication roadmap
+unless the owner changes that priority.
+
+The planned LCD1100 text and formula-graph support is implemented and
+hardware-tested; it no longer represents a Store-submission dependency.
 
 ## Permanent identity and compatibility
 
