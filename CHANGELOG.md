@@ -1,5 +1,17 @@
 # Release notes
 
+## 0.3.23 — 2026-08-28
+
+### Fixed
+
+- Republish BME280/BMP280 model, address, and inherited adapter connection
+  metadata after Indigo creates the sensor's dynamic states.
+- Treat an expected I2C NACK from a configured LCD or environmental sensor as
+  an unavailable peripheral: keep the Indigo device in an error state while
+  logging a concise diagnostic instead of a Python traceback.
+- Suppress repeated identical BME280/BMP280 offline messages during polling and
+  log when communication recovers.
+
 ## 0.3.22 — 2026-08-28
 
 ### Added

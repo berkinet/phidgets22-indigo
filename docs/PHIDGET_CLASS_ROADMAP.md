@@ -90,8 +90,8 @@ arrival rather than assuming that all breakout boards use the same design.
 
 - BME280/BMP280: implemented on the shared ADP0001 with chip-ID verification,
   calibrated temperature and barometric pressure, BME280 humidity, configurable
-  polling, and actionable address validation. Real-hardware verification is in
-  progress with the received 5 V GYBMEP module.
+  polling, and actionable address validation. Verified on real hardware with
+  the received 5 V GYBMEP BME280 module at address `0x76`.
 - SGP41: expose the supported VOC/NOx measurements. Decide from the actual
   board and tested driver whether the first profile publishes raw signals,
   processed gas indices, or both, and how temperature/humidity compensation is

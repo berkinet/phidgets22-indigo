@@ -63,7 +63,7 @@ class I2CLCDTests(unittest.TestCase):
 
         with mock.patch.object(i2c_lcd.time, "sleep"):
             with self.assertRaisesRegex(
-                    RuntimeError,
+                    i2c_lcd.PeripheralUnavailableError,
                     "No I2C display responded at 0x26.*address jumpers"):
                 channel.initialize()
 

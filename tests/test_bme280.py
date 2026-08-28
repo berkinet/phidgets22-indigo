@@ -22,6 +22,13 @@ class FakeAdapter(object):
         self.registers = registers
         self.writes = []
         self.channelInfo = mock.sentinel.channel_info
+        self.indigoDevice = types.SimpleNamespace(
+            name="I2C Adapter",
+            states={
+                "connectionType": "remote",
+                "serverName": "CM-Library Mac",
+                "connectionPath": "CM-Library Mac→I2C Adapter",
+            })
 
     def supportsFunction(self, function_id):
         return function_id == "bme280"
@@ -53,6 +60,7 @@ class BME280Tests(unittest.TestCase):
         adapter = FakeAdapter(registers)
         device = mock.Mock(name="Weather sensor")
         device.name = "Weather sensor"
+        device.states = {}
         plugin = types.SimpleNamespace(
             activePhidgets={42: adapter},
             getDeviceStateDictForNumberType=lambda *args: args,
@@ -61,6 +69,7 @@ class BME280Tests(unittest.TestCase):
         wrapper = bme280.BME280Phidget(
             adapterDeviceId=42, indigo_plugin=plugin, indigoDevice=device,
             logger=logging.getLogger("test.bme280"), decimalPlaces=2)
+        wrapper.adapter = adapter
         return wrapper, adapter, device
 
     def test_initialization_identifies_bmp_and_configures_measurement(self):
@@ -72,7 +81,6 @@ class BME280Tests(unittest.TestCase):
         self.assertEqual(wrapper.calibration["T1"], 27504)
         self.assertEqual(adapter.writes, [
             (0x76, b"\xF5\xA0"), (0x76, b"\xF4\x27")])
-        device.updateStateOnServer.assert_any_call("sensorModel", value="BMP280")
 
     def test_bosch_reference_temperature_and_pressure_compensation(self):
         wrapper, _, _ = self.wrapper()
@@ -103,7 +111,16 @@ class BME280Tests(unittest.TestCase):
 
         state_ids = [call.args[0]
                      for call in device.updateStateOnServer.call_args_list]
-        self.assertEqual(state_ids, ["temperature", "pressure", "humidity"])
+        self.assertEqual(state_ids, [
+            "connectionType", "serverName", "connectionPath", "sensorModel",
+            "i2cAddress", "temperature", "pressure", "humidity"])
+        device.updateStateOnServer.assert_any_call(
+            "connectionPath",
+            value="CM-Library Mac→I2C Adapter→BME280 0x76")
+        device.updateStateOnServer.assert_any_call(
+            "sensorModel", value="BME280")
+        device.updateStateOnServer.assert_any_call(
+            "i2cAddress", value="0x76")
 
     def test_state_list_omits_humidity_for_bmp(self):
         wrapper, _, _ = self.wrapper(0x58)

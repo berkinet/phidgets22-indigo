@@ -10,6 +10,7 @@ from Phidget22.ErrorCode import ErrorCode
 from Phidget22.PhidgetException import PhidgetException
 
 from lcd import LCDPhidget
+from phidget import PeripheralUnavailableError
 
 
 class HD44780PCF8574Channel(object):
@@ -148,9 +149,10 @@ class HD44780PCF8574Channel(object):
             self._command(0x0c)  # display on, cursor and blink off
         except PhidgetException as error:
             if error.code == ErrorCode.EPHIDGET_NACK:
-                raise RuntimeError(
+                raise PeripheralUnavailableError(
                     "No I2C display responded at 0x%02X. Verify the configured "
-                    "address, address jumpers, power, and wiring." % self.address)
+                    "address, address jumpers, power, and wiring." % self.address
+                ) from None
             raise
 
     def getChannelSubclass(self):

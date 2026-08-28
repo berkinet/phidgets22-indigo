@@ -9,6 +9,10 @@ import traceback
 
 import indigo
 
+from Phidget22.ErrorCode import ErrorCode
+from Phidget22.PhidgetException import PhidgetException
+from phidget import PeripheralUnavailableError
+
 
 class BME280Phidget(object):
     CHIP_IDS = {0x60: "BME280", 0x58: "BMP280"}
@@ -32,6 +36,7 @@ class BME280Phidget(object):
         self._timer = None
         self._generation = 0
         self._lock = threading.RLock()
+        self._offline_message = None
 
     def _resolveAdapter(self):
         adapter = self.indigo_plugin.activePhidgets.get(self.adapterDeviceId)
@@ -42,12 +47,26 @@ class BME280Phidget(object):
         return adapter
 
     def _read(self, register, length):
-        return bytes(self.adapter.i2cSendReceive(
-            self.address, bytes((register,)), length))
+        try:
+            return bytes(self.adapter.i2cSendReceive(
+                self.address, bytes((register,)), length))
+        except PhidgetException as error:
+            if error.code == ErrorCode.EPHIDGET_NACK:
+                raise PeripheralUnavailableError(
+                    "No BME280/BMP280 responded at 0x%02X" % self.address
+                ) from None
+            raise
 
     def _write(self, register, value):
-        self.adapter.i2cSendReceive(
-            self.address, bytes((register, value)), 0)
+        try:
+            self.adapter.i2cSendReceive(
+                self.address, bytes((register, value)), 0)
+        except PhidgetException as error:
+            if error.code == ErrorCode.EPHIDGET_NACK:
+                raise PeripheralUnavailableError(
+                    "No BME280/BMP280 responded at 0x%02X" % self.address
+                ) from None
+            raise
 
     @staticmethod
     def _signed12(value):
@@ -80,7 +99,7 @@ class BME280Phidget(object):
         response = self._read(0xD0, 1)
         if len(response) != 1 or response[0] not in self.CHIP_IDS:
             found = "no response" if not response else "chip ID 0x%02X" % response[0]
-            raise RuntimeError(
+            raise PeripheralUnavailableError(
                 "No BME280/BMP280 responded at 0x%02X (%s)" %
                 (self.address, found))
         self.chipId = response[0]
@@ -91,9 +110,27 @@ class BME280Phidget(object):
         self._write(0xF5, 0xA0)      # 1000 ms standby, filter off
         self._write(0xF4, 0x27)      # temperature/pressure ×1, normal mode
         time.sleep(0.02)              # allow the first conversion to complete
-        self.indigoDevice.updateStateOnServer("sensorModel", value=self.chipModel)
-        self.indigoDevice.updateStateOnServer(
-            "i2cAddress", value="0x%02X" % self.address)
+        self._offline_message = None
+
+    def _publishMetadata(self):
+        adapter_states = getattr(self.adapter.indigoDevice, "states", {})
+        device_states = getattr(self.indigoDevice, "states", {})
+
+        def publish(state_id, value):
+            value = str(value or "")
+            if str(device_states.get(state_id, "") or "") != value:
+                self.indigoDevice.updateStateOnServer(state_id, value=value)
+
+        for state_id in ("connectionType", "serverName", "serverUniqueName",
+                         "serverHost", "serverPeer", "connection"):
+            publish(state_id, adapter_states.get(state_id, ""))
+        base_path = (adapter_states.get("connectionPath") or
+                     adapter_states.get("connection") or
+                     self.adapter.indigoDevice.name)
+        publish("connectionPath", "%s→%s 0x%02X" %
+                (base_path, self.chipModel, self.address))
+        publish("sensorModel", self.chipModel)
+        publish("i2cAddress", "0x%02X" % self.address)
 
     def _compensate(self, data):
         if len(data) != 8:
@@ -136,6 +173,7 @@ class BME280Phidget(object):
             if generation != self._generation or self._state != "attached":
                 return
             try:
+                self._publishMetadata()
                 temperature, pressure, humidity = self._compensate(
                     self._read(0xF7, 8))
                 self.indigoDevice.updateStateOnServer(
@@ -148,7 +186,21 @@ class BME280Phidget(object):
                     self.indigoDevice.updateStateOnServer(
                         "humidity", value=humidity,
                         decimalPlaces=self.decimalPlaces)
+                if self._offline_message is not None:
+                    self.logger.info(
+                        "I2C environmental sensor recovered: device='%s' "
+                        "address=0x%02X", self.indigoDevice.name, self.address)
+                    self._offline_message = None
                 self.indigoDevice.setErrorStateOnServer(None)
+            except PeripheralUnavailableError as error:
+                message = str(error)
+                if message != self._offline_message:
+                    self.logger.error(
+                        "Configured peripheral unavailable: device='%s': %s",
+                        self.indigoDevice.name, message)
+                    self._offline_message = message
+                self.indigoDevice.setErrorStateOnServer(
+                    "No response at 0x%02X" % self.address)
             except Exception:
                 self.logger.error(
                     "BME280/BMP280 poll failed: device='%s'\n%s",

@@ -9,6 +9,12 @@ import traceback
 
 import phidget_util
 
+
+class PeripheralUnavailableError(RuntimeError):
+    """Expected failure when configured external hardware does not respond."""
+
+    pass
+
 class NetInfo():
     def __init__(self, isRemote=None, serverDiscovery=None, hostname=None, port=None, password=None, serverName=None):
         self.isRemote = isRemote
@@ -339,6 +345,19 @@ class PhidgetBase(object):
             self.configureAttachedPhidget(ph)
             self._cache_runtime_server(ph)
             self._update_connection_states()
+        except PeripheralUnavailableError as error:
+            with self._lifecycle_lock:
+                self._state = "detached"
+                if self._detached_at is None:
+                    self._detached_at = time.monotonic()
+            try:
+                self.indigoDevice.setErrorStateOnServer("Initialization failed")
+            except Exception:
+                pass
+            self.logger.error(
+                "Configured peripheral unavailable: %s: %s",
+                self._identity(), error)
+            return
         except Exception:
             with self._lifecycle_lock:
                 self._state = "detached"

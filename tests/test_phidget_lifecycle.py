@@ -81,8 +81,10 @@ class FakePlugin(object):
 class TestPhidget(phidget_module.PhidgetBase):
     __test__ = False
 
-    def __init__(self, fail_initialization=False, fail_open=False):
+    def __init__(self, fail_initialization=False, fail_open=False,
+                 peripheral_unavailable=False):
         self.fail_initialization = fail_initialization
+        self.peripheral_unavailable = peripheral_unavailable
         self.handlers_added = False
         self.native = FakeNativePhidget(fail_open=fail_open)
         self.device = FakeDevice()
@@ -101,6 +103,9 @@ class TestPhidget(phidget_module.PhidgetBase):
         self.handlers_added = True
 
     def configureAttachedPhidget(self, ph):
+        if self.peripheral_unavailable:
+            raise phidget_module.PeripheralUnavailableError(
+                "No I2C display responded at 0x27")
         if self.fail_initialization:
             raise RuntimeError("configuration failed")
 
@@ -119,6 +124,21 @@ class PhidgetLifecycleTests(unittest.TestCase):
         self.assertEqual(self.phidget._state, "detached")
         self.assertEqual(self.phidget.device.errors[-1], "Initialization failed")
         self.assertEqual(self.phidget.plugin.events, [])
+
+    def test_expected_missing_peripheral_logs_without_a_traceback(self):
+        self.phidget = TestPhidget(peripheral_unavailable=True)
+        self.phidget.start()
+
+        self.phidget.onAttachHandler(self.phidget.native)
+
+        self.assertEqual(self.phidget._state, "detached")
+        self.assertEqual(self.phidget.device.errors[-1], "Initialization failed")
+        self.phidget.test_logger.error.assert_called_once()
+        log_args = self.phidget.test_logger.error.call_args.args
+        self.assertNotIn("Traceback", " ".join(map(str, log_args)))
+        self.assertIn(
+            "No I2C display responded at 0x27",
+            " ".join(map(str, log_args)))
 
     def test_successful_attach_caches_actual_server_identity(self):
         self.phidget = TestPhidget()

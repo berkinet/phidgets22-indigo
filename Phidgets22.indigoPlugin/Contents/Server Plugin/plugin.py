@@ -21,6 +21,7 @@ from device_factory import create_phidget
 from discovery import DiscoveryInventory
 from discovery_ui import DiscoveryUiMixin
 from version_check import start_version_check
+from phidget import PeripheralUnavailableError
 
 
 class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
@@ -221,7 +222,23 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                       attach_count > 1):
                     callback = getattr(dependent, "providerReattached", None)
                     if callback is not None:
-                        callback()
+                        try:
+                            callback()
+                        except PeripheralUnavailableError as error:
+                            dependent.indigoDevice.setErrorStateOnServer(
+                                "Initialization failed")
+                            self.logger.error(
+                                "Configured peripheral unavailable: "
+                                "device='%s': %s",
+                                dependent.indigoDevice.name, error)
+                        except Exception:
+                            dependent.indigoDevice.setErrorStateOnServer(
+                                "Initialization failed")
+                            self.logger.error(
+                                "Unable to reinitialize I2C peripheral "
+                                "device='%s':\n%s",
+                                dependent.indigoDevice.name,
+                                traceback.format_exc())
         if not detach_announced:
             self.logger.debug(
                 "Phidget %s in %.1f seconds (attach #%d): %s",
@@ -285,6 +302,13 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             self.activePhidgets[device.id] = new_phidget
             new_phidget.start()
             device.stateListOrDisplayStateIdChanged()
+        except PeripheralUnavailableError as error:
+            self.activePhidgets.pop(device.id, None)
+            device.setErrorStateOnServer("Initialization failed")
+            self.logger.error(
+                "Configured peripheral unavailable: device='%s' id=%s "
+                "model=%s: %s", device.name, device.id,
+                device.deviceTypeId, error)
         except PhidgetException as error:
             self.activePhidgets.pop(device.id, None)
             device.setErrorStateOnServer("Unable to start")
