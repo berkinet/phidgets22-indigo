@@ -42,6 +42,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         self._outageLock = threading.RLock()
         self._detachBatches = {}
         self._recoveryBatches = {}
+        self._startupContentionBatches = {}
         self._batchTimers = {}
         self._serverOutages = {}
 
@@ -112,6 +113,43 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         with self._outageLock:
             self._detachBatches.setdefault(server_key, set()).add(phidget)
         self._scheduleBatch("detach", server_key, self._flushDetachBatch)
+
+    def phidgetStartupContentionExpired(self, phidget, detached_for):
+        physical_key = (
+            phidget.serverKey(), phidget.channelInfo.serialNumber,
+            phidget.channelInfo.hubPort)
+        with self._outageLock:
+            self._startupContentionBatches.setdefault(
+                physical_key, {})[phidget] = detached_for
+        self._scheduleBatch(
+            "startup-contention", physical_key,
+            self._flushStartupContentionBatch)
+
+    def _flushStartupContentionBatch(self, physical_key):
+        with self._outageLock:
+            self._batchTimers.pop(
+                ("startup-contention", physical_key), None)
+            pending = self._startupContentionBatches.pop(physical_key, {})
+        affected = [
+            (phidget, detached_for)
+            for phidget, detached_for in pending.items()
+            if (phidget._state != "attached" and
+                phidget._startup_contention_message)
+        ]
+        if not affected:
+            return
+        names = ", ".join(sorted(
+            "'%s' (channel %s)" % (
+                phidget.indigoDevice.name, phidget.channelInfo.channel)
+            for phidget, _ in affected))
+        longest = max(detached_for for _, detached_for in affected)
+        first = affected[0][0]
+        self.logger.error(
+            "Phidget channels remained in use for %.1f seconds on server '%s', "
+            "serial %s, hub port %s: %s. Check for another Indigo plugin "
+            "instance, Phidget Control Panel, or another program using them.",
+            longest, first.serverDisplayName(),
+            first.channelInfo.serialNumber, first.channelInfo.hubPort, names)
 
     def _flushDetachBatch(self, server_key):
         with self._outageLock:
@@ -296,6 +334,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             self._batchTimers.clear()
             self._detachBatches.clear()
             self._recoveryBatches.clear()
+            self._startupContentionBatches.clear()
             self._serverOutages.clear()
         for timer in timers:
             timer.cancel()

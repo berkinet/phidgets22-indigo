@@ -56,6 +56,9 @@ class PhidgetBase(object):
         self._detached_at = None
         self._detach_announced = False
         self._attach_count = 0
+        self._started_at = None
+        self._startup_contention_message = None
+        self._startup_contention_expired = False
         self.runtimeServerName = None
         self.runtimeServerUniqueName = None
         self.runtimeServerHostname = None
@@ -198,6 +201,8 @@ class PhidgetBase(object):
             if generation != self._detach_generation or self._state != "detached":
                 return
             self._detach_grace_timer = None
+            if self._startup_contention_message:
+                return
             self._detach_announced = True
             detached_for = time.monotonic() - self._detached_at
         try:
@@ -218,6 +223,9 @@ class PhidgetBase(object):
         with self._lifecycle_lock:
             self._state = "starting"
             self._detached_at = time.monotonic()
+            self._started_at = self._detached_at
+            self._startup_contention_message = None
+            self._startup_contention_expired = False
         self.logger.debug("Starting Phidget: %s", self._identity())
 
         try:
@@ -251,15 +259,46 @@ class PhidgetBase(object):
             detached_for = time.monotonic() - self._detached_at if self._detached_at else 0
             self.timer = None
         try:
-            self.indigoDevice.setErrorStateOnServer('Detached')
-            self.logger.error("Phidget remains detached after %.1f seconds (%s): %s",
-                              detached_for, state, self._identity())
+            if self._startup_contention_message:
+                with self._lifecycle_lock:
+                    self._startup_contention_expired = True
+                self.indigoDevice.setErrorStateOnServer('Channel in use')
+                coordinator = getattr(
+                    self.indigo_plugin, "phidgetStartupContentionExpired", None)
+                if coordinator is not None:
+                    coordinator(self, detached_for)
+                else:
+                    self.logger.error(
+                        "Phidget channel remained in use for %.1f seconds. Check "
+                        "for another Indigo plugin instance, Phidget Control Panel, "
+                        "or another program using it: %s",
+                        detached_for, self._identity())
+            else:
+                self.indigoDevice.setErrorStateOnServer('Detached')
+                self.logger.error("Phidget remains detached after %.1f seconds (%s): %s",
+                                  detached_for, state, self._identity())
         except Exception:
             self.logger.error("Attach-timeout handler failed: %s\n%s",
                               self._identity(), traceback.format_exc())
 
     def onErrorHandler(self, ph, errorCode, errorString):
         try:
+            with self._lifecycle_lock:
+                startup_elapsed = (time.monotonic() - self._started_at
+                                   if self._started_at is not None else None)
+                startup_contention = (
+                    int(errorCode) == 2 and
+                    "device is in use" in str(errorString).lower() and
+                    self._state in ("starting", "detached") and
+                    startup_elapsed is not None and
+                    startup_elapsed <= self.initial_connection_timeout)
+                if startup_contention:
+                    self._startup_contention_message = str(errorString)
+            if startup_contention:
+                self.logger.debug(
+                    "Deferring transient startup contention for up to %d seconds: %s",
+                    self.initial_connection_timeout, self._identity())
+                return
             deviceSuppressErrors = bool(self.indigoDevice.pluginProps.get("suppressErrors", False))
             suppressed = ((deviceSuppressErrors and errorCode == 4103) or
                           (self.pluginSuppressErrors and errorCode in (4098, 4099)))
@@ -320,19 +359,29 @@ class PhidgetBase(object):
                 self._state = "attached"
                 self._detached_at = None
                 self._detach_announced = False
+                startup_contention_recovered = bool(
+                    self._startup_contention_message)
+                startup_contention_expired = self._startup_contention_expired
+                self._startup_contention_message = None
+                self._startup_contention_expired = False
                 self._attach_count += 1
                 attach_count = self._attach_count
-            if attach_count == 1 or detach_announced:
+            if startup_contention_recovered:
+                self.logger.debug(
+                    "Transient startup contention cleared automatically: %s",
+                    self._identity())
+            attachment_announced = detach_announced or startup_contention_expired
+            if attach_count == 1 or attachment_announced:
                 self.indigoDevice.setErrorStateOnServer(None)
             coordinator = getattr(self.indigo_plugin, "phidgetAttachCompleted", None)
             if coordinator is not None:
-                coordinator(self, detached_for, attach_count, detach_announced)
+                coordinator(self, detached_for, attach_count, attachment_announced)
             else:
                 log = self.logger.info if detach_announced else self.logger.debug
                 log("Phidget %s in %.1f seconds (attach #%d): %s",
                     "reattached" if attach_count > 1 else "attached",
                     detached_for, attach_count, self._identity())
-            if attach_count == 1 or detach_announced:
+            if attach_count == 1 or attachment_announced:
                 self.indigo_plugin.triggerEvent(self, "deviceAttached")
             try:
                 phidget_util.logPhidgetEvent(ph, self.logger.debug, "Attached '" + self.indigoDevice.name + "'")

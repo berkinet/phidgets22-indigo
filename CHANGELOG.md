@@ -1,5 +1,18 @@
 # Release notes
 
+## 0.3.17 — 2026-08-28
+
+### Changed
+
+- Defer transient `device is in use` errors during the initial attachment
+  timeout so routine plugin replacement can recover without flooding Indigo's
+  event log.
+- Group persistent startup-contention errors by server and physical Phidget and
+  report the affected Indigo devices and channels with actionable ownership
+  guidance.
+- Continue reporting ownership errors immediately after the startup window, and
+  set persistent startup failures to the explicit `Channel in use` error state.
+
 ## 0.3.16 — 2026-08-28
 
 ### Fixed

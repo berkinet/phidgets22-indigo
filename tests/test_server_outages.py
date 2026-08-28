@@ -30,15 +30,20 @@ SPEC.loader.exec_module(plugin_module)
 
 
 class FakePhidget(object):
-    def __init__(self, device_id, serial, state="detached"):
-        self.indigoDevice = types.SimpleNamespace(id=device_id)
+    def __init__(self, device_id, serial, state="detached", channel=0,
+                 hub_port=1):
+        self.indigoDevice = types.SimpleNamespace(
+            id=device_id, name="Test device %s" % device_id)
         self.channelInfo = types.SimpleNamespace(
             serialNumber=serial,
+            hubPort=hub_port,
+            channel=channel,
             netInfo=types.SimpleNamespace(isRemote=True),
         )
         self._state = state
         self._detach_announced = state == "detached"
         self._detached_at = time.monotonic() - 3
+        self._startup_contention_message = None
 
     def serverKey(self):
         return "Test-Server-B._phidget22server._tcp.local"
@@ -61,6 +66,7 @@ class ServerOutageTests(unittest.TestCase):
         self.plugin._outageLock = threading.RLock()
         self.plugin._detachBatches = {}
         self.plugin._recoveryBatches = {}
+        self.plugin._startupContentionBatches = {}
         self.plugin._batchTimers = {}
         self.plugin._serverOutages = {}
         self.server_key = "Test-Server-B._phidget22server._tcp.local"
@@ -100,6 +106,24 @@ class ServerOutageTests(unittest.TestCase):
         self.plugin.logger.warning.assert_called_once()
         self.assertIn("Phidget remains detached", self.plugin.logger.warning.call_args.args[0])
         self.assertNotIn(self.server_key, self.plugin._serverOutages)
+
+    def test_startup_contention_is_grouped_by_physical_phidget(self):
+        first = FakePhidget(1, 100, channel=0)
+        second = FakePhidget(2, 100, channel=1)
+        first._startup_contention_message = "device is in use"
+        second._startup_contention_message = "device is in use"
+        physical_key = (self.server_key, 100, 1)
+        self.plugin._startupContentionBatches[physical_key] = {
+            first: 5.0, second: 5.1,
+        }
+
+        self.plugin._flushStartupContentionBatch(physical_key)
+
+        self.plugin.logger.error.assert_called_once()
+        arguments = self.plugin.logger.error.call_args.args
+        self.assertIn("remained in use", arguments[0])
+        self.assertIn("'Test device 1' (channel 0)", arguments[-1])
+        self.assertIn("'Test device 2' (channel 1)", arguments[-1])
 
 
 if __name__ == "__main__":

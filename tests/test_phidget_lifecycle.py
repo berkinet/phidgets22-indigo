@@ -2,7 +2,9 @@ import importlib.util
 import logging
 import pathlib
 import sys
+import time
 import unittest
+from unittest import mock
 
 
 SERVER_PLUGIN = pathlib.Path(__file__).parents[1] / "Phidgets22.indigoPlugin" / "Contents" / "Server Plugin"
@@ -85,6 +87,7 @@ class TestPhidget(phidget_module.PhidgetBase):
         self.native = FakeNativePhidget(fail_open=fail_open)
         self.device = FakeDevice()
         self.plugin = FakePlugin()
+        self.test_logger = mock.Mock()
         super(TestPhidget, self).__init__(
             phidget=self.native,
             indigo_plugin=self.plugin,
@@ -92,7 +95,7 @@ class TestPhidget(phidget_module.PhidgetBase):
                 serialNumber=123, hubPort=2, isHubPortDevice=1, channel=0,
                 netInfo=phidget_module.NetInfo(isRemote=True, serverName="server")),
             indigoDevice=self.device,
-            logger=logging.getLogger("test.lifecycle"))
+            logger=self.test_logger)
 
     def addPhidgetHandlers(self):
         self.handlers_added = True
@@ -183,6 +186,51 @@ class PhidgetLifecycleTests(unittest.TestCase):
 
         self.assertEqual(self.phidget.device.errors, [None])
         self.assertEqual(self.phidget._state, "attached")
+
+    def test_transient_startup_contention_is_quiet_when_attachment_recovers(self):
+        self.phidget = TestPhidget()
+        self.phidget.start()
+
+        self.phidget.onErrorHandler(
+            self.phidget.native, 2,
+            "open failed because device is in use")
+        self.phidget.onAttachHandler(self.phidget.native)
+
+        self.assertEqual(self.phidget._state, "attached")
+        self.assertEqual(self.phidget.device.errors, [None])
+        self.phidget.test_logger.error.assert_not_called()
+        self.assertIsNone(self.phidget._startup_contention_message)
+
+    def test_persistent_startup_contention_becomes_actionable_error(self):
+        self.phidget = TestPhidget()
+        self.phidget.start()
+        generation = self.phidget._timer_generation
+        self.phidget.onErrorHandler(
+            self.phidget.native, 2,
+            "open failed because device is in use")
+
+        self.phidget.connectionTimeoutHandler(generation)
+
+        self.assertEqual(self.phidget.device.errors, ["Channel in use"])
+        self.assertIn("another Indigo plugin instance",
+                      self.phidget.test_logger.error.call_args.args[0])
+
+        self.phidget.onAttachHandler(self.phidget.native)
+        self.assertEqual(self.phidget.device.errors,
+                         ["Channel in use", None])
+        self.assertEqual(self.phidget._state, "attached")
+
+    def test_runtime_device_in_use_error_is_not_suppressed(self):
+        self.phidget = TestPhidget()
+        self.phidget.start()
+        self.phidget.onAttachHandler(self.phidget.native)
+        self.phidget._started_at = time.monotonic() - 61
+
+        self.phidget.onErrorHandler(
+            self.phidget.native, 2,
+            "open failed because device is in use")
+
+        self.phidget.test_logger.error.assert_called_once()
 
     def test_start_failure_cancels_timer_and_closes_handle(self):
         self.phidget = TestPhidget(fail_open=True)
