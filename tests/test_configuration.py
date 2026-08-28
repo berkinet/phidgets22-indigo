@@ -47,7 +47,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.13</string>", plist)
+        self.assertIn("<string>0.3.14</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -228,6 +228,9 @@ class ConfigurationTests(unittest.TestCase):
         self.assertIn("static2", fields["animationLine2"].get("visibleBindingValue"))
         self.assertIn(
             "virtualMarquee2", fields["virtualText"].get("visibleBindingValue"))
+        self.assertEqual(fields["graphicFont"].get("defaultValue"), "4")
+        self.assertIn("graphic8", fields["graphicLine8"].get(
+            "visibleBindingValue"))
         for field_name in ("animationLine1", "animationLine2", "animationLine3",
                            "animationLine4", "alternateLine1", "alternateLine2",
                            "alternateLine3", "alternateLine4"):
@@ -322,6 +325,7 @@ class ConfigurationTests(unittest.TestCase):
         active_lcd = object.__new__(actions.LCDPhidget)
         active_lcd.writeText = mock.Mock()
         active_lcd.writeLines = mock.Mock()
+        active_lcd.writeGraphicLines = mock.Mock()
         active_lcd.clear = mock.Mock()
         active_lcd.setBacklight = mock.Mock()
         active_lcd.setContrast = mock.Mock()
@@ -343,6 +347,13 @@ class ConfigurationTests(unittest.TestCase):
                 "lineCount": "0", "animationMode": "static",
                 "graphicText": "%%name%%", "graphicX": "2", "graphicY": "3",
                 "backlight": "0.6", "contrast": "0.3"}),
+            device)
+        instance.lcdSetDisplay(
+            types.SimpleNamespace(props={
+                "lineCount": "0", "animationMode": "static",
+                "graphicFont": "5", "graphicLine1": "Large",
+                "graphicLine2": "Text", "backlight": "0.6",
+                "contrast": "0.3"}),
             device)
         instance.lcdSetDisplay(
             types.SimpleNamespace(props={
@@ -368,17 +379,19 @@ class ConfigurationTests(unittest.TestCase):
         instance.lcdStopAnimation(types.SimpleNamespace(props={}), device)
 
         active_lcd.writeText.assert_called_once_with("Kitchen", 2, 3)
+        active_lcd.writeGraphicLines.assert_called_once_with(
+            ["Large", "Text", "", "", "", "", "", ""], 5)
         active_lcd.writeLines.assert_called_once_with(["Kitchen", "Ready"])
         active_lcd.turnOff.assert_called_once_with()
         active_lcd.clear.assert_called_once_with()
         self.assertEqual(active_lcd.setBacklight.call_args_list,
-                         [mock.call(0.6), mock.call(0.7), mock.call(0.8),
+                         [mock.call(0.6), mock.call(0.6), mock.call(0.7), mock.call(0.8),
                           mock.call(0.9)])
         self.assertEqual(active_lcd.setContrast.call_args_list,
-                         [mock.call(0.3), mock.call(0.4), mock.call(0.5),
+                         [mock.call(0.3), mock.call(0.3), mock.call(0.4), mock.call(0.5),
                           mock.call(0.6)])
         self.assertEqual(active_lcd.setSleeping.call_args_list,
-                         [mock.call(False), mock.call(False),
+                         [mock.call(False), mock.call(False), mock.call(False),
                           mock.call(True), mock.call(False),
                           mock.call(False), mock.call(False)])
         self.assertEqual(active_lcd.startAnimation.call_args_list, [

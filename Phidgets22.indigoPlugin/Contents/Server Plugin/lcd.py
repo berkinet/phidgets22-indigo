@@ -281,6 +281,33 @@ class LCDPhidget(PhidgetBase):
             self._write_lines(lines)
             self.updateIndigoStatus()
 
+    def writeGraphicLines(self, lines, font=LCDFont.FONT_5x8):
+        """Render a complete top-aligned text page on a graphic LCD."""
+        with self._display_lock:
+            self._ensure_attached()
+            self._cancel_animation_locked()
+            if self.lcdType != "graphic":
+                raise ValueError("Graphic text pages require a graphic LCD")
+            font = LCDFont(int(font))
+            font_width, font_height = self.phidget.getFontSize(font)
+            line_count = self.screenHeight // font_height
+            normalized = [str(line or "") for line in list(lines)]
+            if any(normalized[line_count:]):
+                raise ValueError(
+                    "The selected font provides only %d text lines" % line_count)
+            max_characters = self.screenWidth // font_width
+            visible_lines = [
+                self._clip_text_row(line, max_characters, "Graphic", number + 1)
+                for number, line in enumerate(normalized[:line_count])
+            ]
+            self.phidget.clear()
+            for number, line in enumerate(visible_lines):
+                if line:
+                    self.phidget.writeText(font, 0, number * font_height, line)
+            self.phidget.flush()
+            self.lastText = "\n".join(visible_lines).rstrip("\n")
+            self.updateIndigoStatus()
+
     def _cancel_animation_locked(self):
         self._animation_generation += 1
         timer = self._animation_timer

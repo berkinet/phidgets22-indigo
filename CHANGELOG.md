@@ -1,5 +1,18 @@
 # Release notes
 
+## 0.3.14 — 2026-08-28
+
+### Added
+
+- Offer the LCD1100's three built-in fonts: 5×8, 6×10, and 6×12.
+- Render complete graphic-LCD text pages with the corresponding 8, 6, or 5
+  top-aligned lines and one atomic flush.
+
+### Changed
+
+- Preserve previously saved single-line X/Y graphic text actions while using
+  the new font-aware multi-line editor for newly configured actions.
+
 ## 0.3.13 — 2026-08-28
 
 ### Added

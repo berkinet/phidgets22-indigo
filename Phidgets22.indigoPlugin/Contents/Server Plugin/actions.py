@@ -88,6 +88,11 @@ class ActionsMixin(object):
         animation_direction = action.props.get("marqueeDirection", "left")
         animation_gap = int(action.props.get("marqueeGap", 3))
         graphic_text = self.substitute(action.props.get("graphicText", ""))
+        graphic_font = int(action.props.get("graphicFont", 4))
+        graphic_lines = [
+            self.substitute(action.props.get("graphicLine%d" % number, ""))
+            for number in range(1, 9)
+        ]
         graphic_x = int(action.props.get("graphicX", 0))
         graphic_y = int(action.props.get("graphicY", 0))
 
@@ -118,7 +123,12 @@ class ActionsMixin(object):
                     else:
                         lcd.writeLines(lines_a)
                 else:
-                    lcd.writeText(graphic_text, graphic_x, graphic_y)
+                    if any(graphic_lines):
+                        lcd.writeGraphicLines(graphic_lines, graphic_font)
+                    else:
+                        # Preserve coordinate-based actions saved before the
+                        # multi-line graphic text UI was introduced.
+                        lcd.writeText(graphic_text, graphic_x, graphic_y)
             else:
                 lcd.startAnimation(
                     mode=mode,
@@ -152,6 +162,10 @@ class ActionsMixin(object):
         if line_count:
             return "%s%d" % (mode, line_count)
         return "static0" if mode == "static" else "unsupported"
+
+    def _graphicTextLayout(self, font):
+        return {4: "graphic8", 3: "graphic6", 5: "graphic5"}.get(
+            int(font), "graphic8")
 
     def _updateVirtualTextStatus(self, values):
         text = str(values.get("virtualText", "") or "")
@@ -192,6 +206,12 @@ class ActionsMixin(object):
             pluginProps["lineCount"] = str(line_count)
             pluginProps["animationMode"] = mode
             pluginProps["animationLayout"] = self._lcdDisplayLayout(mode, line_count)
+            graphic_font = int(pluginProps.get("graphicFont", 4))
+            pluginProps["graphicFont"] = str(graphic_font)
+            pluginProps["graphicLineLayout"] = self._graphicTextLayout(graphic_font)
+            if (line_count == 0 and not pluginProps.get("graphicLine1") and
+                    pluginProps.get("graphicText")):
+                pluginProps["graphicLine1"] = pluginProps["graphicText"]
             self._updateVirtualTextStatus(pluginProps)
             for field, default in (
                     ("staticOverflowBehavior", "truncate"),
@@ -221,6 +241,8 @@ class ActionsMixin(object):
         mode = valuesDict.get("animationMode", "static")
         valuesDict["lineCount"] = str(line_count)
         valuesDict["animationLayout"] = self._lcdDisplayLayout(mode, line_count)
+        graphic_font = int(valuesDict.get("graphicFont", 4))
+        valuesDict["graphicLineLayout"] = self._graphicTextLayout(graphic_font)
         self._updateVirtualTextStatus(valuesDict)
         return self._updateStaticOverflowLayout(valuesDict, mode, line_count)
 
@@ -231,11 +253,21 @@ class ActionsMixin(object):
             # cleared. Return every LCD text property explicitly so an empty
             # field replaces the previously saved value.
             for field in (["virtualText", "graphicText"] +
+                          ["graphicLine%d" % line for line in range(1, 9)] +
                           ["animationLine%d" % line for line in range(1, 5)] +
                           ["alternateLine%d" % line for line in range(1, 5)]):
                 valuesDict[field] = str(valuesDict.get(field, "") or "")
             line_count = int(valuesDict.get("lineCount", 0))
             mode = valuesDict.get("animationMode", "static")
+            try:
+                graphic_font = int(valuesDict.get("graphicFont", 4))
+                if graphic_font not in (3, 4, 5):
+                    raise ValueError
+                valuesDict["graphicFont"] = str(graphic_font)
+                valuesDict["graphicLineLayout"] = self._graphicTextLayout(
+                    graphic_font)
+            except (TypeError, ValueError):
+                errors["graphicFont"] = "Select a supported LCD font."
             for field in ("backlight", "contrast"):
                 try:
                     value = float(valuesDict.get(field, ""))

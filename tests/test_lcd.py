@@ -70,6 +70,13 @@ class FakeLCD(object):
     def getHeight(self):
         return self.height
 
+    def getFontSize(self, font):
+        return {
+            LCDFont.FONT_5x8: (5, 8),
+            LCDFont.FONT_6x10: (6, 10),
+            LCDFont.FONT_6x12: (6, 12),
+        }[font]
+
     def initialize(self):
         self.initialize_count += 1
 
@@ -417,6 +424,36 @@ class LCDTests(unittest.TestCase):
         self.assertEqual(wrapper.lcdType, "graphic")
         self.assertEqual((wrapper.screenWidth, wrapper.screenHeight), (128, 64))
         self.assertTrue(wrapper._supportsSleeping)
+
+    def test_graphic_text_pages_use_selected_font_and_available_lines(self):
+        native = FakeLCD(
+            subclass=ChannelSubclass.PHIDCHSUBCLASS_LCD_GRAPHIC,
+            screen_size=LCDScreenSize.SCREEN_SIZE_64x128,
+            supports_sleeping=True,
+        )
+        wrapper = make_wrapper(native)
+        wrapper.configureAttachedPhidget(native)
+        wrapper._state = "attached"
+
+        wrapper.writeGraphicLines(
+            ["One", "Two", "Three", "Four", "Five"],
+            LCDFont.FONT_6x12)
+
+        self.assertEqual(native.clear_count, 1)
+        self.assertEqual(native.flush_count, 1)
+        self.assertEqual(native.writes, [
+            (LCDFont.FONT_6x12, 0, 0, "One"),
+            (LCDFont.FONT_6x12, 0, 12, "Two"),
+            (LCDFont.FONT_6x12, 0, 24, "Three"),
+            (LCDFont.FONT_6x12, 0, 36, "Four"),
+            (LCDFont.FONT_6x12, 0, 48, "Five"),
+        ])
+        self.assertEqual(wrapper.lastText, "One\nTwo\nThree\nFour\nFive")
+
+        with self.assertRaisesRegex(ValueError, "only 5 text lines"):
+            wrapper.writeGraphicLines(
+                ["1", "2", "3", "4", "5", "6"],
+                LCDFont.FONT_6x12)
 
     def test_write_clear_and_sleep_actions_update_hardware(self):
         native = FakeLCD(
