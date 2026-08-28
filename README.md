@@ -51,6 +51,7 @@ The following Phidget classes are currently supported:
   * Configurable HD44780/PCF8574-compatible character LCDs through an ADP0001
     DataAdapter, including Freenove 16×2 and 20×4 modules
 * DataAdapter (shared I2C transport)
+  * ADP0001 GPIO 0/1 as separate Indigo input or relay devices
 * TemperatureSensor
 * VoltageInput
 * VoltageRatioInput

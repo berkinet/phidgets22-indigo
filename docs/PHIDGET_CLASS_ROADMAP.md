@@ -66,19 +66,16 @@ The initial `LCD` support is complete. The remaining pre-1.0 hardware work is:
 
 After the 1.0 Store publication, the suggested sequence is:
 
-1. Add access to GPIO 0 and GPIO 1 on the ADP0001 DataAdapter, as described
-   below. This is an extension of the existing `DigitalInput` and
-   `DigitalOutput` support rather than a new Phidget22 channel class.
-2. `LightSensor`, `PressureSensor`, `SoundSensor`, and `PHSensor`:
+1. `LightSensor`, `PressureSensor`, `SoundSensor`, and `PHSensor`:
    straightforward sensor-state devices.
-3. `CapacitiveTouch`, `DistanceSensor`, `Encoder`, and `RFID`: event-oriented
+2. `CapacitiveTouch`, `DistanceSensor`, `Encoder`, and `RFID`: event-oriented
    inputs.
-4. `Accelerometer`, `Gyroscope`, `Magnetometer`, `Spatial`, and `GPS`:
+3. `Accelerometer`, `Gyroscope`, `Magnetometer`, `Spatial`, and `GPS`:
    multi-state motion and location devices.
-5. `RCServo`, `Stepper`, `DCMotor`, `BLDCMotor`, `MotorPositionController`, and
+4. `RCServo`, `Stepper`, `DCMotor`, `BLDCMotor`, `MotorPositionController`, and
    `MotorVelocityController`: outputs requiring careful safety, limit, and
    action design.
-6. `IR`, `LEDArray`, `PowerGuard`, and `Hub`: remaining
+5. `IR`, `LEDArray`, `PowerGuard`, and `Hub`: remaining
    specialized interfaces.
 
 `CurrentInput`, `VoltageOutput`, and `ResistanceInput` are intentionally not
@@ -110,7 +107,7 @@ Expose the two GPIO pins on the ADP0001 DataAdapter while preserving its
 existing role as the shared I2C transport. Each pin may be configured as a
 digital input or a digital output, but never both at the same time.
 
-### Planned configuration and behavior
+### Implemented configuration and behavior
 
 - Present GPIO 0 and GPIO 1 as functions belonging to the selected ADP0001,
   without taking ownership of or disrupting its DataAdapter/I2C channel.
@@ -126,7 +123,7 @@ digital input or a digital output, but never both at the same time.
   current and series-resistance limits must be respected; relays, lamps, and
   similar loads require suitable driver hardware.
 
-### First acceptance scenario
+### Hardware acceptance scenario
 
 Connect `GND -> momentary push button -> GPIO`, configure the input with its
 pull-up enabled, and use the Indigo state change to control an LCD backlight.

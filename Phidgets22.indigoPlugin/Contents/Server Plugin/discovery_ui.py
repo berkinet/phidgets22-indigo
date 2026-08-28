@@ -46,6 +46,37 @@ class DiscoveryUiMixin(object):
         return [("selectDisplay", "Select a display")] + [
             (provider["id"], provider["name"]) for provider in providers]
 
+    def _availableGPIOAdapters(self):
+        return [device for device in getattr(indigo, "devices", ())
+                if (getattr(device, "pluginId", None) == self.pluginId and
+                    getattr(device, "deviceTypeId", None) == "dataAdapter" and
+                    getattr(device, "enabled", True))]
+
+    def getAvailableGPIOAdapterMenu(self, filter="", valuesDict=None,
+                                    typeId="", targetId=0):
+        return [("selectAdapter", "Select an I2C adapter")] + [
+            (str(device.id), device.name)
+            for device in sorted(
+                self._availableGPIOAdapters(),
+                key=lambda candidate: candidate.name.lower())]
+
+    def _applyGPIOAdapter(self, valuesDict, selection):
+        try:
+            adapter = indigo.devices[int(selection)]
+        except (IndexError, KeyError, TypeError, ValueError):
+            return valuesDict
+        if adapter not in self._availableGPIOAdapters():
+            return valuesDict
+        valuesDict["gpioAdapterSelection"] = str(adapter.id)
+        valuesDict["gpioAdapterDeviceId"] = str(adapter.id)
+        valuesDict["observedConnection"] = "%s→GPIO %s" % (
+            adapter.name, valuesDict.get("gpioPin", "0"))
+        return valuesDict
+
+    def gpioAdapterChanged(self, valuesDict, typeId, devId):
+        return self._applyGPIOAdapter(
+            valuesDict, valuesDict.get("gpioAdapterSelection", ""))
+
     def _applyDisplayProvider(self, valuesDict, selection, devId=0):
         providers = {provider["id"]: provider
                      for provider in available_display_providers(self)}
@@ -125,6 +156,16 @@ class DiscoveryUiMixin(object):
             if values.get(key, None) is None:
                 values[key] = value
 
+        if typeId in ("adapterGPIOInput", "adapterGPIOOutput"):
+            selection = (values.get("gpioAdapterSelection") or
+                         values.get("gpioAdapterDeviceId") or "")
+            adapters = self._availableGPIOAdapters()
+            if not selection and len(adapters) == 1:
+                selection = str(adapters[0].id)
+            if selection:
+                values = self._applyGPIOAdapter(values, selection)
+            return (values, indigo.Dict())
+
         selected_channel = values.get("discoveredChannel", "")
         resolved_channel = (self.discoveryInventory.resolve_channel(selected_channel)
                             if self.discoveryInventory is not None else None)
@@ -165,6 +206,58 @@ class DiscoveryUiMixin(object):
 
     def validateDeviceConfigUi(self, valuesDict, typeId, devId):
         valuesDict["observedConnection"] = self._observedConnectionForDevice(devId)
+        if typeId in ("adapterGPIOInput", "adapterGPIOOutput"):
+            errors = indigo.Dict()
+            selection = valuesDict.get("gpioAdapterSelection", "")
+            valuesDict = self._applyGPIOAdapter(valuesDict, selection)
+            adapter_id = str(valuesDict.get("gpioAdapterDeviceId", ""))
+            if not adapter_id or adapter_id != str(selection):
+                errors["gpioAdapterSelection"] = "Select an available I2C adapter."
+            try:
+                pin = int(valuesDict.get("gpioPin", ""))
+                if pin not in (0, 1):
+                    raise ValueError
+                valuesDict["gpioPin"] = str(pin)
+            except (TypeError, ValueError):
+                pin = None
+                errors["gpioPin"] = "Select GPIO 0 or GPIO 1."
+
+            if typeId == "adapterGPIOInput":
+                if valuesDict.get("gpioInputMode", "pullup") not in (
+                        "pullup", "floating"):
+                    errors["gpioInputMode"] = "Select Pull-up or Floating."
+                try:
+                    debounce = int(valuesDict.get(
+                        "gpioDebounceMilliseconds", "50"))
+                    if debounce < 0 or debounce > 5000:
+                        raise ValueError
+                    valuesDict["gpioDebounceMilliseconds"] = str(debounce)
+                except (TypeError, ValueError):
+                    errors["gpioDebounceMilliseconds"] = (
+                        "Enter a whole number from 0 through 5000.")
+
+            if adapter_id and pin is not None:
+                for other in getattr(indigo, "devices", ()):
+                    props = getattr(other, "pluginProps", {})
+                    if (getattr(other, "id", None) == devId or
+                            getattr(other, "pluginId", None) != self.pluginId or
+                            getattr(other, "deviceTypeId", None) not in
+                            ("adapterGPIOInput", "adapterGPIOOutput") or
+                            not getattr(other, "enabled", True)):
+                        continue
+                    if (str(props.get("gpioAdapterDeviceId", "")) == adapter_id and
+                            str(props.get("gpioPin", "")) == str(pin)):
+                        errors["gpioPin"] = (
+                            "GPIO %d is already assigned to '%s'." %
+                            (pin, getattr(other, "name", "another device")))
+                        break
+            if errors:
+                errors["showAlertText"] = "Correct the GPIO settings before saving."
+                return (False, valuesDict, errors)
+            valuesDict["address"] = "gpio-%s-%s" % (adapter_id, pin)
+            valuesDict["observedConnection"] = "%s→GPIO %s" % (
+                indigo.devices[int(adapter_id)].name, pin)
+            return (True, valuesDict)
         if typeId == "lcd":
             selection = valuesDict.get("lcdDisplayProvider", "")
             providers = {provider["id"]: provider

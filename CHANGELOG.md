@@ -1,5 +1,17 @@
 # Release notes
 
+## 0.3.18 — 2026-08-28
+
+### Added
+
+- Add separate **I2C Adapter GPIO Input** and **I2C Adapter GPIO Output**
+  Indigo devices for GPIO 0 and GPIO 1 on a selected ADP0001.
+- Support floating or pull-up inputs, optional state inversion, and configurable
+  software debounce; defaults suit a momentary switch wired from GPIO to GND.
+- Expose GPIO outputs as Indigo relays with On, Off, Toggle, and status actions.
+- Reject duplicate assignment of one adapter pin across GPIO input and output
+  devices and document the ADP0001 output's electrical limits.
+
 ## 0.3.17 — 2026-08-28
 
 ### Changed

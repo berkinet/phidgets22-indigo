@@ -12,6 +12,7 @@ sys.modules.setdefault("indigo", types.ModuleType("indigo"))
 import digitalinput
 import digitaloutput
 import frequencycounter
+import adapter_gpio
 
 
 class FakeFrequencyCounter(object):
@@ -88,6 +89,32 @@ class DeviceWrapperTests(unittest.TestCase):
             wrapper.onAttachHandler(object())
 
         wrapper.updateIndigoStatus.assert_not_called()
+
+    def test_adapter_gpio_input_configures_pullup_and_inverts_switch_state(self):
+        wrapper = object.__new__(adapter_gpio.AdapterGPIOInputPhidget)
+        wrapper.inputMode = "pullup"
+        wrapper.inverted = True
+        wrapper.debounceMilliseconds = 0
+        wrapper.updateIndigoStatus = mock.Mock()
+        phidget = mock.Mock()
+
+        wrapper.configureAttachedPhidget(phidget)
+        wrapper.onStateChangeHandler(phidget, False)
+
+        phidget.setInputMode.assert_called_once_with(
+            adapter_gpio.InputMode.INPUT_MODE_PULLUP)
+        wrapper.updateIndigoStatus.assert_called_once_with(True)
+
+    def test_adapter_gpio_output_publishes_only_relay_state(self):
+        wrapper = object.__new__(adapter_gpio.AdapterGPIOOutputPhidget)
+        wrapper.phidget = mock.Mock()
+        wrapper.phidget.getState.return_value = True
+        wrapper.indigoDevice = mock.Mock()
+
+        wrapper.updateIndigoStatus()
+
+        wrapper.indigoDevice.updateStateOnServer.assert_called_once_with(
+            "onOffState", value=True, uiValue="on")
 
 
 if __name__ == "__main__":

@@ -42,6 +42,20 @@ attaches. Text panels show one, two, or four initial-line fields according to
 the selected panel size. Optionally, those lines can be restored after each
 attachment.
 
+## Use ADP0001 GPIO pins
+
+First create and configure the **I2C Data Adapter** device. Then create one
+**I2C Adapter GPIO Input** or **I2C Adapter GPIO Output** Indigo device for each
+GPIO pin in use, select that adapter, and choose GPIO 0 or GPIO 1. A pin may be
+assigned only once and therefore cannot be configured as both input and output.
+
+Inputs default to pull-up, inverted state, and 50 ms debounce. For a momentary
+dry-contact switch, wire `GND → switch → GPIO`; pressing the switch then appears
+as On in Indigo. Outputs are Indigo relays with On, Off, Toggle, and status
+actions. They are logic signals with 499 Ω series resistance and approximately
+10 mA available current—not load drivers. Use appropriate interface hardware
+for relays, lamps, and similar loads.
+
 LCD commands are available under Indigo's **Device Actions**:
 
 - Set LCD display

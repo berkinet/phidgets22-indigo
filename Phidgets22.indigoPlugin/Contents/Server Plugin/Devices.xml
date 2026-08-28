@@ -564,6 +564,31 @@
 		</ConfigUI>
 	</Device>
 
+	<Device id="adapterGPIOInput" type="custom">
+		<Name>I2C Adapter GPIO Input</Name>
+		<ConfigUI>
+			<Field id="gpioAdapterDeviceId" type="textfield" hidden="true"/>
+			<Field id="gpioAdapterSelection" type="menu" defaultValue="selectAdapter"><Label>I2C adapter:</Label><List class="self" method="getAvailableGPIOAdapterMenu" dynamicReload="true"/><CallbackMethod>gpioAdapterChanged</CallbackMethod></Field>
+			<Field id="gpioPin" type="menu" defaultValue="0"><Label>GPIO pin:</Label><List><Option value="0">GPIO 0</Option><Option value="1">GPIO 1</Option></List></Field>
+			<Field id="gpioInputMode" type="menu" defaultValue="pullup"><Label>Input mode:</Label><List><Option value="pullup">Pull-up (switch to GND)</Option><Option value="floating">Floating</Option></List></Field>
+			<Field id="gpioInverted" type="checkbox" defaultValue="true"><Label>Invert state?</Label></Field>
+			<Field id="gpioDebounceMilliseconds" type="textfield" defaultValue="50"><Label>Debounce (milliseconds):</Label></Field>
+			<Field id="observedConnection" type="textfield" readonly="true"><Label>GPIO path:</Label></Field>
+			<Field id="gpioInputHelp" type="label"><Label>For a momentary dry-contact switch, select Pull-up and wire GND → switch → GPIO. Invert the state if a closed switch should appear as On.</Label></Field>
+		</ConfigUI>
+	</Device>
+
+	<Device id="adapterGPIOOutput" type="relay">
+		<Name>I2C Adapter GPIO Output</Name>
+		<ConfigUI>
+			<Field id="gpioAdapterDeviceId" type="textfield" hidden="true"/>
+			<Field id="gpioAdapterSelection" type="menu" defaultValue="selectAdapter"><Label>I2C adapter:</Label><List class="self" method="getAvailableGPIOAdapterMenu" dynamicReload="true"/><CallbackMethod>gpioAdapterChanged</CallbackMethod></Field>
+			<Field id="gpioPin" type="menu" defaultValue="0"><Label>GPIO pin:</Label><List><Option value="0">GPIO 0</Option><Option value="1">GPIO 1</Option></List></Field>
+			<Field id="observedConnection" type="textfield" readonly="true"><Label>GPIO path:</Label></Field>
+			<Field id="gpioOutputHelp" type="label"><Label>Logic output only: 499 Ω series resistance and approximately 10 mA available current. The high level follows the adapter voltage. Use suitable driver hardware for relays, lamps, and other loads.</Label></Field>
+		</ConfigUI>
+	</Device>
+
 	<Device id="dataAdapter" type="custom">
 		<Name>I2C Data Adapter</Name>
 		<ConfigUI>

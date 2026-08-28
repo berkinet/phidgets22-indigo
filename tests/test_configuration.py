@@ -47,7 +47,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.17</string>", plist)
+        self.assertIn("<string>0.3.18</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -59,7 +59,7 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(set(device_factory._BUILDERS), {
             "voltageInput", "voltageRatioInput", "digitalOutput", "digitalInput",
             "temperatureSensor", "frequencyCounter", "humiditySensor", "lcd",
-            "dataAdapter",
+            "dataAdapter", "adapterGPIOInput", "adapterGPIOOutput",
         })
 
     def test_factory_constructs_every_supported_wrapper(self):
@@ -129,6 +129,39 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(errors, {})
         inventory.server_choices.assert_called_once_with("lcd")
 
+    def test_adapter_gpio_factory_uses_selected_adapter_address(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.pluginPrefs = {
+            "networkPhidgets": True, "enableServerDiscovery": True}
+        instance.logger = logging.getLogger("test.configuration.gpio")
+        channel_info = device_factory.ChannelInfo(
+            serialNumber=729035, hubPort=-1, isHubPortDevice=0, channel=0,
+            netInfo=device_factory.NetInfo(
+                isRemote=True, serverName="CM-Library Mac"))
+        instance.activePhidgets = {
+            42: types.SimpleNamespace(channelInfo=channel_info)}
+        props = {
+            "gpioAdapterDeviceId": "42", "gpioPin": "1",
+            "gpioInputMode": "pullup", "gpioInverted": True,
+            "gpioDebounceMilliseconds": "75",
+        }
+        device = types.SimpleNamespace(
+            deviceTypeId="adapterGPIOInput", pluginProps=props)
+
+        with mock.patch.object(
+                device_factory, "AdapterGPIOInputPhidget",
+                return_value=mock.sentinel.wrapper) as constructor:
+            result = device_factory.create_phidget(instance, device)
+
+        self.assertIs(result, mock.sentinel.wrapper)
+        arguments = constructor.call_args.kwargs
+        self.assertEqual(arguments["channelInfo"].serialNumber, 729035)
+        self.assertEqual(arguments["channelInfo"].channel, 1)
+        self.assertEqual(arguments["adapterDeviceId"], 42)
+        self.assertEqual(arguments["inputMode"], "pullup")
+        self.assertTrue(arguments["inverted"])
+        self.assertEqual(arguments["debounceMilliseconds"], 75)
+
     def test_data_adapter_device_is_declared(self):
         devices = ElementTree.parse(SERVER_PLUGIN / "Devices.xml").getroot()
         adapter = devices.find("./Device[@id='dataAdapter']")
@@ -140,6 +173,44 @@ class ConfigurationTests(unittest.TestCase):
         notice = adapter.find(".//Field[@id='missingModelNotice']/Label")
         self.assertIn("No I2C Data Adapter device", notice.text)
         self.assertNotIn("manually", notice.text)
+
+    def test_adapter_gpio_devices_are_declared(self):
+        devices = ElementTree.parse(SERVER_PLUGIN / "Devices.xml").getroot()
+        gpio_input = devices.find("./Device[@id='adapterGPIOInput']")
+        gpio_output = devices.find("./Device[@id='adapterGPIOOutput']")
+
+        self.assertIsNotNone(gpio_input)
+        self.assertIsNotNone(gpio_output)
+        self.assertEqual(gpio_output.get("type"), "relay")
+        input_fields = {field.get("id") for field in gpio_input.iter("Field")}
+        self.assertTrue({"gpioAdapterSelection", "gpioPin", "gpioInputMode",
+                         "gpioInverted", "gpioDebounceMilliseconds"} <=
+                        input_fields)
+
+    def test_adapter_gpio_validation_rejects_duplicate_pin(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.pluginId = "com.yikes.eric.phidgets-indigo"
+        adapter = types.SimpleNamespace(
+            id=42, name="I2C Adapter 1", pluginId=instance.pluginId,
+            deviceTypeId="dataAdapter", enabled=True, pluginProps={})
+        existing = types.SimpleNamespace(
+            id=43, name="Existing GPIO", pluginId=instance.pluginId,
+            deviceTypeId="adapterGPIOOutput", enabled=True,
+            pluginProps={"gpioAdapterDeviceId": "42", "gpioPin": "1"})
+        devices = DeviceCollection({42: adapter, 43: existing})
+        values = indigo.Dict({
+            "gpioAdapterSelection": "42", "gpioPin": "1",
+            "gpioInputMode": "pullup", "gpioInverted": False,
+            "gpioDebounceMilliseconds": "50",
+        })
+
+        with mock.patch.object(indigo, "devices", devices, create=True):
+            valid, returned, errors = instance.validateDeviceConfigUi(
+                values, "adapterGPIOInput", 0)
+
+        self.assertFalse(valid)
+        self.assertIs(returned, values)
+        self.assertIn("already assigned", errors["gpioPin"])
 
     def test_new_device_cannot_save_without_a_compatible_channel(self):
         instance = object.__new__(plugin.Plugin)

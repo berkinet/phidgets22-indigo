@@ -2,6 +2,8 @@
 
 """Construct Phidget wrapper instances from saved Indigo device properties."""
 
+import indigo
+
 from phidget import ChannelInfo, NetInfo
 from voltageinput import VoltageInputPhidget
 from voltageratioinput import VoltageRatioInputPhidget
@@ -13,6 +15,7 @@ from humiditysensor import HumiditySensorPhidget
 from lcd import NativeLCDPhidget
 from i2c_lcd import I2CLCDPhidget
 from dataadapter import DataAdapterPhidget
+from adapter_gpio import AdapterGPIOInputPhidget, AdapterGPIOOutputPhidget
 
 
 def _saved_bool(value):
@@ -183,6 +186,39 @@ def _data_adapter(plugin, device, common):
         frequency=int(props.get("dataAdapterFrequency", 2)))
 
 
+def _adapter_gpio_channel_info(plugin, device):
+    adapter = plugin.activePhidgets.get(int(device.pluginProps["gpioAdapterDeviceId"]))
+    if adapter is None:
+        adapter_device = indigo.devices[int(device.pluginProps["gpioAdapterDeviceId"])]
+        info = _channel_info(plugin, adapter_device)
+    else:
+        source = adapter.channelInfo
+        info = ChannelInfo(
+            serialNumber=source.serialNumber, hubPort=source.hubPort,
+            isHubPortDevice=source.isHubPortDevice,
+            netInfo=source.netInfo)
+    info.channel = int(device.pluginProps.get("gpioPin", 0))
+    return info
+
+
+def _adapter_gpio_input(plugin, device, common):
+    props = device.pluginProps
+    common["base"]["channelInfo"] = _adapter_gpio_channel_info(plugin, device)
+    return AdapterGPIOInputPhidget(
+        **common["base"], adapterDeviceId=int(props["gpioAdapterDeviceId"]),
+        inputMode=props.get("gpioInputMode", "pullup"),
+        inverted=_saved_bool(props.get("gpioInverted", True)),
+        debounceMilliseconds=int(props.get("gpioDebounceMilliseconds", 50)),
+        isAlarm=False, onStateIcon="SensorOn", offStateIcon="SensorOff")
+
+
+def _adapter_gpio_output(plugin, device, common):
+    common["base"]["channelInfo"] = _adapter_gpio_channel_info(plugin, device)
+    return AdapterGPIOOutputPhidget(
+        **common["base"],
+        adapterDeviceId=int(device.pluginProps["gpioAdapterDeviceId"]))
+
+
 _BUILDERS = {
     "voltageInput": _voltage_input,
     "voltageRatioInput": _voltage_ratio_input,
@@ -193,6 +229,8 @@ _BUILDERS = {
     "humiditySensor": _humidity_sensor,
     "lcd": _lcd,
     "dataAdapter": _data_adapter,
+    "adapterGPIOInput": _adapter_gpio_input,
+    "adapterGPIOOutput": _adapter_gpio_output,
 }
 
 

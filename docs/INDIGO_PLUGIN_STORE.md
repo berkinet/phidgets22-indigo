@@ -27,8 +27,8 @@ submission milestone.
 
 The remaining planned hardware work before that milestone is support and
 real-hardware verification for the ordered SGP41 I2C sensor and 5 V BME280
-barometric sensor. ADP0001 GPIO support remains on the post-publication roadmap
-unless the owner changes that priority.
+barometric sensor. ADP0001 GPIO support was brought forward and implemented
+before publication.
 
 The planned LCD1100 text and formula-graph support is implemented and
 hardware-tested; it no longer represents a Store-submission dependency.
