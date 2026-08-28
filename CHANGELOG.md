@@ -1,5 +1,12 @@
 # Release notes
 
+## 0.3.19 — 2026-08-28
+
+- Fix GPIO child-device validation when Indigo supplies distinct proxy objects
+  for the same selected I2C adapter during lookup and device iteration.
+- Compare adapter IDs instead of Python object identity, allowing the selected
+  adapter ID and observed GPIO path to be saved reliably.
+
 ## 0.3.18 — 2026-08-28
 
 ### Added

@@ -65,7 +65,10 @@ class DiscoveryUiMixin(object):
             adapter = indigo.devices[int(selection)]
         except (IndexError, KeyError, TypeError, ValueError):
             return valuesDict
-        if adapter not in self._availableGPIOAdapters():
+        available_ids = {
+            getattr(device, "id", None)
+            for device in self._availableGPIOAdapters()}
+        if getattr(adapter, "id", None) not in available_ids:
             return valuesDict
         valuesDict["gpioAdapterSelection"] = str(adapter.id)
         valuesDict["gpioAdapterDeviceId"] = str(adapter.id)

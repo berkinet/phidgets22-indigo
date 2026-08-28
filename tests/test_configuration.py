@@ -31,6 +31,21 @@ class DeviceCollection(dict):
         return iter(self.values())
 
 
+class IdentityDevice(object):
+    """Device proxy whose equality, like Indigo's, is identity-based."""
+
+    def __init__(self, **attributes):
+        self.__dict__.update(attributes)
+
+
+class RehydratingDeviceCollection(DeviceCollection):
+    """Return a fresh proxy for indexed access while iterating stored proxies."""
+
+    def __getitem__(self, key):
+        stored = super(RehydratingDeviceCollection, self).__getitem__(key)
+        return IdentityDevice(**stored.__dict__)
+
+
 fake_indigo = types.ModuleType("indigo")
 fake_indigo.Dict = dict
 fake_indigo.PluginBase = FakePluginBase
@@ -47,7 +62,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.18</string>", plist)
+        self.assertIn("<string>0.3.19</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -211,6 +226,29 @@ class ConfigurationTests(unittest.TestCase):
         self.assertFalse(valid)
         self.assertIs(returned, values)
         self.assertIn("already assigned", errors["gpioPin"])
+
+    def test_adapter_gpio_validation_accepts_rehydrated_device_proxy(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.pluginId = "com.yikes.eric.phidgets-indigo"
+        adapter = IdentityDevice(
+            id=42, name="I2C Adapter 1", pluginId=instance.pluginId,
+            deviceTypeId="dataAdapter", enabled=True, pluginProps={})
+        devices = RehydratingDeviceCollection({42: adapter})
+        values = indigo.Dict({
+            "gpioAdapterSelection": "42", "gpioPin": "0",
+            "gpioInputMode": "pullup", "gpioInverted": True,
+            "gpioDebounceMilliseconds": "50",
+        })
+
+        with mock.patch.object(indigo, "devices", devices, create=True):
+            valid, returned = instance.validateDeviceConfigUi(
+                values, "adapterGPIOInput", 0)
+
+        self.assertTrue(valid)
+        self.assertIs(returned, values)
+        self.assertEqual(values["gpioAdapterDeviceId"], "42")
+        self.assertEqual(values["observedConnection"], "I2C Adapter 1→GPIO 0")
+        self.assertEqual(values["address"], "gpio-42-0")
 
     def test_new_device_cannot_save_without_a_compatible_channel(self):
         instance = object.__new__(plugin.Plugin)
