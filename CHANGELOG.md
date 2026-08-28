@@ -1,5 +1,14 @@
 # Release notes
 
+## 0.3.21 — 2026-08-28
+
+### Changed
+
+- Replace the dither-shaded donut prototype with a larger black-and-white
+  wireframe torus whose rear segments are suppressed by depth testing.
+- Reduce angular movement per frame and remove surface dithering to improve
+  shape recognition and motion clarity on the LCD1100.
+
 ## 0.3.20 — 2026-08-28
 
 ### Added
