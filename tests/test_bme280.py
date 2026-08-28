@@ -130,6 +130,26 @@ class BME280Tests(unittest.TestCase):
 
         self.assertNotIn("humidity", [state[0] for state in states])
 
+    def test_start_waits_for_shared_adapter_then_initializes_on_attach(self):
+        wrapper, adapter, device = self.wrapper(0x60)
+        adapter._state = "starting"
+
+        wrapper.start()
+
+        self.assertEqual(wrapper._state, "starting")
+        self.assertIsNone(wrapper.chipId)
+        self.assertEqual(adapter.writes, [])
+
+        adapter._state = "attached"
+        with (mock.patch.object(bme280.time, "sleep"),
+              mock.patch.object(wrapper, "_poll") as poll):
+            wrapper.providerReattached()
+
+        self.assertEqual(wrapper._state, "attached")
+        self.assertEqual(wrapper.chipModel, "BME280")
+        device.stateListOrDisplayStateIdChanged.assert_called_once_with()
+        poll.assert_called_once_with(wrapper._generation)
+
 
 if __name__ == "__main__":
     unittest.main()

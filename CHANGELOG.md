@@ -1,5 +1,14 @@
 # Release notes
 
+## 0.3.24 — 2026-08-28
+
+### Fixed
+
+- Defer BME280/BMP280 initialization during plugin reload until its shared I2C
+  adapter has attached, matching the existing I2C LCD startup lifecycle.
+- Rebuild the environmental sensor's dynamic state list after deferred chip
+  identification so BME280 humidity and metadata states are available.
+
 ## 0.3.23 — 2026-08-28
 
 ### Fixed

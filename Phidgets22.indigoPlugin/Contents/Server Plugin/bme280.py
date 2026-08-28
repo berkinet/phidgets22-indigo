@@ -214,6 +214,10 @@ class BME280Phidget(object):
 
     def start(self):
         with self._lock:
+            adapter = self._resolveAdapter()
+            if getattr(adapter, "_state", None) != "attached":
+                self._state = "starting"
+                return
             self._initialize()
             self._generation += 1
             generation = self._generation
@@ -223,6 +227,7 @@ class BME280Phidget(object):
     def providerReattached(self):
         with self._lock:
             self._initialize()
+            self.indigoDevice.stateListOrDisplayStateIdChanged()
             self._generation += 1
             generation = self._generation
             self._state = "attached"
