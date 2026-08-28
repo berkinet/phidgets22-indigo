@@ -482,6 +482,33 @@ class LCDTests(unittest.TestCase):
         self.assertEqual(len(native.lines), 2)
         self.assertEqual(wrapper.lastText, "f(x) = sin(x)")
 
+    def test_spinning_donut_renders_and_advances_graphic_frames(self):
+        native = FakeLCD(
+            subclass=ChannelSubclass.PHIDCHSUBCLASS_LCD_GRAPHIC,
+            screen_size=LCDScreenSize.SCREEN_SIZE_64x128,
+            supports_sleeping=True,
+        )
+        wrapper = make_wrapper(native)
+        wrapper.configureAttachedPhidget(native)
+        wrapper._state = "attached"
+        FakeTimer.instances = []
+
+        with mock.patch.object(lcd.threading, "Timer", FakeTimer):
+            wrapper.startDonut(0.15)
+            first_frame = set(native.pixels)
+            FakeTimer.instances[-1].fire()
+            second_frame = set(native.pixels[len(first_frame):])
+            wrapper.stopAnimation()
+
+        self.assertGreater(len(first_frame), 100)
+        self.assertGreater(len(second_frame), 100)
+        self.assertNotEqual(first_frame, second_frame)
+        self.assertTrue(all(0 <= x < 128 and 0 <= y < 64
+                            for x, y, _ in native.pixels))
+        self.assertEqual(native.clear_count, 2)
+        self.assertEqual(native.flush_count, 2)
+        self.assertEqual(wrapper._animation_mode, "off")
+
     def test_write_clear_and_sleep_actions_update_hardware(self):
         native = FakeLCD(
             subclass=ChannelSubclass.PHIDCHSUBCLASS_LCD_GRAPHIC,

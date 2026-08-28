@@ -96,6 +96,7 @@ class ActionsMixin(object):
         ]
         graphic_content = action.props.get("graphicContentType", "text")
         formula_expression = action.props.get("formulaExpression", "sin(x)")
+        donut_interval = float(action.props.get("donutInterval", 0.15))
         graphic_x = int(action.props.get("graphicX", 0))
         graphic_y = int(action.props.get("graphicY", 0))
 
@@ -136,6 +137,8 @@ class ActionsMixin(object):
                             str(action.props.get("formulaShowAxes", True)).lower()
                             in ("true", "1", "yes", "on"),
                             action.props.get("formulaStyle", "line"))
+                    elif graphic_content == "donut":
+                        lcd.startDonut(donut_interval)
                     elif any(graphic_lines):
                         lcd.writeGraphicLines(graphic_lines, graphic_font)
                     else:
@@ -179,7 +182,7 @@ class ActionsMixin(object):
     def _graphicContentLayout(self, line_count, content="text"):
         if line_count:
             return "hidden"
-        return content if content in ("text", "formula") else "text"
+        return content if content in ("text", "formula", "donut") else "text"
 
     def _graphicTextLayout(self, font, content="text", line_count=0):
         if line_count or content != "text":
@@ -290,8 +293,9 @@ class ActionsMixin(object):
             line_count = int(valuesDict.get("lineCount", 0))
             mode = valuesDict.get("animationMode", "static")
             graphic_content = valuesDict.get("graphicContentType", "text")
-            if graphic_content not in ("text", "formula"):
-                errors["graphicContentType"] = "Select Text page or Formula graph."
+            if graphic_content not in ("text", "formula", "donut"):
+                errors["graphicContentType"] = (
+                    "Select Text page, Formula graph, or Spinning donut.")
             try:
                 graphic_font = int(valuesDict.get("graphicFont", 4))
                 if graphic_font not in (3, 4, 5):
@@ -324,6 +328,15 @@ class ActionsMixin(object):
                     errors["formulaYMin"] = "Y minimum must be less than Y maximum."
                 if valuesDict.get("formulaStyle", "line") not in ("line", "pixels"):
                     errors["formulaStyle"] = "Select Connected line or Pixels."
+            if mode == "static" and line_count == 0 and graphic_content == "donut":
+                try:
+                    interval = float(valuesDict.get("donutInterval", "0.15"))
+                    if interval < 0.1 or interval > 2.0:
+                        raise ValueError
+                    valuesDict["donutInterval"] = str(interval)
+                except (TypeError, ValueError):
+                    errors["donutInterval"] = (
+                        "Enter an interval from 0.1 to 2 seconds.")
             for field in ("backlight", "contrast"):
                 try:
                     value = float(valuesDict.get(field, ""))

@@ -13,7 +13,7 @@
 			<Field id="staticOverflowLayout" type="textfield" defaultValue="hidden" hidden="true"/>
 			<Field id="graphicContentLayout" type="textfield" defaultValue="hidden" hidden="true"/>
 			<Field id="graphicLineLayout" type="textfield" defaultValue="hidden" hidden="true"/>
-			<Field id="graphicContentType" type="menu" defaultValue="text" visibleBindingId="animationLayout" visibleBindingValue="static0" alwaysUseInDialogHeightCalc="true"><Label>Content:</Label><List><Option value="text">Text page</Option><Option value="formula">Formula graph</Option></List><CallbackMethod>lcdAnimationConfigChanged</CallbackMethod></Field>
+			<Field id="graphicContentType" type="menu" defaultValue="text" visibleBindingId="animationLayout" visibleBindingValue="static0" alwaysUseInDialogHeightCalc="true"><Label>Content:</Label><List><Option value="text">Text page</Option><Option value="formula">Formula graph</Option><Option value="donut">Spinning donut (prototype)</Option></List><CallbackMethod>lcdAnimationConfigChanged</CallbackMethod></Field>
 			<Field id="animationMode" type="menu" defaultValue="static">
 				<Label>Display mode:</Label>
 				<List><Option value="static">Static</Option><Option value="marquee">Marquee — independent rows</Option><Option value="virtualMarquee">Virtual single-line marquee</Option><Option value="flash">Flash / alternate</Option></List>
@@ -47,6 +47,8 @@
 			<Field id="formulaYMax" type="textfield" defaultValue="1.2" visibleBindingId="graphicContentLayout" visibleBindingValue="formula" alwaysUseInDialogHeightCalc="true"><Label>Y maximum:</Label></Field>
 			<Field id="formulaStyle" type="menu" defaultValue="line" visibleBindingId="graphicContentLayout" visibleBindingValue="formula" alwaysUseInDialogHeightCalc="true"><Label>Plot style:</Label><List><Option value="line">Connected line</Option><Option value="pixels">Pixels</Option></List></Field>
 			<Field id="formulaShowAxes" type="checkbox" defaultValue="true" visibleBindingId="graphicContentLayout" visibleBindingValue="formula" alwaysUseInDialogHeightCalc="true"><Label>Show axes?</Label></Field>
+			<Field id="donutInterval" type="textfield" defaultValue="0.15" visibleBindingId="graphicContentLayout" visibleBindingValue="donut" alwaysUseInDialogHeightCalc="true"><Label>Frame interval (seconds):</Label></Field>
+			<Field id="donutHelp" type="label" visibleBindingId="graphicContentLayout" visibleBindingValue="donut" alwaysUseInDialogHeightCalc="true"><Label>Depth-buffered monochrome torus prototype for evaluating LCD1100 animation performance.</Label></Field>
 			<Field id="graphicText" type="textfield" hidden="true"/><Field id="graphicX" type="textfield" defaultValue="0" hidden="true"/><Field id="graphicY" type="textfield" defaultValue="0" hidden="true"/>
 			<Field id="alternateLine1" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="flash1,flash2,flash3,flash4" alwaysUseInDialogHeightCalc="true"><Label>Alternate line 1:</Label></Field>
 			<Field id="alternateLine2" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="flash2,flash3,flash4" alwaysUseInDialogHeightCalc="true"><Label>Alternate line 2:</Label></Field>

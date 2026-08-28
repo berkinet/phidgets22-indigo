@@ -1,5 +1,14 @@
 # Release notes
 
+## 0.3.20 — 2026-08-28
+
+### Added
+
+- Add a depth-buffered, dither-shaded spinning donut prototype for graphic
+  LCDs, with a configurable frame interval for LCD1100 performance testing.
+- Integrate the prototype with the existing display action and animation
+  lifecycle so replacement, stop, detach, and shutdown cancel it cleanly.
+
 ## 0.3.19 — 2026-08-28
 
 - Fix GPIO child-device validation when Indigo supplies distinct proxy objects

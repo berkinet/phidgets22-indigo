@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import math
 import threading
 import traceback
 
@@ -436,6 +437,9 @@ class LCDPhidget(PhidgetBase):
         settings = self._animation_settings
         width = self.screenWidth
         height = self.screenHeight
+        if settings["mode"] == "donut":
+            self._render_donut_locked()
+            return
         if settings["mode"] == "marquee":
             rows = [
                 self._marquee_window(line, width, self._animation_frame,
@@ -457,6 +461,58 @@ class LCDPhidget(PhidgetBase):
             self.phidget.writeText(LCDFont.FONT_5x8, 0, row_number, row)
         self.phidget.flush()
         self.lastText = "\n".join(row.rstrip() for row in rows[:height]).rstrip("\n")
+
+    def _render_donut_locked(self):
+        """Render one depth-buffered, shaded torus frame on a graphic LCD."""
+        width, height = self.screenWidth, self.screenHeight
+        angle_a = self._animation_frame * 0.11
+        angle_b = self._animation_frame * 0.07
+        sin_a, cos_a = math.sin(angle_a), math.cos(angle_a)
+        sin_b, cos_b = math.sin(angle_b), math.cos(angle_b)
+        depth = {}
+        scale = height * 0.60
+
+        for theta_index in range(45):
+            theta = theta_index * (2.0 * math.pi / 45.0)
+            sin_theta, cos_theta = math.sin(theta), math.cos(theta)
+            circle_x = 2.0 + cos_theta
+            circle_y = sin_theta
+            for phi_index in range(90):
+                phi = phi_index * (2.0 * math.pi / 90.0)
+                sin_phi, cos_phi = math.sin(phi), math.cos(phi)
+                distance = (5.0 + cos_a * circle_x * sin_phi +
+                            circle_y * sin_a)
+                inverse_distance = 1.0 / distance
+                projected_x = circle_x * (
+                    cos_b * cos_phi + sin_a * sin_b * sin_phi)
+                projected_x -= circle_y * cos_a * sin_b
+                projected_y = circle_x * (
+                    sin_b * cos_phi - sin_a * cos_b * sin_phi)
+                projected_y += circle_y * cos_a * cos_b
+                x = int(round(width / 2.0 + scale * inverse_distance * projected_x))
+                y = int(round(height / 2.0 - scale * inverse_distance * projected_y))
+                if not (0 <= x < width and 0 <= y < height):
+                    continue
+                luminance = (
+                    cos_theta * cos_phi * sin_b -
+                    cos_a * cos_phi * sin_theta - sin_a * sin_phi +
+                    cos_b * (cos_a * sin_phi - cos_phi * sin_a * sin_theta))
+                if luminance <= 0.0:
+                    continue
+                key = (x, y)
+                previous = depth.get(key)
+                if previous is None or inverse_distance > previous[0]:
+                    depth[key] = (inverse_distance, luminance)
+
+        # Ordered dithering preserves some shading on the one-bit display.
+        thresholds = ((0.0, 0.5), (0.75, 0.25))
+        self.phidget.clear()
+        for (x, y), (_, luminance) in depth.items():
+            brightness = min(1.0, luminance / 1.25)
+            if brightness >= thresholds[y % 2][x % 2]:
+                self.phidget.drawPixel(x, y, LCDPixelState.PIXEL_STATE_ON)
+        self.phidget.flush()
+        self.lastText = "Spinning donut"
 
     def _animation_tick(self, generation):
         with self._display_lock:
@@ -524,6 +580,25 @@ class LCDPhidget(PhidgetBase):
                 "direction": direction,
                 "gap": gap,
             }
+            self._render_animation_locked()
+            self._schedule_animation_locked(generation, interval)
+            self.updateIndigoStatus()
+
+    def startDonut(self, interval=0.15):
+        """Start the LCD1100 spinning-torus performance prototype."""
+        with self._display_lock:
+            self._ensure_attached()
+            if self.lcdType != "graphic":
+                raise ValueError("The spinning donut requires a graphic LCD")
+            interval = float(interval)
+            if interval < 0.1 or interval > 2.0:
+                raise ValueError(
+                    "Spinning donut interval must be from 0.1 to 2 seconds")
+            self._cancel_animation_locked()
+            generation = self._animation_generation
+            self._animation_mode = "donut"
+            self._animation_frame = 0
+            self._animation_settings = {"mode": "donut", "interval": interval}
             self._render_animation_locked()
             self._schedule_animation_locked(generation, interval)
             self.updateIndigoStatus()

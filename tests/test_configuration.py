@@ -62,7 +62,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.19</string>", plist)
+        self.assertIn("<string>0.3.20</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -340,6 +340,7 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(fields["graphicFont"].get("defaultValue"), "4")
         self.assertEqual(fields["graphicContentType"].get("defaultValue"), "text")
         self.assertEqual(fields["formulaExpression"].get("defaultValue"), "sin(x)")
+        self.assertEqual(fields["donutInterval"].get("defaultValue"), "0.15")
         self.assertEqual(fields["graphicFont"].get("visibleBindingId"),
                          "graphicContentLayout")
         self.assertEqual(fields["formulaExpression"].get("visibleBindingId"),
@@ -442,6 +443,7 @@ class ConfigurationTests(unittest.TestCase):
         active_lcd.writeLines = mock.Mock()
         active_lcd.writeGraphicLines = mock.Mock()
         active_lcd.plotFormula = mock.Mock()
+        active_lcd.startDonut = mock.Mock()
         active_lcd.clear = mock.Mock()
         active_lcd.setBacklight = mock.Mock()
         active_lcd.setContrast = mock.Mock()
@@ -473,6 +475,12 @@ class ConfigurationTests(unittest.TestCase):
                 "formulaYMax": "1.2", "formulaShowAxes": True,
                 "formulaStyle": "line", "backlight": "0.6",
                 "contrast": "0.3"}),
+            device)
+        instance.lcdSetDisplay(
+            types.SimpleNamespace(props={
+                "lineCount": "0", "animationMode": "static",
+                "graphicContentType": "donut", "donutInterval": "0.2",
+                "backlight": "0.6", "contrast": "0.3"}),
             device)
         instance.lcdSetDisplay(
             types.SimpleNamespace(props={
@@ -509,19 +517,23 @@ class ConfigurationTests(unittest.TestCase):
             ["Large", "Text", "", "", "", "", "", ""], 5)
         active_lcd.plotFormula.assert_called_once_with(
             "sin(x)", "-3.14", "3.14", "-1.2", "1.2", True, "line")
+        active_lcd.startDonut.assert_called_once_with(0.2)
         active_lcd.writeLines.assert_called_once_with(["Kitchen", "Ready"])
         active_lcd.turnOff.assert_called_once_with()
         active_lcd.clear.assert_called_once_with()
         self.assertEqual(active_lcd.setBacklight.call_args_list,
                          [mock.call(0.6), mock.call(0.6), mock.call(0.6),
+                          mock.call(0.6),
                           mock.call(0.7), mock.call(0.8),
                           mock.call(0.9)])
         self.assertEqual(active_lcd.setContrast.call_args_list,
                          [mock.call(0.3), mock.call(0.3), mock.call(0.3),
+                          mock.call(0.3),
                           mock.call(0.4), mock.call(0.5),
                           mock.call(0.6)])
         self.assertEqual(active_lcd.setSleeping.call_args_list,
                          [mock.call(False), mock.call(False), mock.call(False),
+                          mock.call(False),
                           mock.call(False),
                           mock.call(True), mock.call(False),
                           mock.call(False), mock.call(False)])
@@ -803,6 +815,22 @@ class ConfigurationTests(unittest.TestCase):
         self.assertFalse(valid)
         self.assertIn("marqueeInterval", errors)
         self.assertIn("marqueeGap", errors)
+
+        valid, values = instance.validateActionConfigUi(indigo.Dict({
+            "lineCount": "0", "animationMode": "static",
+            "graphicContentType": "donut", "donutInterval": "0.2",
+            "backlight": "1.0", "contrast": "0.5",
+        }), "lcdStartAnimation", 42)
+        self.assertTrue(valid)
+        self.assertEqual(values["donutInterval"], "0.2")
+
+        valid, values, errors = instance.validateActionConfigUi(indigo.Dict({
+            "lineCount": "0", "animationMode": "static",
+            "graphicContentType": "donut", "donutInterval": "0.01",
+            "backlight": "1.0", "contrast": "0.5",
+        }), "lcdStartAnimation", 42)
+        self.assertFalse(valid)
+        self.assertIn("donutInterval", errors)
 
     def test_lcd_action_validation_persists_cleared_text_fields(self):
         instance = object.__new__(plugin.Plugin)
