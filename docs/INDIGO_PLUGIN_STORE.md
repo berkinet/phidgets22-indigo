@@ -13,10 +13,17 @@ Phidgets 22 to the Indigo Plugin Store.
 - Category: **Digital/Analog I/O Modules**
 - Minimum Indigo version: **2022.1**
 - First Store-compatible version: **0.3.0**
+- Intended first public Store release: **1.0.0** (deferred until submission)
 
 Version 0.3.0 begins the three-part `X.Y.Z` version scheme required by the
 Store. Versions through 0.2.1.49 remain part of the development history. Later
 patch releases should be numbered 0.3.1, 0.3.2, and so on.
+
+Continue using `0.3.x` versions during the present hardware-testing and
+pre-publication phase. When the plugin and Store submission are ready, promote
+the tested release candidate to `1.0.0` and publish its matching tag and GitHub
+Release. Do not bump the plugin, tag `v1.0.0`, or create that release before the
+submission milestone.
 
 The LCD1100 does not block the initial Store submission. Support can be tested
 and extended after the hardware arrives.
