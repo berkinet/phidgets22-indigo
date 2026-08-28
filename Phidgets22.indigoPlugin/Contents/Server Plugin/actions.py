@@ -176,9 +176,14 @@ class ActionsMixin(object):
             return "%s%d" % (mode, line_count)
         return "static0" if mode == "static" else "unsupported"
 
-    def _graphicTextLayout(self, font, content="text"):
-        if content != "text":
-            return "formula"
+    def _graphicContentLayout(self, line_count, content="text"):
+        if line_count:
+            return "hidden"
+        return content if content in ("text", "formula") else "text"
+
+    def _graphicTextLayout(self, font, content="text", line_count=0):
+        if line_count or content != "text":
+            return "hidden"
         return {4: "graphic8", 3: "graphic6", 5: "graphic5"}.get(
             int(font), "graphic8")
 
@@ -225,8 +230,10 @@ class ActionsMixin(object):
             pluginProps["graphicFont"] = str(graphic_font)
             pluginProps["graphicContentType"] = pluginProps.get(
                 "graphicContentType", "text")
+            pluginProps["graphicContentLayout"] = self._graphicContentLayout(
+                line_count, pluginProps["graphicContentType"])
             pluginProps["graphicLineLayout"] = self._graphicTextLayout(
-                graphic_font, pluginProps["graphicContentType"])
+                graphic_font, pluginProps["graphicContentType"], line_count)
             if (line_count == 0 and not pluginProps.get("graphicLine1") and
                     pluginProps.get("graphicText")):
                 pluginProps["graphicLine1"] = pluginProps["graphicText"]
@@ -262,8 +269,10 @@ class ActionsMixin(object):
         graphic_font = int(valuesDict.get("graphicFont", 4))
         valuesDict["graphicContentType"] = valuesDict.get(
             "graphicContentType", "text")
+        valuesDict["graphicContentLayout"] = self._graphicContentLayout(
+            line_count, valuesDict["graphicContentType"])
         valuesDict["graphicLineLayout"] = self._graphicTextLayout(
-            graphic_font, valuesDict["graphicContentType"])
+            graphic_font, valuesDict["graphicContentType"], line_count)
         self._updateVirtualTextStatus(valuesDict)
         return self._updateStaticOverflowLayout(valuesDict, mode, line_count)
 
@@ -288,8 +297,10 @@ class ActionsMixin(object):
                 if graphic_font not in (3, 4, 5):
                     raise ValueError
                 valuesDict["graphicFont"] = str(graphic_font)
+                valuesDict["graphicContentLayout"] = self._graphicContentLayout(
+                    line_count, graphic_content)
                 valuesDict["graphicLineLayout"] = self._graphicTextLayout(
-                    graphic_font, graphic_content)
+                    graphic_font, graphic_content, line_count)
             except (TypeError, ValueError):
                 errors["graphicFont"] = "Select a supported LCD font."
             if mode == "static" and line_count == 0 and graphic_content == "formula":

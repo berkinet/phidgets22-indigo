@@ -1,5 +1,13 @@
 # Release notes
 
+## 0.3.16 — 2026-08-28
+
+### Fixed
+
+- Hide native graphic-LCD text and formula controls in **Set LCD display**
+  actions for character LCDs, preventing a configured 16×2 display from
+  incorrectly showing the LCD1100's eight text rows.
+
 ## 0.3.15 — 2026-08-28
 
 ### Added

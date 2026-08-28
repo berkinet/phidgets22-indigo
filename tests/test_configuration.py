@@ -47,7 +47,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.15</string>", plist)
+        self.assertIn("<string>0.3.16</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -231,6 +231,10 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(fields["graphicFont"].get("defaultValue"), "4")
         self.assertEqual(fields["graphicContentType"].get("defaultValue"), "text")
         self.assertEqual(fields["formulaExpression"].get("defaultValue"), "sin(x)")
+        self.assertEqual(fields["graphicFont"].get("visibleBindingId"),
+                         "graphicContentLayout")
+        self.assertEqual(fields["formulaExpression"].get("visibleBindingId"),
+                         "graphicContentLayout")
         self.assertIn("graphic8", fields["graphicLine8"].get(
             "visibleBindingValue"))
         for field_name in ("animationLine1", "animationLine2", "animationLine3",
@@ -601,6 +605,8 @@ class ConfigurationTests(unittest.TestCase):
 
         self.assertEqual(values["lineCount"], "2")
         self.assertEqual(values["animationLayout"], "static2")
+        self.assertEqual(values["graphicContentLayout"], "hidden")
+        self.assertEqual(values["graphicLineLayout"], "hidden")
         self.assertEqual(values["backlight"], "0.75")
         self.assertEqual(values["contrast"], "0.35")
         self.assertEqual(errors, {})
@@ -614,6 +620,8 @@ class ConfigurationTests(unittest.TestCase):
         returned = instance.lcdAnimationConfigChanged(
             values, "lcdStartAnimation", 42)
         self.assertEqual(returned["animationLayout"], "marquee2")
+        self.assertEqual(returned["graphicContentLayout"], "hidden")
+        self.assertEqual(returned["graphicLineLayout"], "hidden")
 
         values["animationMode"] = "virtualMarquee"
         returned = instance.lcdAnimationConfigChanged(

@@ -11,7 +11,8 @@
 			<Field id="lineCount" type="textfield" defaultValue="0" hidden="true"/>
 			<Field id="animationLayout" type="textfield" defaultValue="unsupported" hidden="true"/>
 			<Field id="staticOverflowLayout" type="textfield" defaultValue="hidden" hidden="true"/>
-			<Field id="graphicLineLayout" type="textfield" defaultValue="graphic8" hidden="true"/>
+			<Field id="graphicContentLayout" type="textfield" defaultValue="hidden" hidden="true"/>
+			<Field id="graphicLineLayout" type="textfield" defaultValue="hidden" hidden="true"/>
 			<Field id="graphicContentType" type="menu" defaultValue="text" visibleBindingId="animationLayout" visibleBindingValue="static0" alwaysUseInDialogHeightCalc="true"><Label>Content:</Label><List><Option value="text">Text page</Option><Option value="formula">Formula graph</Option></List><CallbackMethod>lcdAnimationConfigChanged</CallbackMethod></Field>
 			<Field id="animationMode" type="menu" defaultValue="static">
 				<Label>Display mode:</Label>
@@ -30,7 +31,7 @@
 			<Field id="virtualText" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="virtualMarquee1,virtualMarquee2,virtualMarquee3,virtualMarquee4" alwaysUseInDialogHeightCalc="true"><Label>Text:</Label><CallbackMethod>lcdAnimationConfigChanged</CallbackMethod></Field>
 			<Field id="virtualTextStatus" type="textfield" readonly="true" defaultValue="∅ empty" visibleBindingId="animationLayout" visibleBindingValue="virtualMarquee1,virtualMarquee2,virtualMarquee3,virtualMarquee4" alwaysUseInDialogHeightCalc="true"><Label>Stored text:</Label></Field>
 			<Field id="virtualMarqueeHelp" type="label" visibleBindingId="animationLayout" visibleBindingValue="virtualMarquee1,virtualMarquee2,virtualMarquee3,virtualMarquee4" alwaysUseInDialogHeightCalc="true"><Label>Uses every row as one continuous line. Left enters at the lower right; Right enters at the upper left.</Label></Field>
-			<Field id="graphicFont" type="menu" defaultValue="4" visibleBindingId="graphicContentType" visibleBindingValue="text" alwaysUseInDialogHeightCalc="true"><Label>Font:</Label><List><Option value="4">5 × 8 — 8 lines</Option><Option value="3">6 × 10 — 6 lines</Option><Option value="5">6 × 12 — 5 lines</Option></List><CallbackMethod>lcdAnimationConfigChanged</CallbackMethod></Field>
+			<Field id="graphicFont" type="menu" defaultValue="4" visibleBindingId="graphicContentLayout" visibleBindingValue="text" alwaysUseInDialogHeightCalc="true"><Label>Font:</Label><List><Option value="4">5 × 8 — 8 lines</Option><Option value="3">6 × 10 — 6 lines</Option><Option value="5">6 × 12 — 5 lines</Option></List><CallbackMethod>lcdAnimationConfigChanged</CallbackMethod></Field>
 			<Field id="graphicLine1" type="textfield" visibleBindingId="graphicLineLayout" visibleBindingValue="graphic5,graphic6,graphic8" alwaysUseInDialogHeightCalc="true"><Label>Line 1:</Label></Field>
 			<Field id="graphicLine2" type="textfield" visibleBindingId="graphicLineLayout" visibleBindingValue="graphic5,graphic6,graphic8" alwaysUseInDialogHeightCalc="true"><Label>Line 2:</Label></Field>
 			<Field id="graphicLine3" type="textfield" visibleBindingId="graphicLineLayout" visibleBindingValue="graphic5,graphic6,graphic8" alwaysUseInDialogHeightCalc="true"><Label>Line 3:</Label></Field>
@@ -39,13 +40,13 @@
 			<Field id="graphicLine6" type="textfield" visibleBindingId="graphicLineLayout" visibleBindingValue="graphic6,graphic8" alwaysUseInDialogHeightCalc="true"><Label>Line 6:</Label></Field>
 			<Field id="graphicLine7" type="textfield" visibleBindingId="graphicLineLayout" visibleBindingValue="graphic8" alwaysUseInDialogHeightCalc="true"><Label>Line 7:</Label></Field>
 			<Field id="graphicLine8" type="textfield" visibleBindingId="graphicLineLayout" visibleBindingValue="graphic8" alwaysUseInDialogHeightCalc="true"><Label>Line 8:</Label></Field>
-			<Field id="formulaExpression" type="textfield" defaultValue="sin(x)" visibleBindingId="graphicContentType" visibleBindingValue="formula" alwaysUseInDialogHeightCalc="true"><Label>Formula f(x):</Label></Field>
-			<Field id="formulaXMin" type="textfield" defaultValue="-6.283185307" visibleBindingId="graphicContentType" visibleBindingValue="formula" alwaysUseInDialogHeightCalc="true"><Label>X minimum:</Label></Field>
-			<Field id="formulaXMax" type="textfield" defaultValue="6.283185307" visibleBindingId="graphicContentType" visibleBindingValue="formula" alwaysUseInDialogHeightCalc="true"><Label>X maximum:</Label></Field>
-			<Field id="formulaYMin" type="textfield" defaultValue="-1.2" visibleBindingId="graphicContentType" visibleBindingValue="formula" alwaysUseInDialogHeightCalc="true"><Label>Y minimum:</Label></Field>
-			<Field id="formulaYMax" type="textfield" defaultValue="1.2" visibleBindingId="graphicContentType" visibleBindingValue="formula" alwaysUseInDialogHeightCalc="true"><Label>Y maximum:</Label></Field>
-			<Field id="formulaStyle" type="menu" defaultValue="line" visibleBindingId="graphicContentType" visibleBindingValue="formula" alwaysUseInDialogHeightCalc="true"><Label>Plot style:</Label><List><Option value="line">Connected line</Option><Option value="pixels">Pixels</Option></List></Field>
-			<Field id="formulaShowAxes" type="checkbox" defaultValue="true" visibleBindingId="graphicContentType" visibleBindingValue="formula" alwaysUseInDialogHeightCalc="true"><Label>Show axes?</Label></Field>
+			<Field id="formulaExpression" type="textfield" defaultValue="sin(x)" visibleBindingId="graphicContentLayout" visibleBindingValue="formula" alwaysUseInDialogHeightCalc="true"><Label>Formula f(x):</Label></Field>
+			<Field id="formulaXMin" type="textfield" defaultValue="-6.283185307" visibleBindingId="graphicContentLayout" visibleBindingValue="formula" alwaysUseInDialogHeightCalc="true"><Label>X minimum:</Label></Field>
+			<Field id="formulaXMax" type="textfield" defaultValue="6.283185307" visibleBindingId="graphicContentLayout" visibleBindingValue="formula" alwaysUseInDialogHeightCalc="true"><Label>X maximum:</Label></Field>
+			<Field id="formulaYMin" type="textfield" defaultValue="-1.2" visibleBindingId="graphicContentLayout" visibleBindingValue="formula" alwaysUseInDialogHeightCalc="true"><Label>Y minimum:</Label></Field>
+			<Field id="formulaYMax" type="textfield" defaultValue="1.2" visibleBindingId="graphicContentLayout" visibleBindingValue="formula" alwaysUseInDialogHeightCalc="true"><Label>Y maximum:</Label></Field>
+			<Field id="formulaStyle" type="menu" defaultValue="line" visibleBindingId="graphicContentLayout" visibleBindingValue="formula" alwaysUseInDialogHeightCalc="true"><Label>Plot style:</Label><List><Option value="line">Connected line</Option><Option value="pixels">Pixels</Option></List></Field>
+			<Field id="formulaShowAxes" type="checkbox" defaultValue="true" visibleBindingId="graphicContentLayout" visibleBindingValue="formula" alwaysUseInDialogHeightCalc="true"><Label>Show axes?</Label></Field>
 			<Field id="graphicText" type="textfield" hidden="true"/><Field id="graphicX" type="textfield" defaultValue="0" hidden="true"/><Field id="graphicY" type="textfield" defaultValue="0" hidden="true"/>
 			<Field id="alternateLine1" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="flash1,flash2,flash3,flash4" alwaysUseInDialogHeightCalc="true"><Label>Alternate line 1:</Label></Field>
 			<Field id="alternateLine2" type="textfield" visibleBindingId="animationLayout" visibleBindingValue="flash2,flash3,flash4" alwaysUseInDialogHeightCalc="true"><Label>Alternate line 2:</Label></Field>
