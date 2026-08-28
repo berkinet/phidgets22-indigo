@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.3.22 — 2026-08-28
+
+### Added
+
+- Add a shared-ADP0001 BME280/BMP280 environmental-sensor device with chip-ID
+  verification, calibration decoding, compensated temperature and pressure,
+  BME280 humidity, configurable polling, and address-collision validation.
+- Restore environmental-sensor polling after adapter reattachment and stop it
+  cleanly before the shared adapter shuts down.
+
 ## 0.3.21 — 2026-08-28
 
 ### Changed

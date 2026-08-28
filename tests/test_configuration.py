@@ -62,7 +62,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.21</string>", plist)
+        self.assertIn("<string>0.3.22</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -74,7 +74,7 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(set(device_factory._BUILDERS), {
             "voltageInput", "voltageRatioInput", "digitalOutput", "digitalInput",
             "temperatureSensor", "frequencyCounter", "humiditySensor", "lcd",
-            "dataAdapter", "adapterGPIOInput", "adapterGPIOOutput",
+            "dataAdapter", "adapterGPIOInput", "adapterGPIOOutput", "bme280",
         })
 
     def test_factory_constructs_every_supported_wrapper(self):
@@ -177,6 +177,28 @@ class ConfigurationTests(unittest.TestCase):
         self.assertTrue(arguments["inverted"])
         self.assertEqual(arguments["debounceMilliseconds"], 75)
 
+    def test_bme280_factory_uses_selected_adapter_and_address(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.pluginPrefs = {
+            "networkPhidgets": True, "enableServerDiscovery": True}
+        instance.logger = logging.getLogger("test.configuration.bme280")
+        device = types.SimpleNamespace(
+            deviceTypeId="bme280",
+            pluginProps={
+                "bmeAdapterDeviceId": "42", "bmeI2CAddress": "0x76",
+                "bmePollInterval": "2.5", "decimalPlaces": "2",
+            })
+
+        with mock.patch.object(
+                device_factory, "BME280Phidget",
+                return_value=mock.sentinel.wrapper) as constructor:
+            result = device_factory.create_phidget(instance, device)
+
+        self.assertIs(result, mock.sentinel.wrapper)
+        self.assertEqual(constructor.call_args.kwargs["adapterDeviceId"], 42)
+        self.assertEqual(constructor.call_args.kwargs["i2cAddress"], 0x76)
+        self.assertEqual(constructor.call_args.kwargs["pollInterval"], 2.5)
+
     def test_data_adapter_device_is_declared(self):
         devices = ElementTree.parse(SERVER_PLUGIN / "Devices.xml").getroot()
         adapter = devices.find("./Device[@id='dataAdapter']")
@@ -191,9 +213,15 @@ class ConfigurationTests(unittest.TestCase):
 
     def test_adapter_gpio_devices_are_declared(self):
         devices = ElementTree.parse(SERVER_PLUGIN / "Devices.xml").getroot()
+        environmental = devices.find("./Device[@id='bme280']")
         gpio_input = devices.find("./Device[@id='adapterGPIOInput']")
         gpio_output = devices.find("./Device[@id='adapterGPIOOutput']")
 
+        self.assertIsNotNone(environmental)
+        environmental_fields = {
+            field.get("id") for field in environmental.iter("Field")}
+        self.assertTrue({"bmeAdapterSelection", "bmeI2CAddress",
+                         "bmePollInterval"} <= environmental_fields)
         self.assertIsNotNone(gpio_input)
         self.assertIsNotNone(gpio_output)
         self.assertEqual(gpio_output.get("type"), "relay")
@@ -249,6 +277,30 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(values["gpioAdapterDeviceId"], "42")
         self.assertEqual(values["observedConnection"], "I2C Adapter 1→GPIO 0")
         self.assertEqual(values["address"], "gpio-42-0")
+
+    def test_bme280_validation_probes_chip_identity(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.pluginId = "com.yikes.eric.phidgets-indigo"
+        adapter_device = IdentityDevice(
+            id=42, name="I2C Adapter 1", pluginId=instance.pluginId,
+            deviceTypeId="dataAdapter", enabled=True, pluginProps={})
+        devices = DeviceCollection({42: adapter_device})
+        adapter = mock.Mock()
+        adapter.i2cSendReceive.return_value = b"\x60"
+        instance.activePhidgets = {42: adapter}
+        values = indigo.Dict({
+            "bmeAdapterSelection": "42", "bmeI2CAddress": "0x76",
+            "bmePollInterval": "2.0", "decimalPlaces": "2",
+        })
+
+        with mock.patch.object(indigo, "devices", devices, create=True):
+            valid, returned = instance.validateDeviceConfigUi(
+                values, "bme280", 0)
+
+        self.assertTrue(valid)
+        self.assertIs(returned, values)
+        adapter.i2cSendReceive.assert_called_once_with(0x76, b"\xD0", 1)
+        self.assertEqual(values["address"], "bme280-42-76")
 
     def test_new_device_cannot_save_without_a_compatible_channel(self):
         instance = object.__new__(plugin.Plugin)

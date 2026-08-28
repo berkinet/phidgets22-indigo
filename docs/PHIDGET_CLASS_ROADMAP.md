@@ -59,9 +59,7 @@ These package modules are not counted as user-facing hardware classes:
 
 The initial `LCD` support is complete. The remaining pre-1.0 hardware work is:
 
-1. Add and hardware-test an I2C BME280 5 V barometric/environmental sensor
-   profile on the ADP0001.
-2. Add and hardware-test an I2C SGP41 air-quality sensor profile on the
+1. Add and hardware-test an I2C SGP41 air-quality sensor profile on the
    ADP0001.
 
 After the 1.0 Store publication, the suggested sequence is:
@@ -85,14 +83,15 @@ Phidget22 package.
 
 ## ADP0001 I2C environmental sensors required before 1.0
 
-The ordered SGP41 and 5 V BME280 boards are the remaining planned hardware
-profiles before the first public Store release. Confirm each board's exact
+The ordered SGP41 board is the remaining planned hardware profile before the
+first public Store release. Confirm its exact
 identity, address options, electrical requirements, and observed responses on
 arrival rather than assuming that all breakout boards use the same design.
 
-- BME280: expose temperature, relative humidity, and barometric pressure as
-  Indigo states, with a configurable polling interval and actionable address
-  validation.
+- BME280/BMP280: implemented on the shared ADP0001 with chip-ID verification,
+  calibrated temperature and barometric pressure, BME280 humidity, configurable
+  polling, and actionable address validation. Real-hardware verification is in
+  progress with the received 5 V GYBMEP module.
 - SGP41: expose the supported VOC/NOx measurements. Decide from the actual
   board and tested driver whether the first profile publishes raw signals,
   processed gas indices, or both, and how temperature/humidity compensation is

@@ -109,6 +109,16 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         timer.start()
 
     def phidgetDetachAnnounced(self, phidget, detached_for):
+        supports = getattr(phidget, "supportsFunction", None)
+        if supports is not None:
+            adapter_id = phidget.indigoDevice.id
+            for dependent in list(self.activePhidgets.values()):
+                if (dependent is phidget or
+                        getattr(dependent, "adapterDeviceId", None) != adapter_id):
+                    continue
+                callback = getattr(dependent, "providerStopping", None)
+                if callback is not None:
+                    callback()
         server_key = phidget.serverKey()
         with self._outageLock:
             self._detachBatches.setdefault(server_key, set()).add(phidget)
@@ -184,16 +194,22 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
     def phidgetAttachCompleted(self, phidget, detached_for, attach_count,
                                detach_announced):
         supports = getattr(phidget, "supportsFunction", None)
-        if supports is not None and supports("lcd"):
+        if supports is not None:
             adapter_id = phidget.indigoDevice.id
+            adapter_properties = {
+                "lcd": "lcdAdapterDeviceId",
+                "bme280": "bmeAdapterDeviceId",
+            }
             for device in indigo.devices:
+                property_name = adapter_properties.get(
+                    getattr(device, "deviceTypeId", None))
                 if (getattr(device, "pluginId", None) != self.pluginId or
-                        getattr(device, "deviceTypeId", None) != "lcd" or
+                        property_name is None or
                         not getattr(device, "enabled", True)):
                     continue
                 try:
                     selected_adapter = int(device.pluginProps.get(
-                        "lcdAdapterDeviceId", 0))
+                        property_name, 0))
                 except (TypeError, ValueError):
                     continue
                 if selected_adapter != adapter_id:
@@ -309,7 +325,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                 device.name, device.id)
             return
         supports = getattr(phidget, "supportsFunction", None)
-        if supports is not None and supports("lcd"):
+        if supports is not None:
             # Indigo may stop a shared DataAdapter before its logical LCD.
             # Quiesce dependent timers while the provider is still attached so
             # an in-flight frame finishes before the bus is closed.

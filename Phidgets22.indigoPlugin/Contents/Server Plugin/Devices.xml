@@ -564,6 +564,19 @@
 		</ConfigUI>
 	</Device>
 
+	<Device id="bme280" type="custom">
+		<Name>I2C BME280/BMP280 Environmental Sensor</Name>
+		<ConfigUI>
+			<Field id="bmeAdapterDeviceId" type="textfield" hidden="true"/>
+			<Field id="bmeAdapterSelection" type="menu" defaultValue="selectAdapter"><Label>I2C adapter:</Label><List class="self" method="getAvailableGPIOAdapterMenu" dynamicReload="true"/><CallbackMethod>bmeAdapterChanged</CallbackMethod></Field>
+			<Field id="bmeI2CAddress" type="menu" defaultValue="0x76"><Label>I2C address:</Label><List><Option value="0x76">0x76 (usual GYBMEP)</Option><Option value="0x77">0x77</Option></List></Field>
+			<Field id="bmePollInterval" type="textfield" defaultValue="2.0"><Label>Polling interval (seconds):</Label></Field>
+			<Field id="decimalPlaces" type="textfield" defaultValue="2"><Label>Decimal places:</Label></Field>
+			<Field id="observedConnection" type="textfield" readonly="true"><Label>Sensor path:</Label></Field>
+			<Field id="bmeHelp" type="label"><Label>The chip ID is verified when saving. BME280 publishes temperature, pressure, and humidity; BMP280 publishes temperature and pressure.</Label></Field>
+		</ConfigUI>
+	</Device>
+
 	<Device id="adapterGPIOInput" type="custom">
 		<Name>I2C Adapter GPIO Input</Name>
 		<ConfigUI>

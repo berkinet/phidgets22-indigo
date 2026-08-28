@@ -80,6 +80,25 @@ class DiscoveryUiMixin(object):
         return self._applyGPIOAdapter(
             valuesDict, valuesDict.get("gpioAdapterSelection", ""))
 
+    def _applyBMEAdapter(self, valuesDict, selection):
+        try:
+            adapter = indigo.devices[int(selection)]
+        except (IndexError, KeyError, TypeError, ValueError):
+            return valuesDict
+        available_ids = {
+            getattr(device, "id", None)
+            for device in self._availableGPIOAdapters()}
+        if getattr(adapter, "id", None) not in available_ids:
+            return valuesDict
+        valuesDict["bmeAdapterSelection"] = str(adapter.id)
+        valuesDict["bmeAdapterDeviceId"] = str(adapter.id)
+        valuesDict["observedConnection"] = "%s→BME/BMP280" % adapter.name
+        return valuesDict
+
+    def bmeAdapterChanged(self, valuesDict, typeId, devId):
+        return self._applyBMEAdapter(
+            valuesDict, valuesDict.get("bmeAdapterSelection", ""))
+
     def _applyDisplayProvider(self, valuesDict, selection, devId=0):
         providers = {provider["id"]: provider
                      for provider in available_display_providers(self)}
@@ -169,6 +188,16 @@ class DiscoveryUiMixin(object):
                 values = self._applyGPIOAdapter(values, selection)
             return (values, indigo.Dict())
 
+        if typeId == "bme280":
+            selection = (values.get("bmeAdapterSelection") or
+                         values.get("bmeAdapterDeviceId") or "")
+            adapters = self._availableGPIOAdapters()
+            if not selection and len(adapters) == 1:
+                selection = str(adapters[0].id)
+            if selection:
+                values = self._applyBMEAdapter(values, selection)
+            return (values, indigo.Dict())
+
         selected_channel = values.get("discoveredChannel", "")
         resolved_channel = (self.discoveryInventory.resolve_channel(selected_channel)
                             if self.discoveryInventory is not None else None)
@@ -209,6 +238,86 @@ class DiscoveryUiMixin(object):
 
     def validateDeviceConfigUi(self, valuesDict, typeId, devId):
         valuesDict["observedConnection"] = self._observedConnectionForDevice(devId)
+        if typeId == "bme280":
+            errors = indigo.Dict()
+            selection = valuesDict.get("bmeAdapterSelection", "")
+            valuesDict = self._applyBMEAdapter(valuesDict, selection)
+            adapter_id = str(valuesDict.get("bmeAdapterDeviceId", ""))
+            if not adapter_id or adapter_id != str(selection):
+                errors["bmeAdapterSelection"] = "Select an available I2C adapter."
+            try:
+                address = int(str(valuesDict.get("bmeI2CAddress", "")), 0)
+                if address not in (0x76, 0x77):
+                    raise ValueError
+                valuesDict["bmeI2CAddress"] = "0x%02X" % address
+            except (TypeError, ValueError):
+                address = None
+                errors["bmeI2CAddress"] = "Select address 0x76 or 0x77."
+            try:
+                interval = float(valuesDict.get("bmePollInterval", "2"))
+                if interval < 1.0 or interval > 3600.0:
+                    raise ValueError
+                valuesDict["bmePollInterval"] = str(interval)
+            except (TypeError, ValueError):
+                errors["bmePollInterval"] = (
+                    "Enter a polling interval from 1 to 3600 seconds.")
+            try:
+                decimal_places = int(valuesDict.get("decimalPlaces", "2"))
+                if decimal_places < 0 or decimal_places > 6:
+                    raise ValueError
+                valuesDict["decimalPlaces"] = str(decimal_places)
+            except (TypeError, ValueError):
+                errors["decimalPlaces"] = (
+                    "Enter a whole number from 0 through 6.")
+            if adapter_id and address is not None:
+                for other in getattr(indigo, "devices", ()):
+                    if (getattr(other, "id", None) == devId or
+                            getattr(other, "pluginId", None) != self.pluginId or
+                            not getattr(other, "enabled", True)):
+                        continue
+                    props = getattr(other, "pluginProps", {})
+                    other_adapter = (props.get("bmeAdapterDeviceId")
+                                     if getattr(other, "deviceTypeId", None) == "bme280"
+                                     else props.get("lcdAdapterDeviceId")
+                                     if getattr(other, "deviceTypeId", None) == "lcd"
+                                     else None)
+                    other_address = (props.get("bmeI2CAddress")
+                                     if getattr(other, "deviceTypeId", None) == "bme280"
+                                     else props.get("lcdI2CAddress")
+                                     if getattr(other, "deviceTypeId", None) == "lcd"
+                                     else None)
+                    try:
+                        collision = (str(other_adapter) == adapter_id and
+                                     int(str(other_address), 0) == address)
+                    except (TypeError, ValueError):
+                        collision = False
+                    if collision:
+                        errors["bmeI2CAddress"] = (
+                            "Address 0x%02X is already assigned to '%s'." %
+                            (address, getattr(other, "name", "another device")))
+                        break
+                adapter = self.activePhidgets.get(int(adapter_id))
+                if adapter is not None and "bmeI2CAddress" not in errors:
+                    try:
+                        response = bytes(adapter.i2cSendReceive(
+                            address, bytes((0xD0,)), 1))
+                        if len(response) != 1 or response[0] not in (0x58, 0x60):
+                            found = "no chip ID" if not response else "chip ID 0x%02X" % response[0]
+                            errors["bmeI2CAddress"] = (
+                                "No BME280/BMP280 found at 0x%02X (%s)." %
+                                (address, found))
+                    except Exception as error:
+                        errors["bmeI2CAddress"] = (
+                            "Unable to verify address 0x%02X: %s" %
+                            (address, error))
+            if errors:
+                errors["showAlertText"] = (
+                    "Correct the BME280/BMP280 settings before saving.")
+                return (False, valuesDict, errors)
+            valuesDict["address"] = "bme280-%s-%02x" % (adapter_id, address)
+            valuesDict["observedConnection"] = "%s→BME/BMP280 0x%02X" % (
+                indigo.devices[int(adapter_id)].name, address)
+            return (True, valuesDict)
         if typeId in ("adapterGPIOInput", "adapterGPIOOutput"):
             errors = indigo.Dict()
             selection = valuesDict.get("gpioAdapterSelection", "")

@@ -17,6 +17,7 @@ class DataAdapterPhidget(PhidgetBase):
     """Own one physical DataAdapter channel and serialize access to its bus."""
 
     AVAILABLE_FUNCTIONS = {
+        "bme280": "BME280/BMP280 environmental sensor transport",
         "gpio": "GPIO 0/1 provider",
         "lcd": "LCD display transport",
     }

@@ -16,6 +16,7 @@ from lcd import NativeLCDPhidget
 from i2c_lcd import I2CLCDPhidget
 from dataadapter import DataAdapterPhidget
 from adapter_gpio import AdapterGPIOInputPhidget, AdapterGPIOOutputPhidget
+from bme280 import BME280Phidget
 
 
 def _saved_bool(value):
@@ -219,6 +220,15 @@ def _adapter_gpio_output(plugin, device, common):
         adapterDeviceId=int(device.pluginProps["gpioAdapterDeviceId"]))
 
 
+def _bme280(plugin, device, common):
+    props = device.pluginProps
+    return BME280Phidget(
+        **common["base"], decimalPlaces=common["decimalPlaces"],
+        adapterDeviceId=int(props["bmeAdapterDeviceId"]),
+        i2cAddress=int(str(props.get("bmeI2CAddress", "0x76")), 0),
+        pollInterval=float(props.get("bmePollInterval", 2.0)))
+
+
 _BUILDERS = {
     "voltageInput": _voltage_input,
     "voltageRatioInput": _voltage_ratio_input,
@@ -231,6 +241,7 @@ _BUILDERS = {
     "dataAdapter": _data_adapter,
     "adapterGPIOInput": _adapter_gpio_input,
     "adapterGPIOOutput": _adapter_gpio_output,
+    "bme280": _bme280,
 }
 
 

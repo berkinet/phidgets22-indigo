@@ -46,6 +46,7 @@ The following Phidget classes are currently supported:
 * DigitalOutput
 * FrequencyCounter
 * HumiditySensor
+* BME280/BMP280 environmental sensors through an ADP0001 I2C adapter
 * LCD
   * Native Phidget LCD channels
   * Configurable HD44780/PCF8574-compatible character LCDs through an ADP0001
