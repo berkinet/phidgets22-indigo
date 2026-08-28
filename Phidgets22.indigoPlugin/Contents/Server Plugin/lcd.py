@@ -8,11 +8,13 @@ import indigo
 from Phidget22.ChannelSubclass import ChannelSubclass
 from Phidget22.Devices.LCD import LCD
 from Phidget22.LCDFont import LCDFont
+from Phidget22.LCDPixelState import LCDPixelState
 from Phidget22.LCDScreenSize import LCDScreenSize
 from Phidget22.ErrorCode import ErrorCode
 from Phidget22.PhidgetException import PhidgetException
 
 from phidget import PhidgetBase
+from formula_plot import Formula
 
 
 class LCDPhidget(PhidgetBase):
@@ -306,6 +308,62 @@ class LCDPhidget(PhidgetBase):
                     self.phidget.writeText(font, 0, number * font_height, line)
             self.phidget.flush()
             self.lastText = "\n".join(visible_lines).rstrip("\n")
+            self.updateIndigoStatus()
+
+    def plotFormula(self, expression, x_min, x_max, y_min, y_max,
+                    show_axes=True, style="line"):
+        """Plot one safe mathematical expression across every display column."""
+        with self._display_lock:
+            self._ensure_attached()
+            self._cancel_animation_locked()
+            if self.lcdType != "graphic":
+                raise ValueError("Formula graphs require a graphic LCD")
+            formula = Formula(expression)
+            x_min, x_max = float(x_min), float(x_max)
+            y_min, y_max = float(y_min), float(y_max)
+            if x_min >= x_max:
+                raise ValueError("Formula X minimum must be less than X maximum")
+            if y_min >= y_max:
+                raise ValueError("Formula Y minimum must be less than Y maximum")
+            if style not in ("line", "pixels"):
+                raise ValueError("Formula plot style must be line or pixels")
+
+            width, height = self.screenWidth, self.screenHeight
+            x_span, y_span = x_max - x_min, y_max - y_min
+            self.phidget.clear()
+            if show_axes:
+                if x_min <= 0 <= x_max:
+                    axis_x = int(round((0 - x_min) * (width - 1) / x_span))
+                    self.phidget.drawLine(axis_x, 0, axis_x, height - 1)
+                if y_min <= 0 <= y_max:
+                    axis_y = int(round((y_max - 0) * (height - 1) / y_span))
+                    self.phidget.drawLine(0, axis_y, width - 1, axis_y)
+
+            previous = None
+            for column in range(width):
+                x = x_min + (x_span * column / float(width - 1))
+                try:
+                    y = formula.evaluate(x)
+                except (ArithmeticError, OverflowError, ValueError):
+                    previous = None
+                    continue
+                if y < y_min or y > y_max:
+                    previous = None
+                    continue
+                row = int(round((y_max - y) * (height - 1) / y_span))
+                if style == "pixels":
+                    self.phidget.drawPixel(column, row, LCDPixelState.PIXEL_STATE_ON)
+                elif previous is not None:
+                    previous_column, previous_row, previous_y = previous
+                    if abs(y - previous_y) <= y_span * 0.5:
+                        self.phidget.drawLine(
+                            previous_column, previous_row, column, row)
+                else:
+                    self.phidget.drawPixel(
+                        column, row, LCDPixelState.PIXEL_STATE_ON)
+                previous = (column, row, y)
+            self.phidget.flush()
+            self.lastText = "f(x) = %s" % formula.expression
             self.updateIndigoStatus()
 
     def _cancel_animation_locked(self):

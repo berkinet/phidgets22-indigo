@@ -47,7 +47,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.14</string>", plist)
+        self.assertIn("<string>0.3.15</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -229,6 +229,8 @@ class ConfigurationTests(unittest.TestCase):
         self.assertIn(
             "virtualMarquee2", fields["virtualText"].get("visibleBindingValue"))
         self.assertEqual(fields["graphicFont"].get("defaultValue"), "4")
+        self.assertEqual(fields["graphicContentType"].get("defaultValue"), "text")
+        self.assertEqual(fields["formulaExpression"].get("defaultValue"), "sin(x)")
         self.assertIn("graphic8", fields["graphicLine8"].get(
             "visibleBindingValue"))
         for field_name in ("animationLine1", "animationLine2", "animationLine3",
@@ -326,6 +328,7 @@ class ConfigurationTests(unittest.TestCase):
         active_lcd.writeText = mock.Mock()
         active_lcd.writeLines = mock.Mock()
         active_lcd.writeGraphicLines = mock.Mock()
+        active_lcd.plotFormula = mock.Mock()
         active_lcd.clear = mock.Mock()
         active_lcd.setBacklight = mock.Mock()
         active_lcd.setContrast = mock.Mock()
@@ -347,6 +350,16 @@ class ConfigurationTests(unittest.TestCase):
                 "lineCount": "0", "animationMode": "static",
                 "graphicText": "%%name%%", "graphicX": "2", "graphicY": "3",
                 "backlight": "0.6", "contrast": "0.3"}),
+            device)
+        instance.lcdSetDisplay(
+            types.SimpleNamespace(props={
+                "lineCount": "0", "animationMode": "static",
+                "graphicContentType": "formula",
+                "formulaExpression": "sin(x)", "formulaXMin": "-3.14",
+                "formulaXMax": "3.14", "formulaYMin": "-1.2",
+                "formulaYMax": "1.2", "formulaShowAxes": True,
+                "formulaStyle": "line", "backlight": "0.6",
+                "contrast": "0.3"}),
             device)
         instance.lcdSetDisplay(
             types.SimpleNamespace(props={
@@ -381,17 +394,22 @@ class ConfigurationTests(unittest.TestCase):
         active_lcd.writeText.assert_called_once_with("Kitchen", 2, 3)
         active_lcd.writeGraphicLines.assert_called_once_with(
             ["Large", "Text", "", "", "", "", "", ""], 5)
+        active_lcd.plotFormula.assert_called_once_with(
+            "sin(x)", "-3.14", "3.14", "-1.2", "1.2", True, "line")
         active_lcd.writeLines.assert_called_once_with(["Kitchen", "Ready"])
         active_lcd.turnOff.assert_called_once_with()
         active_lcd.clear.assert_called_once_with()
         self.assertEqual(active_lcd.setBacklight.call_args_list,
-                         [mock.call(0.6), mock.call(0.6), mock.call(0.7), mock.call(0.8),
+                         [mock.call(0.6), mock.call(0.6), mock.call(0.6),
+                          mock.call(0.7), mock.call(0.8),
                           mock.call(0.9)])
         self.assertEqual(active_lcd.setContrast.call_args_list,
-                         [mock.call(0.3), mock.call(0.3), mock.call(0.4), mock.call(0.5),
+                         [mock.call(0.3), mock.call(0.3), mock.call(0.3),
+                          mock.call(0.4), mock.call(0.5),
                           mock.call(0.6)])
         self.assertEqual(active_lcd.setSleeping.call_args_list,
                          [mock.call(False), mock.call(False), mock.call(False),
+                          mock.call(False),
                           mock.call(True), mock.call(False),
                           mock.call(False), mock.call(False)])
         self.assertEqual(active_lcd.startAnimation.call_args_list, [

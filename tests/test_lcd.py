@@ -41,6 +41,8 @@ class FakeLCD(object):
         self.handlers = {}
         self.writes = []
         self.operations = []
+        self.lines = []
+        self.pixels = []
         self.clear_count = 0
         self.flush_count = 0
         self.set_screen_sizes = []
@@ -88,6 +90,12 @@ class FakeLCD(object):
 
     def setCursorOn(self, value):
         self.cursor_on = value
+
+    def drawLine(self, x1, y1, x2, y2):
+        self.lines.append((x1, y1, x2, y2))
+
+    def drawPixel(self, x, y, state):
+        self.pixels.append((x, y, state))
 
     def getMinBacklight(self):
         return 0.0
@@ -454,6 +462,25 @@ class LCDTests(unittest.TestCase):
             wrapper.writeGraphicLines(
                 ["1", "2", "3", "4", "5", "6"],
                 LCDFont.FONT_6x12)
+
+    def test_formula_plot_samples_every_column_and_draws_axes(self):
+        native = FakeLCD(
+            subclass=ChannelSubclass.PHIDCHSUBCLASS_LCD_GRAPHIC,
+            screen_size=LCDScreenSize.SCREEN_SIZE_64x128,
+            supports_sleeping=True,
+        )
+        wrapper = make_wrapper(native)
+        wrapper.configureAttachedPhidget(native)
+        wrapper._state = "attached"
+
+        wrapper.plotFormula("sin(x)", -3.14159, 3.14159, -1.2, 1.2,
+                            show_axes=True, style="pixels")
+
+        self.assertEqual(native.clear_count, 1)
+        self.assertEqual(native.flush_count, 1)
+        self.assertEqual(len(native.pixels), 128)
+        self.assertEqual(len(native.lines), 2)
+        self.assertEqual(wrapper.lastText, "f(x) = sin(x)")
 
     def test_write_clear_and_sleep_actions_update_hardware(self):
         native = FakeLCD(

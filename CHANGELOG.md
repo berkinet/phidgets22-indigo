@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.3.15 — 2026-08-28
+
+### Added
+
+- Add Text page and Formula graph content modes for native graphic LCDs.
+- Plot a restricted mathematical expression at all 128 horizontal samples with
+  explicit X/Y ranges, optional axes, and connected-line or pixel rendering.
+- Validate formulas without unrestricted Python evaluation and break plots at
+  invalid, non-finite, out-of-range, or likely discontinuous samples.
+
 ## 0.3.14 — 2026-08-28
 
 ### Added

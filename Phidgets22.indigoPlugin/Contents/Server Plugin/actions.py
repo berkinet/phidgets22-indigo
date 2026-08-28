@@ -7,6 +7,7 @@ import re
 import indigo
 
 from lcd import LCDPhidget
+from formula_plot import Formula
 
 
 SUBSTITUTION_PATTERN = re.compile(
@@ -93,6 +94,8 @@ class ActionsMixin(object):
             self.substitute(action.props.get("graphicLine%d" % number, ""))
             for number in range(1, 9)
         ]
+        graphic_content = action.props.get("graphicContentType", "text")
+        formula_expression = action.props.get("formulaExpression", "sin(x)")
         graphic_x = int(action.props.get("graphicX", 0))
         graphic_y = int(action.props.get("graphicY", 0))
 
@@ -123,7 +126,17 @@ class ActionsMixin(object):
                     else:
                         lcd.writeLines(lines_a)
                 else:
-                    if any(graphic_lines):
+                    if graphic_content == "formula":
+                        lcd.plotFormula(
+                            formula_expression,
+                            action.props.get("formulaXMin", "-6.283185307"),
+                            action.props.get("formulaXMax", "6.283185307"),
+                            action.props.get("formulaYMin", "-1.2"),
+                            action.props.get("formulaYMax", "1.2"),
+                            str(action.props.get("formulaShowAxes", True)).lower()
+                            in ("true", "1", "yes", "on"),
+                            action.props.get("formulaStyle", "line"))
+                    elif any(graphic_lines):
                         lcd.writeGraphicLines(graphic_lines, graphic_font)
                     else:
                         # Preserve coordinate-based actions saved before the
@@ -163,7 +176,9 @@ class ActionsMixin(object):
             return "%s%d" % (mode, line_count)
         return "static0" if mode == "static" else "unsupported"
 
-    def _graphicTextLayout(self, font):
+    def _graphicTextLayout(self, font, content="text"):
+        if content != "text":
+            return "formula"
         return {4: "graphic8", 3: "graphic6", 5: "graphic5"}.get(
             int(font), "graphic8")
 
@@ -208,7 +223,10 @@ class ActionsMixin(object):
             pluginProps["animationLayout"] = self._lcdDisplayLayout(mode, line_count)
             graphic_font = int(pluginProps.get("graphicFont", 4))
             pluginProps["graphicFont"] = str(graphic_font)
-            pluginProps["graphicLineLayout"] = self._graphicTextLayout(graphic_font)
+            pluginProps["graphicContentType"] = pluginProps.get(
+                "graphicContentType", "text")
+            pluginProps["graphicLineLayout"] = self._graphicTextLayout(
+                graphic_font, pluginProps["graphicContentType"])
             if (line_count == 0 and not pluginProps.get("graphicLine1") and
                     pluginProps.get("graphicText")):
                 pluginProps["graphicLine1"] = pluginProps["graphicText"]
@@ -242,7 +260,10 @@ class ActionsMixin(object):
         valuesDict["lineCount"] = str(line_count)
         valuesDict["animationLayout"] = self._lcdDisplayLayout(mode, line_count)
         graphic_font = int(valuesDict.get("graphicFont", 4))
-        valuesDict["graphicLineLayout"] = self._graphicTextLayout(graphic_font)
+        valuesDict["graphicContentType"] = valuesDict.get(
+            "graphicContentType", "text")
+        valuesDict["graphicLineLayout"] = self._graphicTextLayout(
+            graphic_font, valuesDict["graphicContentType"])
         self._updateVirtualTextStatus(valuesDict)
         return self._updateStaticOverflowLayout(valuesDict, mode, line_count)
 
@@ -259,15 +280,39 @@ class ActionsMixin(object):
                 valuesDict[field] = str(valuesDict.get(field, "") or "")
             line_count = int(valuesDict.get("lineCount", 0))
             mode = valuesDict.get("animationMode", "static")
+            graphic_content = valuesDict.get("graphicContentType", "text")
+            if graphic_content not in ("text", "formula"):
+                errors["graphicContentType"] = "Select Text page or Formula graph."
             try:
                 graphic_font = int(valuesDict.get("graphicFont", 4))
                 if graphic_font not in (3, 4, 5):
                     raise ValueError
                 valuesDict["graphicFont"] = str(graphic_font)
                 valuesDict["graphicLineLayout"] = self._graphicTextLayout(
-                    graphic_font)
+                    graphic_font, graphic_content)
             except (TypeError, ValueError):
                 errors["graphicFont"] = "Select a supported LCD font."
+            if mode == "static" and line_count == 0 and graphic_content == "formula":
+                try:
+                    Formula(valuesDict.get("formulaExpression", ""))
+                except ValueError as error:
+                    errors["formulaExpression"] = str(error)
+                ranges = {}
+                for field in ("formulaXMin", "formulaXMax",
+                              "formulaYMin", "formulaYMax"):
+                    try:
+                        ranges[field] = float(valuesDict.get(field, ""))
+                        valuesDict[field] = str(ranges[field])
+                    except (TypeError, ValueError):
+                        errors[field] = "Enter a number."
+                if ("formulaXMin" in ranges and "formulaXMax" in ranges and
+                        ranges["formulaXMin"] >= ranges["formulaXMax"]):
+                    errors["formulaXMin"] = "X minimum must be less than X maximum."
+                if ("formulaYMin" in ranges and "formulaYMax" in ranges and
+                        ranges["formulaYMin"] >= ranges["formulaYMax"]):
+                    errors["formulaYMin"] = "Y minimum must be less than Y maximum."
+                if valuesDict.get("formulaStyle", "line") not in ("line", "pixels"):
+                    errors["formulaStyle"] = "Select Connected line or Pixels."
             for field in ("backlight", "contrast"):
                 try:
                     value = float(valuesDict.get(field, ""))
