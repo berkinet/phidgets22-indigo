@@ -7,6 +7,8 @@ import threading
 import indigo
 
 from Phidget22.Devices.DataAdapter import DataAdapter
+from Phidget22.ErrorCode import ErrorCode
+from Phidget22.PhidgetException import PhidgetException
 
 from phidget import PhidgetBase
 
@@ -81,6 +83,16 @@ class DataAdapterPhidget(PhidgetBase):
                 address, data, receiveLength)
             return self.phidget.i2cSendReceive(
                 address, payload, receive_length)
+
+    def i2cAddressResponds(self, address):
+        """Probe an I2C address with a read-only one-byte transaction."""
+        try:
+            self.i2cSendReceive(address, (), 1)
+            return True
+        except PhidgetException as error:
+            if error.code == ErrorCode.EPHIDGET_NACK:
+                return False
+            raise
 
     def i2cComplexTransaction(self, address, packetString, data=None):
         """Perform a Phidget22 complex I2C transaction under the bus lock."""

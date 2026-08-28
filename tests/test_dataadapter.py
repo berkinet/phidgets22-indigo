@@ -10,6 +10,8 @@ sys.path.insert(0, str(SERVER_PLUGIN))
 sys.modules.setdefault("indigo", types.ModuleType("indigo"))
 
 import dataadapter
+from Phidget22.ErrorCode import ErrorCode
+from Phidget22.PhidgetException import PhidgetException
 
 
 class FakeDataAdapter(object):
@@ -98,6 +100,16 @@ class DataAdapterTests(unittest.TestCase):
 
         with self.assertRaisesRegex(RuntimeError, "not attached"):
             wrapper.i2cSendReceive(0x27, [1])
+
+    def test_read_only_address_probe_reports_ack_and_nack(self):
+        wrapper = self.wrapper()
+
+        self.assertTrue(wrapper.i2cAddressResponds(0x27))
+        self.assertEqual(wrapper.phidget.calls, [(0x27, b"", 1)])
+
+        wrapper.phidget.i2cSendReceive = mock.Mock(
+            side_effect=PhidgetException(ErrorCode.EPHIDGET_NACK))
+        self.assertFalse(wrapper.i2cAddressResponds(0x26))
 
     def test_complex_transaction_uses_same_owned_bus(self):
         wrapper = self.wrapper()

@@ -47,7 +47,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.12</string>", plist)
+        self.assertIn("<string>0.3.13</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -401,6 +401,8 @@ class ConfigurationTests(unittest.TestCase):
         instance.discoveryInventory.compatible_channels.return_value = []
         adapter_wrapper = mock.Mock()
         adapter_wrapper.supportsFunction.side_effect = lambda value: value == "lcd"
+        adapter_wrapper._state = "attached"
+        adapter_wrapper.i2cAddressResponds.return_value = True
         instance.activePhidgets = {42: adapter_wrapper}
         adapter_device = types.SimpleNamespace(
             id=42, name="Library display bus", enabled=True,
@@ -449,6 +451,40 @@ class ConfigurationTests(unittest.TestCase):
             "rs": 0, "rw": 1, "enable": 2, "backlight": 3,
             "d4": 4, "d5": 5, "d6": 6, "d7": 7,
         })
+
+    def test_i2c_lcd_validation_rejects_unresponsive_address(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.pluginId = "com.yikes.eric.phidgets-indigo"
+        instance.logger = mock.Mock()
+        instance.discoveryInventory = mock.Mock()
+        instance.discoveryInventory.compatible_channels.return_value = []
+        adapter = mock.Mock(_state="attached")
+        adapter.i2cAddressResponds.return_value = False
+        instance.activePhidgets = {42: adapter}
+        adapter_device = types.SimpleNamespace(
+            id=42, name="Library display bus", enabled=True,
+            pluginId=instance.pluginId, deviceTypeId="dataAdapter", states={},
+            pluginProps={"serialNumber": "729035", "channel": "0",
+                         "serverName": "CM-Library Mac"})
+        indigo.devices = DeviceCollection({42: adapter_device})
+        indigo.variables = {}
+        values = indigo.Dict({
+            "lcdDisplayProvider": "adapter:42",
+            "lcdProviderKind": "adapter", "lcdAdapterDeviceId": "42",
+            "lcdProfile": "freenove-hd44780-pcf8574",
+            "lcdI2CAddress": "0x26", "lcdScreenSize": "5",
+            "lcdBacklight": "1.0", "lcdContrast": "0.5",
+            "lcdInitialX": "0", "lcdInitialY": "0",
+            "serialNumber": "729035", "channel": "0", "serverName": "",
+            "isVintHub": False, "isVintDevice": False,
+        })
+
+        valid, returned, errors = instance.validateDeviceConfigUi(
+            values, "lcd", 0)
+
+        self.assertFalse(valid)
+        self.assertIn("No I2C device responded at 0x26", errors["lcdI2CAddress"])
+        adapter.i2cAddressResponds.assert_called_once_with(0x26)
 
     def test_adapter_attachment_starts_a_dependent_i2c_display(self):
         instance = object.__new__(plugin.Plugin)

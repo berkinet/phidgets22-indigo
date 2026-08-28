@@ -280,6 +280,20 @@ class DiscoveryUiMixin(object):
                                 getattr(other, "name", "another LCD"))
                             break
 
+                    adapter = self.activePhidgets.get(int(adapter_id or 0))
+                    probe = getattr(adapter, "i2cAddressResponds", None)
+                    if ("lcdI2CAddress" not in errors and probe is not None and
+                            getattr(adapter, "_state", None) == "attached"):
+                        try:
+                            if not probe(i2c_address):
+                                errors["lcdI2CAddress"] = (
+                                    "No I2C device responded at 0x%02X. Verify the "
+                                    "address jumpers and wiring." % i2c_address)
+                        except Exception:
+                            self.logger.warning(
+                                "Unable to verify I2C address 0x%02X during LCD "
+                                "configuration", i2c_address, exc_info=True)
+
                 pins = []
                 for field in ("lcdI2CRSPin", "lcdI2CRWPin",
                               "lcdI2CEnablePin", "lcdI2CBacklightPin",

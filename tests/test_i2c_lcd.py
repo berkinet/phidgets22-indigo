@@ -10,6 +10,8 @@ sys.path.insert(0, str(SERVER_PLUGIN))
 sys.modules.setdefault("indigo", types.ModuleType("indigo"))
 
 import i2c_lcd
+from Phidget22.ErrorCode import ErrorCode
+from Phidget22.PhidgetException import PhidgetException
 from phidget import ChannelInfo
 
 
@@ -53,6 +55,17 @@ class I2CLCDTests(unittest.TestCase):
         # First initialization nibble is 0x3 with backlight, then enable high,
         # then enable low: P4-P7 data, P2 enable, P3 backlight.
         self.assertEqual(adapter.transactions[0][1], b"8<8")
+
+    def test_initialization_translates_nack_into_actionable_address_error(self):
+        channel, adapter = self.channel(screen_size=5, address=0x26)
+        adapter.i2cSendReceive = mock.Mock(
+            side_effect=PhidgetException(ErrorCode.EPHIDGET_NACK))
+
+        with mock.patch.object(i2c_lcd.time, "sleep"):
+            with self.assertRaisesRegex(
+                    RuntimeError,
+                    "No I2C display responded at 0x26.*address jumpers"):
+                channel.initialize()
 
     def test_1602_uses_same_freenove_mapping_with_16x2_geometry(self):
         channel, adapter = self.channel(screen_size=5)

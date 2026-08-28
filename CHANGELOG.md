@@ -1,5 +1,18 @@
 # Release notes
 
+## 0.3.13 — 2026-08-28
+
+### Added
+
+- Probe configured I2C LCD addresses with a read-only transaction while saving
+  the device and show an inline configuration error when no device responds.
+
+### Fixed
+
+- Replace raw Phidget NACK tracebacks during I2C LCD initialization with an
+  actionable message covering the configured address, jumpers, power, and
+  wiring.
+
 ## 0.3.12 — 2026-08-27
 
 ### Changed

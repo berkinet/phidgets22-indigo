@@ -6,6 +6,8 @@ import time
 
 from Phidget22.ChannelSubclass import ChannelSubclass
 from Phidget22.LCDScreenSize import LCDScreenSize
+from Phidget22.ErrorCode import ErrorCode
+from Phidget22.PhidgetException import PhidgetException
 
 from lcd import LCDPhidget
 
@@ -130,19 +132,26 @@ class HD44780PCF8574Channel(object):
         self._byte(value, False)
 
     def initialize(self):
-        time.sleep(0.05)
-        self._nibble(0x03)
-        time.sleep(0.005)
-        self._nibble(0x03)
-        time.sleep(0.001)
-        self._nibble(0x03)
-        self._nibble(0x02)
-        self._command(0x28)  # four-bit, two-line font mode (also used by 20x4)
-        self._command(0x08)  # display off during setup
-        self._command(0x01)
-        time.sleep(0.002)
-        self._command(0x06)  # increment cursor
-        self._command(0x0c)  # display on, cursor and blink off
+        try:
+            time.sleep(0.05)
+            self._nibble(0x03)
+            time.sleep(0.005)
+            self._nibble(0x03)
+            time.sleep(0.001)
+            self._nibble(0x03)
+            self._nibble(0x02)
+            self._command(0x28)  # four-bit, two-line font mode (also used by 20x4)
+            self._command(0x08)  # display off during setup
+            self._command(0x01)
+            time.sleep(0.002)
+            self._command(0x06)  # increment cursor
+            self._command(0x0c)  # display on, cursor and blink off
+        except PhidgetException as error:
+            if error.code == ErrorCode.EPHIDGET_NACK:
+                raise RuntimeError(
+                    "No I2C display responded at 0x%02X. Verify the configured "
+                    "address, address jumpers, power, and wiring." % self.address)
+            raise
 
     def getChannelSubclass(self):
         return ChannelSubclass.PHIDCHSUBCLASS_LCD_TEXT
