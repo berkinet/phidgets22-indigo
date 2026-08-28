@@ -9,6 +9,7 @@ Phidgets 22 to the Indigo Plugin Store.
 - GitHub repository: `berkinet/phidgets22-indigo`
 - Permanent plugin identifier: `com.yikes.eric.phidgets-indigo`
 - Developer identifier: `com.berkinet`
+- Indigo website / Plugin Store account: `berkinet2`
 - Category: **Digital/Analog I/O Modules**
 - Minimum Indigo version: **2022.1**
 - First Store-compatible version: **0.3.0**
@@ -28,10 +29,12 @@ associated with the old plugin identity and appear lost to the replacement.
 For that reason, version 0.3.0 preserves the established identifier
 `com.yikes.eric.phidgets-indigo`.
 
-The identifier does not begin with the proposed `com.berkinet` developer ID.
-The plugin owner must therefore coordinate this existing-identity exception
-with Indigo Domotics when creating the Store entry. Do not change the plugin
-identifier merely to satisfy the normal new-plugin naming convention.
+The identifier does not begin with the `com.berkinet` developer ID. Indigo
+Domotics has confirmed that the existing developer and plugin identifiers may
+be retained even though the owner created the new Indigo website account
+`berkinet2`. Do not change the plugin identifier or developer identifier to
+match the website login; they serve different purposes, and changing the
+plugin identifier would break the association with existing Indigo objects.
 
 ## Relationship to the Phidget21 plugin
 
@@ -97,6 +100,11 @@ of the Indigo account:
    and version notification behavior.
 6. After the new listing is working, contact Indigo Domotics to retire or
    delete the obsolete Phidget21 listing.
+
+Account and identity prerequisites are complete: the owner created Indigo
+website account `berkinet2`, and Indigo confirmed that the established
+developer identity may be retained. The next step is to add the GitHub-managed
+plugin from that account's **Plugin Contributions** page.
 
 See Indigo's
 [Plugin Store submission guidance](https://docs.indigodomo.com/2025.2/plugin-dev/guide/#adding-your-plugins-to-the-plugin-store)
