@@ -57,10 +57,8 @@ These package modules are not counted as user-facing hardware classes:
 
 ## Suggested implementation order
 
-The initial `LCD` support is complete. The remaining pre-1.0 hardware work is:
-
-1. Add and hardware-test an I2C SGP41 air-quality sensor profile on the
-   ADP0001.
+The initial `LCD` and SGP41 support is complete. Real-hardware verification of
+the SGP41 profile remains before the 1.0 Store submission.
 
 After the 1.0 Store publication, the suggested sequence is:
 
@@ -83,19 +81,18 @@ Phidget22 package.
 
 ## ADP0001 I2C environmental sensors required before 1.0
 
-The ordered SGP41 board is the remaining planned hardware profile before the
-first public Store release. Confirm its exact
-identity, address options, electrical requirements, and observed responses on
-arrival rather than assuming that all breakout boards use the same design.
+The photographed board is identified as an SGP41 module with fixed address
+`0x59`. Its plugin profile is implemented; real-hardware response and extended
+run testing remain before the first public Store release.
 
 - BME280/BMP280: implemented on the shared ADP0001 with chip-ID verification,
   calibrated temperature and barometric pressure, BME280 humidity, configurable
   polling, and actionable address validation. Verified on real hardware with
   the received 5 V GYBMEP BME280 module at address `0x76`.
-- SGP41: expose the supported VOC/NOx measurements. Decide from the actual
-  board and tested driver whether the first profile publishes raw signals,
-  processed gas indices, or both, and how temperature/humidity compensation is
-  supplied.
+- SGP41: implemented with serial-number verification, Sensirion CRC checking,
+  10-second NOx conditioning, one-second raw VOC/NOx measurements, and fixed
+  configurable temperature/humidity compensation. Processed gas indices remain
+  a possible later enhancement.
 - Both profiles must share an ADP0001 with existing I2C displays and sensors,
   reject address collisions, recover after adapter/server detach, and avoid
   blocking Indigo while measurements are pending.

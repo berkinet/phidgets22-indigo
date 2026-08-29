@@ -21,6 +21,16 @@ FREENOVE_I2C_DEFAULTS = {
 }
 
 
+def _sensirion_crc(data):
+    value = 0xFF
+    for byte in bytearray(data):
+        value ^= byte
+        for _ in range(8):
+            value = (((value << 1) ^ 0x31) & 0xFF
+                     if value & 0x80 else (value << 1) & 0xFF)
+    return value
+
+
 class DiscoveryUiMixin(object):
     LCD_SCREEN_SIZES = [
         ("1", "Automatic / graphic LCD"),
@@ -98,6 +108,24 @@ class DiscoveryUiMixin(object):
     def bmeAdapterChanged(self, valuesDict, typeId, devId):
         return self._applyBMEAdapter(
             valuesDict, valuesDict.get("bmeAdapterSelection", ""))
+
+    def _applySGPAdapter(self, valuesDict, selection):
+        try:
+            adapter = indigo.devices[int(selection)]
+        except (IndexError, KeyError, TypeError, ValueError):
+            return valuesDict
+        available_ids = {getattr(device, "id", None)
+                         for device in self._availableGPIOAdapters()}
+        if getattr(adapter, "id", None) not in available_ids:
+            return valuesDict
+        valuesDict["sgpAdapterSelection"] = str(adapter.id)
+        valuesDict["sgpAdapterDeviceId"] = str(adapter.id)
+        valuesDict["observedConnection"] = "%s→SGP41 0x59" % adapter.name
+        return valuesDict
+
+    def sgpAdapterChanged(self, valuesDict, typeId, devId):
+        return self._applySGPAdapter(
+            valuesDict, valuesDict.get("sgpAdapterSelection", ""))
 
     def _applyDisplayProvider(self, valuesDict, selection, devId=0):
         providers = {provider["id"]: provider
@@ -198,6 +226,16 @@ class DiscoveryUiMixin(object):
                 values = self._applyBMEAdapter(values, selection)
             return (values, indigo.Dict())
 
+        if typeId == "sgp41":
+            selection = (values.get("sgpAdapterSelection") or
+                         values.get("sgpAdapterDeviceId") or "")
+            adapters = self._availableGPIOAdapters()
+            if not selection and len(adapters) == 1:
+                selection = str(adapters[0].id)
+            if selection:
+                values = self._applySGPAdapter(values, selection)
+            return (values, indigo.Dict())
+
         selected_channel = values.get("discoveredChannel", "")
         resolved_channel = (self.discoveryInventory.resolve_channel(selected_channel)
                             if self.discoveryInventory is not None else None)
@@ -238,6 +276,74 @@ class DiscoveryUiMixin(object):
 
     def validateDeviceConfigUi(self, valuesDict, typeId, devId):
         valuesDict["observedConnection"] = self._observedConnectionForDevice(devId)
+        if typeId == "sgp41":
+            errors = indigo.Dict()
+            selection = valuesDict.get("sgpAdapterSelection", "")
+            valuesDict = self._applySGPAdapter(valuesDict, selection)
+            adapter_id = str(valuesDict.get("sgpAdapterDeviceId", ""))
+            if not adapter_id or adapter_id != str(selection):
+                errors["sgpAdapterSelection"] = "Select an available I2C adapter."
+            for key, label, minimum, maximum in (
+                    ("sgpRelativeHumidity", "relative humidity", 0.0, 100.0),
+                    ("sgpTemperature", "temperature", -45.0, 130.0)):
+                try:
+                    value = float(valuesDict.get(key, ""))
+                    if value < minimum or value > maximum:
+                        raise ValueError
+                    valuesDict[key] = str(value)
+                except (TypeError, ValueError):
+                    errors[key] = "Enter %s from %g through %g." % (
+                        label, minimum, maximum)
+            if adapter_id:
+                for other in getattr(indigo, "devices", ()):
+                    if (getattr(other, "id", None) == devId or
+                            getattr(other, "pluginId", None) != self.pluginId or
+                            not getattr(other, "enabled", True)):
+                        continue
+                    props = getattr(other, "pluginProps", {})
+                    other_type = getattr(other, "deviceTypeId", None)
+                    other_adapter = (props.get("sgpAdapterDeviceId")
+                                     if other_type == "sgp41" else
+                                     props.get("bmeAdapterDeviceId")
+                                     if other_type == "bme280" else
+                                     props.get("lcdAdapterDeviceId")
+                                     if other_type == "lcd" else None)
+                    other_address = (0x59 if other_type == "sgp41" else
+                                     props.get("bmeI2CAddress")
+                                     if other_type == "bme280" else
+                                     props.get("lcdI2CAddress")
+                                     if other_type == "lcd" else None)
+                    try:
+                        collision = (str(other_adapter) == adapter_id and
+                                     int(str(other_address), 0) == 0x59)
+                    except (TypeError, ValueError):
+                        collision = False
+                    if collision:
+                        errors["sgpAdapterSelection"] = (
+                            "Address 0x59 is already assigned to '%s'." %
+                            getattr(other, "name", "another device"))
+                        break
+                adapter = self.activePhidgets.get(int(adapter_id))
+                if adapter is not None and "sgpAdapterSelection" not in errors:
+                    try:
+                        response = bytes(adapter.i2cCommandResponse(
+                            0x59, b"\x36\x82", 0.001, 9))
+                        if len(response) != 9:
+                            raise ValueError("incomplete serial-number response")
+                        for offset in range(0, 9, 3):
+                            if response[offset + 2] != _sensirion_crc(
+                                    response[offset:offset + 2]):
+                                raise ValueError("invalid serial-number CRC")
+                    except Exception as error:
+                        errors["sgpAdapterSelection"] = (
+                            "Unable to verify SGP41 at 0x59: %s" % error)
+            if errors:
+                errors["showAlertText"] = "Correct the SGP41 settings before saving."
+                return (False, valuesDict, errors)
+            valuesDict["address"] = "sgp41-%s-59" % adapter_id
+            valuesDict["observedConnection"] = "%s→SGP41 0x59" % (
+                indigo.devices[int(adapter_id)].name)
+            return (True, valuesDict)
         if typeId == "bme280":
             errors = indigo.Dict()
             selection = valuesDict.get("bmeAdapterSelection", "")

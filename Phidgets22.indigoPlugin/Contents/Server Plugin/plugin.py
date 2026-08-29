@@ -200,6 +200,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             adapter_properties = {
                 "lcd": "lcdAdapterDeviceId",
                 "bme280": "bmeAdapterDeviceId",
+                "sgp41": "sgpAdapterDeviceId",
             }
             for device in indigo.devices:
                 property_name = adapter_properties.get(

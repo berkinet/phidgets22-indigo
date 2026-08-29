@@ -577,6 +577,18 @@
 		</ConfigUI>
 	</Device>
 
+	<Device id="sgp41" type="custom">
+		<Name>I2C SGP41 VOC/NOx Gas Sensor</Name>
+		<ConfigUI>
+			<Field id="sgpAdapterDeviceId" type="textfield" hidden="true"/>
+			<Field id="sgpAdapterSelection" type="menu" defaultValue="selectAdapter"><Label>I2C adapter:</Label><List class="self" method="getAvailableGPIOAdapterMenu" dynamicReload="true"/><CallbackMethod>sgpAdapterChanged</CallbackMethod></Field>
+			<Field id="sgpRelativeHumidity" type="textfield" defaultValue="50"><Label>Relative humidity compensation (%RH):</Label></Field>
+			<Field id="sgpTemperature" type="textfield" defaultValue="25"><Label>Temperature compensation (°C):</Label></Field>
+			<Field id="observedConnection" type="textfield" readonly="true"><Label>Sensor path:</Label></Field>
+			<Field id="sgpHelp" type="label"><Label>The SGP41 uses fixed address 0x59. After every start, the plugin performs the required 10-second NOx conditioning phase, then publishes raw VOC and NOx signals once per second.</Label></Field>
+		</ConfigUI>
+	</Device>
+
 	<Device id="adapterGPIOInput" type="custom">
 		<Name>I2C Adapter GPIO Input</Name>
 		<ConfigUI>

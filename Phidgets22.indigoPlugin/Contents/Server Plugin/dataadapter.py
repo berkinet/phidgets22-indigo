@@ -3,6 +3,7 @@
 """Shared Phidget DataAdapter transport for I2C peripheral devices."""
 
 import threading
+import time
 
 import indigo
 
@@ -20,6 +21,7 @@ class DataAdapterPhidget(PhidgetBase):
         "bme280": "BME280/BMP280 environmental sensor transport",
         "gpio": "GPIO 0/1 provider",
         "lcd": "LCD display transport",
+        "sgp41": "SGP41 VOC/NOx gas sensor transport",
     }
 
     def __init__(self, voltage, frequency, *args, **kwargs):
@@ -95,6 +97,16 @@ class DataAdapterPhidget(PhidgetBase):
             if error.code == ErrorCode.EPHIDGET_NACK:
                 return False
             raise
+
+    def i2cCommandResponse(self, address, data, delay, receiveLength):
+        """Write a command, wait, and read while retaining exclusive bus use."""
+        with self._transaction_lock:
+            address, payload, receive_length = self._validate_transaction(
+                address, data, receiveLength)
+            self.phidget.i2cSendReceive(address, payload, 0)
+            time.sleep(float(delay))
+            return self.phidget.i2cSendReceive(
+                address, bytes(), receive_length)
 
     def i2cComplexTransaction(self, address, packetString, data=None):
         """Perform a Phidget22 complex I2C transaction under the bus lock."""

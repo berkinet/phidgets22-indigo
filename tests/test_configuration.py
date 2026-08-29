@@ -62,7 +62,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.24</string>", plist)
+        self.assertIn("<string>0.3.25</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -75,6 +75,7 @@ class ConfigurationTests(unittest.TestCase):
             "voltageInput", "voltageRatioInput", "digitalOutput", "digitalInput",
             "temperatureSensor", "frequencyCounter", "humiditySensor", "lcd",
             "dataAdapter", "adapterGPIOInput", "adapterGPIOOutput", "bme280",
+            "sgp41",
         })
 
     def test_factory_constructs_every_supported_wrapper(self):
@@ -199,6 +200,24 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(constructor.call_args.kwargs["i2cAddress"], 0x76)
         self.assertEqual(constructor.call_args.kwargs["pollInterval"], 2.5)
 
+    def test_sgp41_factory_uses_adapter_and_compensation_values(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.pluginPrefs = {"networkPhidgets": True,
+                                "enableServerDiscovery": True}
+        instance.logger = logging.getLogger("test.configuration.sgp41")
+        device = types.SimpleNamespace(
+            deviceTypeId="sgp41", pluginProps={
+                "sgpAdapterDeviceId": "42", "sgpRelativeHumidity": "55.5",
+                "sgpTemperature": "22.25"})
+        with mock.patch.object(
+                device_factory, "SGP41Phidget",
+                return_value=mock.sentinel.wrapper) as constructor:
+            result = device_factory.create_phidget(instance, device)
+        self.assertIs(result, mock.sentinel.wrapper)
+        self.assertEqual(constructor.call_args.kwargs["adapterDeviceId"], 42)
+        self.assertEqual(constructor.call_args.kwargs["relativeHumidity"], 55.5)
+        self.assertEqual(constructor.call_args.kwargs["temperature"], 22.25)
+
     def test_data_adapter_device_is_declared(self):
         devices = ElementTree.parse(SERVER_PLUGIN / "Devices.xml").getroot()
         adapter = devices.find("./Device[@id='dataAdapter']")
@@ -222,6 +241,11 @@ class ConfigurationTests(unittest.TestCase):
             field.get("id") for field in environmental.iter("Field")}
         self.assertTrue({"bmeAdapterSelection", "bmeI2CAddress",
                          "bmePollInterval"} <= environmental_fields)
+        gas_sensor = devices.find("./Device[@id='sgp41']")
+        self.assertIsNotNone(gas_sensor)
+        gas_fields = {field.get("id") for field in gas_sensor.iter("Field")}
+        self.assertTrue({"sgpAdapterSelection", "sgpRelativeHumidity",
+                         "sgpTemperature"} <= gas_fields)
         self.assertIsNotNone(gpio_input)
         self.assertIsNotNone(gpio_output)
         self.assertEqual(gpio_output.get("type"), "relay")
@@ -301,6 +325,28 @@ class ConfigurationTests(unittest.TestCase):
         self.assertIs(returned, values)
         adapter.i2cSendReceive.assert_called_once_with(0x76, b"\xD0", 1)
         self.assertEqual(values["address"], "bme280-42-76")
+
+    def test_sgp41_validation_probes_serial_number(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.pluginId = "com.yikes.eric.phidgets-indigo"
+        adapter_device = IdentityDevice(
+            id=42, name="I2C Adapter 1", pluginId=instance.pluginId,
+            deviceTypeId="dataAdapter", enabled=True, pluginProps={})
+        devices = DeviceCollection({42: adapter_device})
+        adapter = mock.Mock()
+        adapter.i2cCommandResponse.return_value = (
+            b"\x12\x34\x37\x56\x78\x7D\x9A\xBC\xE0")
+        instance.activePhidgets = {42: adapter}
+        values = indigo.Dict({
+            "sgpAdapterSelection": "42", "sgpRelativeHumidity": "50",
+            "sgpTemperature": "25"})
+        with mock.patch.object(indigo, "devices", devices, create=True):
+            valid, returned = instance.validateDeviceConfigUi(values, "sgp41", 0)
+        self.assertTrue(valid)
+        self.assertIs(returned, values)
+        adapter.i2cCommandResponse.assert_called_once_with(
+            0x59, b"\x36\x82", 0.001, 9)
+        self.assertEqual(values["address"], "sgp41-42-59")
 
     def test_new_device_cannot_save_without_a_compatible_channel(self):
         instance = object.__new__(plugin.Plugin)

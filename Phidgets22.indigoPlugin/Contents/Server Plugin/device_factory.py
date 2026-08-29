@@ -17,6 +17,7 @@ from i2c_lcd import I2CLCDPhidget
 from dataadapter import DataAdapterPhidget
 from adapter_gpio import AdapterGPIOInputPhidget, AdapterGPIOOutputPhidget
 from bme280 import BME280Phidget
+from sgp41 import SGP41Phidget
 
 
 def _saved_bool(value):
@@ -229,6 +230,15 @@ def _bme280(plugin, device, common):
         pollInterval=float(props.get("bmePollInterval", 2.0)))
 
 
+def _sgp41(plugin, device, common):
+    props = device.pluginProps
+    return SGP41Phidget(
+        **common["base"],
+        adapterDeviceId=int(props["sgpAdapterDeviceId"]),
+        relativeHumidity=float(props.get("sgpRelativeHumidity", 50.0)),
+        temperature=float(props.get("sgpTemperature", 25.0)))
+
+
 _BUILDERS = {
     "voltageInput": _voltage_input,
     "voltageRatioInput": _voltage_ratio_input,
@@ -242,6 +252,7 @@ _BUILDERS = {
     "adapterGPIOInput": _adapter_gpio_input,
     "adapterGPIOOutput": _adapter_gpio_output,
     "bme280": _bme280,
+    "sgp41": _sgp41,
 }
 
 

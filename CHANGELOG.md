@@ -1,5 +1,20 @@
 # Release notes
 
+## 0.3.25 — 2026-08-29
+
+### Added
+
+- Add an SGP41 VOC/NOx gas-sensor device on the shared ADP0001 I2C bus at its
+  fixed `0x59` address, with serial-number verification and CRC-checked data.
+- Perform Sensirion's required 10-second NOx conditioning sequence after every
+  start or adapter reattachment, then publish raw VOC and NOx signals once per
+  second.
+- Support configurable fixed relative-humidity and temperature compensation,
+  address-collision checks, absent-device retry and recovery reporting, and
+  heater shutdown.
+- Keep delayed SGP41 command/response exchanges atomic so other devices sharing
+  the same I2C adapter cannot interrupt them.
+
 ## 0.3.24 — 2026-08-28
 
 ### Fixed

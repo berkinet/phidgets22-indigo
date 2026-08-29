@@ -56,6 +56,19 @@ actions. They are logic signals with 499 Ω series resistance and approximately
 10 mA available current—not load drivers. Use appropriate interface hardware
 for relays, lamps, and similar loads.
 
+## Use an SGP41 gas sensor
+
+First create an **I2C Data Adapter** using a 3.3 V I2C bus, then add an
+**I2C SGP41 VOC/NOx Gas Sensor** and select that adapter. The SGP41 address is
+fixed at `0x59`. Enter the ambient relative humidity and temperature used for
+compensation; the defaults are 50 %RH and 25 °C.
+
+After startup or adapter reattachment, the sensor conditions its NOx pixel for
+10 seconds. During that period Indigo publishes the raw VOC signal and shows
+the conditioning state; raw NOx readings begin when conditioning finishes.
+Both signals are updated once per second. The initial implementation publishes
+the sensor's 16-bit raw signals rather than calculated gas indices.
+
 LCD commands are available under Indigo's **Device Actions**:
 
 - Set LCD display

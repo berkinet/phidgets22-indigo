@@ -25,10 +25,9 @@ the tested release candidate to `1.0.0` and publish its matching tag and GitHub
 Release. Do not bump the plugin, tag `v1.0.0`, or create that release before the
 submission milestone.
 
-The remaining planned hardware work before that milestone is support and
-real-hardware verification for the ordered SGP41 I2C sensor and 5 V BME280
-barometric sensor. ADP0001 GPIO support was brought forward and implemented
-before publication.
+The remaining hardware work before that milestone is real-hardware verification
+of the implemented SGP41 I2C profile. The BME280 profile and ADP0001 GPIO
+support are implemented and hardware-tested.
 
 The planned LCD1100 text and formula-graph support is implemented and
 hardware-tested; it no longer represents a Store-submission dependency.

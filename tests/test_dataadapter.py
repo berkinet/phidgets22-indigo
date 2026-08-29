@@ -72,7 +72,8 @@ class DataAdapterTests(unittest.TestCase):
             "adapterStatus": "I2C ready",
             "availableFunctions": (
                 "BME280/BMP280 environmental sensor transport, "
-                "GPIO 0/1 provider, LCD display transport"),
+                "GPIO 0/1 provider, LCD display transport, "
+                "SGP41 VOC/NOx gas sensor transport"),
             "dataAdapterVoltage": 5,
             "dataAdapterFrequency": 2,
             "maxSendPacketLength": 8,
@@ -83,6 +84,7 @@ class DataAdapterTests(unittest.TestCase):
         self.assertTrue(dataadapter.DataAdapterPhidget.supportsFunction("lcd"))
         self.assertTrue(dataadapter.DataAdapterPhidget.supportsFunction("gpio"))
         self.assertTrue(dataadapter.DataAdapterPhidget.supportsFunction("bme280"))
+        self.assertTrue(dataadapter.DataAdapterPhidget.supportsFunction("sgp41"))
         self.assertFalse(dataadapter.DataAdapterPhidget.supportsFunction("humidity"))
 
     def test_send_receive_validates_and_forwards_transaction(self):
@@ -122,6 +124,15 @@ class DataAdapterTests(unittest.TestCase):
 
         self.assertEqual(result, b"complex")
         self.assertEqual(wrapper.phidget.calls, [(0x27, "sT2p", b"\x01\x02")])
+
+    def test_command_response_retains_bus_for_required_delay(self):
+        wrapper = self.wrapper()
+        with mock.patch.object(dataadapter.time, "sleep") as sleep:
+            result = wrapper.i2cCommandResponse(0x59, b"\x36\x82", 0.001, 6)
+        self.assertEqual(result, b"reply")
+        self.assertEqual(wrapper.phidget.calls, [
+            (0x59, b"\x36\x82", 0), (0x59, b"", 6)])
+        sleep.assert_called_once_with(0.001)
 
 
 if __name__ == "__main__":
