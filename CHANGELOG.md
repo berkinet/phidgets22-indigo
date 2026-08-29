@@ -1,5 +1,16 @@
 # Release notes
 
+## 0.3.35 — 2026-08-29
+
+### Changed
+
+- Keep initial Phidget open errors silent for at least 30 seconds, allowing
+  network channels to attach normally while the plugin and server start.
+- After the grace period, publish one concise device-first error and continue
+  waiting on the same asynchronous Phidget handle for automatic attachment.
+- Remove redundant SDK error codes, internal wrapper fields, and verbose server
+  details from Phidget error log entries.
+
 ## 0.3.34 — 2026-08-29
 
 ### Changed

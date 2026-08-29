@@ -70,8 +70,8 @@ class FakeDevice(object):
 
 
 class FakePlugin(object):
-    def __init__(self):
-        self.pluginPrefs = {"attachTimeout": "60"}
+    def __init__(self, attach_timeout="30"):
+        self.pluginPrefs = {"attachTimeout": attach_timeout}
         self.events = []
 
     def triggerEvent(self, device, event):
@@ -82,13 +82,13 @@ class TestPhidget(phidget_module.PhidgetBase):
     __test__ = False
 
     def __init__(self, fail_initialization=False, fail_open=False,
-                 peripheral_unavailable=False):
+                 peripheral_unavailable=False, attach_timeout="30"):
         self.fail_initialization = fail_initialization
         self.peripheral_unavailable = peripheral_unavailable
         self.handlers_added = False
         self.native = FakeNativePhidget(fail_open=fail_open)
         self.device = FakeDevice()
-        self.plugin = FakePlugin()
+        self.plugin = FakePlugin(attach_timeout=attach_timeout)
         self.test_logger = mock.Mock()
         super(TestPhidget, self).__init__(
             phidget=self.native,
@@ -220,6 +220,61 @@ class PhidgetLifecycleTests(unittest.TestCase):
         self.assertEqual(self.phidget.device.errors, [None])
         self.phidget.test_logger.error.assert_not_called()
         self.assertIsNone(self.phidget._startup_contention_message)
+
+    def test_transient_startup_open_error_is_quiet_when_attachment_recovers(self):
+        self.phidget = TestPhidget()
+        self.phidget.start()
+
+        self.phidget.onErrorHandler(
+            self.phidget.native, 5,
+            "Network device: <DIGITALOUTPUT_PORT> on Server: <CM-Maison> "
+            "open failed. Error details from server: Device not attached")
+        self.phidget.onAttachHandler(self.phidget.native)
+
+        self.assertEqual(self.phidget._state, "attached")
+        self.assertEqual(self.phidget.device.errors, [None])
+        self.phidget.test_logger.error.assert_not_called()
+
+    def test_startup_open_error_is_concise_after_grace_and_wait_continues(self):
+        self.phidget = TestPhidget()
+        self.phidget.start()
+        generation = self.phidget._timer_generation
+        message = (
+            "Network device: <DIGITALOUTPUT_PORT> on Server: <CM-Maison> "
+            "open failed. Error details from server: Device not attached")
+        self.phidget.onErrorHandler(self.phidget.native, 5, message)
+
+        self.phidget.connectionTimeoutHandler(generation)
+
+        self.assertEqual(self.phidget.device.errors, ["Detached"])
+        self.phidget.test_logger.error.assert_called_once_with(
+            "%s on %s", "device='Test device' id=42",
+            "Network device: <DIGITALOUTPUT_PORT> on Server: <CM-Maison> "
+            "open failed.")
+        self.assertEqual(self.phidget._state, "starting")
+        self.assertFalse(self.phidget.native.closed)
+
+        self.phidget.onErrorHandler(self.phidget.native, 5, message)
+        self.phidget.test_logger.error.assert_called_once()
+        self.phidget.onAttachHandler(self.phidget.native)
+        self.assertEqual(self.phidget._state, "attached")
+        self.assertEqual(self.phidget.device.errors, ["Detached", None])
+
+    def test_startup_grace_is_at_least_thirty_seconds(self):
+        self.phidget = TestPhidget(attach_timeout="5")
+        self.assertEqual(self.phidget.initial_connection_timeout, 30)
+
+    def test_startup_detach_callback_does_not_bypass_thirty_second_grace(self):
+        self.phidget = TestPhidget()
+        self.phidget.start()
+        self.phidget.onDetachHandler(self.phidget.native)
+        generation = self.phidget._detach_generation
+
+        self.phidget.detachGraceHandler(generation)
+
+        self.assertEqual(self.phidget.device.errors, [])
+        self.assertEqual(self.phidget.plugin.events, [])
+        self.phidget.test_logger.warning.assert_not_called()
 
     def test_persistent_startup_contention_becomes_actionable_error(self):
         self.phidget = TestPhidget()

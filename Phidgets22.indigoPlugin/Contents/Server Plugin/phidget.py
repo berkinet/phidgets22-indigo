@@ -42,6 +42,7 @@ class PhidgetBase(object):
     """
     PHIDGET_DEFAULT_DATA_INTERVAL = 1000  # ms
     DETACH_GRACE_SECONDS = 2.0
+    STARTUP_ERROR_GRACE_SECONDS = 30
 
     def __init__(self, phidget, indigo_plugin, channelInfo=None,
                  indigoDevice=None, logger=None, decimalPlaces=-1):
@@ -55,7 +56,10 @@ class PhidgetBase(object):
         self.pluginSuppressErrors = saved_bool(
             self.indigo_plugin.pluginPrefs.get('suppressErrors', False))
 
-        self.initial_connection_timeout = int(indigo_plugin.pluginPrefs.get('attachTimeout', '5'))
+        configured_timeout = int(
+            indigo_plugin.pluginPrefs.get('attachTimeout', '30'))
+        self.initial_connection_timeout = max(
+            self.STARTUP_ERROR_GRACE_SECONDS, configured_timeout)
 
         self.timer = None
         self._detach_grace_timer = None
@@ -68,6 +72,7 @@ class PhidgetBase(object):
         self._attach_count = 0
         self._started_at = None
         self._startup_contention_message = None
+        self._startup_error_message = None
         self._startup_contention_expired = False
         self.runtimeServerName = None
         self.runtimeServerUniqueName = None
@@ -85,6 +90,15 @@ class PhidgetBase(object):
                     self.__class__.__name__, self.serverDisplayName(),
                     self.channelInfo.serialNumber, self.channelInfo.hubPort,
                     self.channelInfo.channel, net_info.isRemote))
+
+    def _error_identity(self):
+        return "device='%s' id=%s" % (
+            self.indigoDevice.name, self.indigoDevice.id)
+
+    @staticmethod
+    def _concise_error_message(error_string):
+        message = str(error_string).strip()
+        return message.split(" Error details from server:", 1)[0].strip()
 
     def serverKey(self):
         return (self.runtimeServerUniqueName or self.runtimeServerName or
@@ -211,7 +225,7 @@ class PhidgetBase(object):
             if generation != self._detach_generation or self._state != "detached":
                 return
             self._detach_grace_timer = None
-            if self._startup_contention_message:
+            if self._attach_count == 0:
                 return
             self._detach_announced = True
             detached_for = time.monotonic() - self._detached_at
@@ -235,6 +249,7 @@ class PhidgetBase(object):
             self._detached_at = time.monotonic()
             self._started_at = self._detached_at
             self._startup_contention_message = None
+            self._startup_error_message = None
             self._startup_contention_expired = False
         self.logger.debug("Starting Phidget: %s", self._identity())
 
@@ -283,6 +298,13 @@ class PhidgetBase(object):
                         "for another Indigo plugin instance, Phidget Control Panel, "
                         "or another program using it: %s",
                         detached_for, self._identity())
+            elif self._startup_error_message:
+                with self._lifecycle_lock:
+                    self._startup_contention_expired = True
+                self.indigoDevice.setErrorStateOnServer('Detached')
+                self.logger.error(
+                    "%s on %s",
+                    self._error_identity(), self._startup_error_message)
             else:
                 self.indigoDevice.setErrorStateOnServer('Detached')
                 self.logger.error("Phidget remains detached after %.1f seconds (%s): %s",
@@ -294,19 +316,21 @@ class PhidgetBase(object):
     def onErrorHandler(self, ph, errorCode, errorString):
         try:
             with self._lifecycle_lock:
-                startup_elapsed = (time.monotonic() - self._started_at
-                                   if self._started_at is not None else None)
+                startup_waiting = (
+                    self._attach_count == 0 and
+                    self._state in ("starting", "detached"))
                 startup_contention = (
                     int(errorCode) == 2 and
                     "device is in use" in str(errorString).lower() and
-                    self._state in ("starting", "detached") and
-                    startup_elapsed is not None and
-                    startup_elapsed <= self.initial_connection_timeout)
-                if startup_contention:
-                    self._startup_contention_message = str(errorString)
-            if startup_contention:
+                    startup_waiting)
+                if startup_waiting:
+                    self._startup_error_message = self._concise_error_message(
+                        errorString)
+                    self._startup_contention_message = (
+                        str(errorString) if startup_contention else None)
+            if startup_waiting:
                 self.logger.debug(
-                    "Deferring transient startup contention for up to %d seconds: %s",
+                    "Deferring startup error for up to %d seconds: %s",
                     self.initial_connection_timeout, self._identity())
                 return
             deviceSuppressErrors = saved_bool(
@@ -314,9 +338,10 @@ class PhidgetBase(object):
             suppressed = ((deviceSuppressErrors and errorCode == 4103) or
                           (self.pluginSuppressErrors and errorCode in (4098, 4099)))
             log = self.logger.debug if suppressed else self.logger.error
-            log("Phidget error%s code=%s message=%s: %s",
-                " (suppressed)" if suppressed else "", errorCode, errorString,
-                self._identity())
+            log("%s%s on %s",
+                self._error_identity(),
+                " (suppressed)" if suppressed else "",
+                self._concise_error_message(errorString))
         except Exception:
             self.logger.error("Phidget error handler failed: %s\n%s",
                               self._identity(), traceback.format_exc())
@@ -387,6 +412,7 @@ class PhidgetBase(object):
                     self._startup_contention_message)
                 startup_contention_expired = self._startup_contention_expired
                 self._startup_contention_message = None
+                self._startup_error_message = None
                 self._startup_contention_expired = False
                 self._attach_count += 1
                 attach_count = self._attach_count

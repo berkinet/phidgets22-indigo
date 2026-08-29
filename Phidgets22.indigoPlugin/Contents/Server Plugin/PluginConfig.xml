@@ -11,7 +11,7 @@
 		<Description>(Required)</Description>
     </Field>
 
-	<Field type="textfield" id="attachTimeout" defaultValue="5" readonly="false">
+	<Field type="textfield" id="attachTimeout" defaultValue="30" readonly="false">
         <Label>Timeout for Phidget attachment (seconds):</Label>
     </Field>
 
