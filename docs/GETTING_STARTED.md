@@ -69,6 +69,10 @@ the conditioning state; raw NOx readings begin when conditioning finishes.
 Both signals are updated once per second. The initial implementation publishes
 the sensor's 16-bit raw signals rather than calculated gas indices.
 
+Use the sensor's **Display state** setting to choose whether Raw VOC or Raw NOx
+appears in Indigo's Home → Devices → State column. BME280/BMP280 devices offer
+the same setting for temperature, pressure, and—on BME280 only—humidity.
+
 LCD commands are available under Indigo's **Device Actions**:
 
 - Set LCD display

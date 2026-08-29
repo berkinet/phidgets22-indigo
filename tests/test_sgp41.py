@@ -79,6 +79,11 @@ class SGP41Tests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "invalid CRC"):
             sgp41.SGP41Phidget._decode_words(b"\x12\x34\x00", 1)
 
+    def test_configured_display_state_is_returned(self):
+        wrapper, _, _ = self.wrapper()
+        wrapper.displayState = "rawNox"
+        self.assertEqual(wrapper.getDeviceDisplayStateId(), "rawNox")
+
     def test_defined_but_absent_sensor_stays_active_and_retries(self):
         wrapper, adapter, device = self.wrapper()
         adapter.i2cCommandResponse = mock.Mock(

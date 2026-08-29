@@ -571,6 +571,7 @@
 			<Field id="bmeAdapterSelection" type="menu" defaultValue="selectAdapter"><Label>I2C adapter:</Label><List class="self" method="getAvailableGPIOAdapterMenu" dynamicReload="true"/><CallbackMethod>bmeAdapterChanged</CallbackMethod></Field>
 			<Field id="bmeI2CAddress" type="menu" defaultValue="0x76"><Label>I2C address:</Label><List><Option value="0x76">0x76 (usual GYBMEP)</Option><Option value="0x77">0x77</Option></List></Field>
 			<Field id="bmePollInterval" type="textfield" defaultValue="2.0"><Label>Polling interval (seconds):</Label></Field>
+			<Field id="bmeDisplayState" type="menu" defaultValue="pressure"><Label>Display state:</Label><List><Option value="pressure">Barometric pressure</Option><Option value="temperature">Temperature</Option><Option value="humidity">Relative humidity (BME280 only)</Option></List></Field>
 			<Field id="decimalPlaces" type="textfield" defaultValue="2"><Label>Decimal places:</Label></Field>
 			<Field id="observedConnection" type="textfield" readonly="true"><Label>Sensor path:</Label></Field>
 			<Field id="bmeHelp" type="label"><Label>The chip ID is verified when saving. BME280 publishes temperature, pressure, and humidity; BMP280 publishes temperature and pressure.</Label></Field>
@@ -584,6 +585,7 @@
 			<Field id="sgpAdapterSelection" type="menu" defaultValue="selectAdapter"><Label>I2C adapter:</Label><List class="self" method="getAvailableGPIOAdapterMenu" dynamicReload="true"/><CallbackMethod>sgpAdapterChanged</CallbackMethod></Field>
 			<Field id="sgpRelativeHumidity" type="textfield" defaultValue="50"><Label>Relative humidity compensation (%RH):</Label></Field>
 			<Field id="sgpTemperature" type="textfield" defaultValue="25"><Label>Temperature compensation (°C):</Label></Field>
+			<Field id="sgpDisplayState" type="menu" defaultValue="rawVoc"><Label>Display state:</Label><List><Option value="rawVoc">Raw VOC signal</Option><Option value="rawNox">Raw NOx signal</Option></List></Field>
 			<Field id="observedConnection" type="textfield" readonly="true"><Label>Sensor path:</Label></Field>
 			<Field id="sgpHelp" type="label"><Label>The SGP41 uses fixed address 0x59. After every start, the plugin performs the required 10-second NOx conditioning phase, then publishes raw VOC and NOx signals once per second.</Label></Field>
 		</ConfigUI>

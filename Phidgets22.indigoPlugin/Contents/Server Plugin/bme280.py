@@ -19,7 +19,8 @@ class BME280Phidget(object):
 
     def __init__(self, adapterDeviceId, i2cAddress=0x76, pollInterval=2.0,
                  indigo_plugin=None, indigoDevice=None, logger=None,
-                 decimalPlaces=2, channelInfo=None, **kwargs):
+                 decimalPlaces=2, displayState="pressure", channelInfo=None,
+                 **kwargs):
         self.adapterDeviceId = int(adapterDeviceId)
         self.address = int(i2cAddress)
         self.pollInterval = float(pollInterval)
@@ -27,6 +28,7 @@ class BME280Phidget(object):
         self.indigoDevice = indigoDevice
         self.logger = logger
         self.decimalPlaces = int(decimalPlaces)
+        self.displayState = str(displayState)
         self.channelInfo = channelInfo
         self.adapter = None
         self.chipId = None
@@ -275,4 +277,4 @@ class BME280Phidget(object):
         return states
 
     def getDeviceDisplayStateId(self):
-        return "pressure"
+        return self.displayState

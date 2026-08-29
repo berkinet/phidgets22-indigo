@@ -130,6 +130,11 @@ class BME280Tests(unittest.TestCase):
 
         self.assertNotIn("humidity", [state[0] for state in states])
 
+    def test_configured_display_state_is_returned(self):
+        wrapper, _, _ = self.wrapper(0x60)
+        wrapper.displayState = "temperature"
+        self.assertEqual(wrapper.getDeviceDisplayStateId(), "temperature")
+
     def test_start_waits_for_shared_adapter_then_initializes_on_attach(self):
         wrapper, adapter, device = self.wrapper(0x60)
         adapter._state = "starting"

@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.3.27 — 2026-08-29
+
+### Added
+
+- Add a **Display state** setting for multi-state I2C sensors so the Indigo
+  Home window's Devices → State column can show the preferred measurement.
+- Allow BME280/BMP280 devices to display temperature or pressure, with humidity
+  also available for BME280 devices; reject humidity for an identified BMP280.
+- Allow SGP41 devices to display either the raw VOC or raw NOx signal.
+
 ## 0.3.26 — 2026-08-29
 
 ### Fixed

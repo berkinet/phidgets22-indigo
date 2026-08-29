@@ -283,6 +283,9 @@ class DiscoveryUiMixin(object):
             adapter_id = str(valuesDict.get("sgpAdapterDeviceId", ""))
             if not adapter_id or adapter_id != str(selection):
                 errors["sgpAdapterSelection"] = "Select an available I2C adapter."
+            display_state = valuesDict.get("sgpDisplayState", "rawVoc")
+            if display_state not in ("rawVoc", "rawNox"):
+                errors["sgpDisplayState"] = "Select Raw VOC or Raw NOx."
             for key, label, minimum, maximum in (
                     ("sgpRelativeHumidity", "relative humidity", 0.0, 100.0),
                     ("sgpTemperature", "temperature", -45.0, 130.0)):
@@ -351,6 +354,10 @@ class DiscoveryUiMixin(object):
             adapter_id = str(valuesDict.get("bmeAdapterDeviceId", ""))
             if not adapter_id or adapter_id != str(selection):
                 errors["bmeAdapterSelection"] = "Select an available I2C adapter."
+            display_state = valuesDict.get("bmeDisplayState", "pressure")
+            if display_state not in ("temperature", "pressure", "humidity"):
+                errors["bmeDisplayState"] = (
+                    "Select temperature, pressure, or humidity.")
             try:
                 address = int(str(valuesDict.get("bmeI2CAddress", "")), 0)
                 if address not in (0x76, 0x77):
@@ -412,6 +419,10 @@ class DiscoveryUiMixin(object):
                             errors["bmeI2CAddress"] = (
                                 "No BME280/BMP280 found at 0x%02X (%s)." %
                                 (address, found))
+                        elif (response[0] == 0x58 and
+                              display_state == "humidity"):
+                            errors["bmeDisplayState"] = (
+                                "BMP280 does not provide a humidity state.")
                     except Exception as error:
                         errors["bmeI2CAddress"] = (
                             "Unable to verify address 0x%02X: %s" %

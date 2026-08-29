@@ -22,10 +22,11 @@ class SGP41Phidget(object):
 
     def __init__(self, adapterDeviceId, relativeHumidity=50.0,
                  temperature=25.0, indigo_plugin=None, indigoDevice=None,
-                 logger=None, channelInfo=None, **kwargs):
+                 logger=None, displayState="rawVoc", channelInfo=None, **kwargs):
         self.adapterDeviceId = int(adapterDeviceId)
         self.relativeHumidity = float(relativeHumidity)
         self.temperature = float(temperature)
+        self.displayState = str(displayState)
         self.indigo_plugin = indigo_plugin
         self.indigoDevice = indigoDevice
         self.logger = logger
@@ -227,4 +228,4 @@ class SGP41Phidget(object):
         return states
 
     def getDeviceDisplayStateId(self):
-        return "rawVoc"
+        return self.displayState

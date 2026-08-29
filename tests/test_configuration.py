@@ -62,7 +62,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.26</string>", plist)
+        self.assertIn("<string>0.3.27</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -187,7 +187,8 @@ class ConfigurationTests(unittest.TestCase):
             deviceTypeId="bme280",
             pluginProps={
                 "bmeAdapterDeviceId": "42", "bmeI2CAddress": "0x76",
-                "bmePollInterval": "2.5", "decimalPlaces": "2",
+                "bmePollInterval": "2.5", "bmeDisplayState": "temperature",
+                "decimalPlaces": "2",
             })
 
         with mock.patch.object(
@@ -199,6 +200,7 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(constructor.call_args.kwargs["adapterDeviceId"], 42)
         self.assertEqual(constructor.call_args.kwargs["i2cAddress"], 0x76)
         self.assertEqual(constructor.call_args.kwargs["pollInterval"], 2.5)
+        self.assertEqual(constructor.call_args.kwargs["displayState"], "temperature")
 
     def test_sgp41_factory_uses_adapter_and_compensation_values(self):
         instance = object.__new__(plugin.Plugin)
@@ -208,7 +210,7 @@ class ConfigurationTests(unittest.TestCase):
         device = types.SimpleNamespace(
             deviceTypeId="sgp41", pluginProps={
                 "sgpAdapterDeviceId": "42", "sgpRelativeHumidity": "55.5",
-                "sgpTemperature": "22.25"})
+                "sgpTemperature": "22.25", "sgpDisplayState": "rawNox"})
         with mock.patch.object(
                 device_factory, "SGP41Phidget",
                 return_value=mock.sentinel.wrapper) as constructor:
@@ -217,6 +219,7 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(constructor.call_args.kwargs["adapterDeviceId"], 42)
         self.assertEqual(constructor.call_args.kwargs["relativeHumidity"], 55.5)
         self.assertEqual(constructor.call_args.kwargs["temperature"], 22.25)
+        self.assertEqual(constructor.call_args.kwargs["displayState"], "rawNox")
 
     def test_data_adapter_device_is_declared(self):
         devices = ElementTree.parse(SERVER_PLUGIN / "Devices.xml").getroot()
@@ -240,12 +243,13 @@ class ConfigurationTests(unittest.TestCase):
         environmental_fields = {
             field.get("id") for field in environmental.iter("Field")}
         self.assertTrue({"bmeAdapterSelection", "bmeI2CAddress",
-                         "bmePollInterval"} <= environmental_fields)
+                         "bmePollInterval", "bmeDisplayState"} <=
+                        environmental_fields)
         gas_sensor = devices.find("./Device[@id='sgp41']")
         self.assertIsNotNone(gas_sensor)
         gas_fields = {field.get("id") for field in gas_sensor.iter("Field")}
         self.assertTrue({"sgpAdapterSelection", "sgpRelativeHumidity",
-                         "sgpTemperature"} <= gas_fields)
+                         "sgpTemperature", "sgpDisplayState"} <= gas_fields)
         self.assertIsNotNone(gpio_input)
         self.assertIsNotNone(gpio_output)
         self.assertEqual(gpio_output.get("type"), "relay")
@@ -314,7 +318,8 @@ class ConfigurationTests(unittest.TestCase):
         instance.activePhidgets = {42: adapter}
         values = indigo.Dict({
             "bmeAdapterSelection": "42", "bmeI2CAddress": "0x76",
-            "bmePollInterval": "2.0", "decimalPlaces": "2",
+            "bmePollInterval": "2.0", "bmeDisplayState": "humidity",
+            "decimalPlaces": "2",
         })
 
         with mock.patch.object(indigo, "devices", devices, create=True):
@@ -325,6 +330,26 @@ class ConfigurationTests(unittest.TestCase):
         self.assertIs(returned, values)
         adapter.i2cSendReceive.assert_called_once_with(0x76, b"\xD0", 1)
         self.assertEqual(values["address"], "bme280-42-76")
+
+    def test_bmp280_rejects_humidity_display_state(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.pluginId = "com.yikes.eric.phidgets-indigo"
+        adapter_device = IdentityDevice(
+            id=42, name="I2C Adapter 1", pluginId=instance.pluginId,
+            deviceTypeId="dataAdapter", enabled=True, pluginProps={})
+        devices = DeviceCollection({42: adapter_device})
+        adapter = mock.Mock()
+        adapter.i2cSendReceive.return_value = b"\x58"
+        instance.activePhidgets = {42: adapter}
+        values = indigo.Dict({
+            "bmeAdapterSelection": "42", "bmeI2CAddress": "0x76",
+            "bmePollInterval": "2", "bmeDisplayState": "humidity",
+            "decimalPlaces": "2"})
+        with mock.patch.object(indigo, "devices", devices, create=True):
+            valid, _, errors = instance.validateDeviceConfigUi(
+                values, "bme280", 0)
+        self.assertFalse(valid)
+        self.assertIn("does not provide", errors["bmeDisplayState"])
 
     def test_sgp41_validation_probes_serial_number(self):
         instance = object.__new__(plugin.Plugin)
@@ -339,7 +364,7 @@ class ConfigurationTests(unittest.TestCase):
         instance.activePhidgets = {42: adapter}
         values = indigo.Dict({
             "sgpAdapterSelection": "42", "sgpRelativeHumidity": "50",
-            "sgpTemperature": "25"})
+            "sgpTemperature": "25", "sgpDisplayState": "rawNox"})
         with mock.patch.object(indigo, "devices", devices, create=True):
             valid, returned = instance.validateDeviceConfigUi(values, "sgp41", 0)
         self.assertTrue(valid)

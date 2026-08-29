@@ -227,7 +227,8 @@ def _bme280(plugin, device, common):
         **common["base"], decimalPlaces=common["decimalPlaces"],
         adapterDeviceId=int(props["bmeAdapterDeviceId"]),
         i2cAddress=int(str(props.get("bmeI2CAddress", "0x76")), 0),
-        pollInterval=float(props.get("bmePollInterval", 2.0)))
+        pollInterval=float(props.get("bmePollInterval", 2.0)),
+        displayState=props.get("bmeDisplayState", "pressure"))
 
 
 def _sgp41(plugin, device, common):
@@ -236,7 +237,8 @@ def _sgp41(plugin, device, common):
         **common["base"],
         adapterDeviceId=int(props["sgpAdapterDeviceId"]),
         relativeHumidity=float(props.get("sgpRelativeHumidity", 50.0)),
-        temperature=float(props.get("sgpTemperature", 25.0)))
+        temperature=float(props.get("sgpTemperature", 25.0)),
+        displayState=props.get("sgpDisplayState", "rawVoc"))
 
 
 _BUILDERS = {
