@@ -7,6 +7,7 @@ import logging
 import threading
 import time
 import traceback
+from contextlib import nullcontext
 
 import indigo
 
@@ -34,6 +35,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         self.plugin_file_handler.setLevel(logging.INFO)
         self.indigo_log_handler.setLevel(logging.INFO)
         self.activePhidgets = {}
+        self._activePhidgetsLock = threading.RLock()
         self.phidgetInfo = PhidgetInfo(phidgetInfoFile="../Resources/phidgets.json")
         self.logger.setLevel(logging.DEBUG)
         self.trigger_dict = {}
@@ -300,25 +302,29 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
     def deviceStartComm(self, device):
         try:
             new_phidget = create_phidget(self, device)
-            self.activePhidgets[device.id] = new_phidget
+            with getattr(self, "_activePhidgetsLock", nullcontext()):
+                self.activePhidgets[device.id] = new_phidget
             new_phidget.start()
             device.stateListOrDisplayStateIdChanged()
         except PeripheralUnavailableError as error:
-            self.activePhidgets.pop(device.id, None)
+            with getattr(self, "_activePhidgetsLock", nullcontext()):
+                self.activePhidgets.pop(device.id, None)
             device.setErrorStateOnServer("Initialization failed")
             self.logger.error(
                 "Configured peripheral unavailable: device='%s' id=%s "
                 "model=%s: %s", device.name, device.id,
                 device.deviceTypeId, error)
         except PhidgetException as error:
-            self.activePhidgets.pop(device.id, None)
+            with getattr(self, "_activePhidgetsLock", nullcontext()):
+                self.activePhidgets.pop(device.id, None)
             device.setErrorStateOnServer("Unable to start")
             self.logger.error(
                 "Unable to start Phidget device='%s' id=%s model=%s: %d: %s\n%s",
                 device.name, device.id, device.deviceTypeId,
                 error.code, error.details, traceback.format_exc())
         except Exception:
-            self.activePhidgets.pop(device.id, None)
+            with getattr(self, "_activePhidgetsLock", nullcontext()):
+                self.activePhidgets.pop(device.id, None)
             device.setErrorStateOnServer("Unable to start")
             self.logger.error(
                 "Unable to start Phidget device='%s' id=%s model=%s:\n%s",
@@ -361,7 +367,8 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                 callback = getattr(dependent, "providerStopping", None)
                 if callback is not None:
                     callback()
-        self.activePhidgets.pop(device.id, None)
+        with getattr(self, "_activePhidgetsLock", nullcontext()):
+            self.activePhidgets.pop(device.id, None)
         try:
             phidget.stop()
         except Exception:
@@ -390,14 +397,36 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                     traceback.format_exc())
             self.networkMonitor = None
 
-        for device_id, phidget in list(self.activePhidgets.items()):
+        with getattr(self, "_activePhidgetsLock", nullcontext()):
+            active = list(self.activePhidgets.items())
+        # Quiesce all logical children before any shared provider can close.
+        for _, provider in active:
+            if getattr(provider, "supportsFunction", None) is None:
+                continue
+            provider_id = provider.indigoDevice.id
+            for _, dependent in active:
+                if getattr(dependent, "adapterDeviceId", None) != provider_id:
+                    continue
+                callback = getattr(dependent, "providerStopping", None)
+                if callback is not None:
+                    try:
+                        callback()
+                    except Exception:
+                        self.logger.warning(
+                            "Unable to quiesce I2C dependent during shutdown:\n%s",
+                            traceback.format_exc())
+        # Stop providers last, after dependent timers and transactions settle.
+        active.sort(key=lambda item: bool(
+            getattr(item[1], "supportsFunction", None)))
+        for device_id, phidget in active:
             try:
                 phidget.stop()
             except Exception:
                 self.logger.warning(
                     "Unable to stop active Phidget id=%s during shutdown:\n%s",
                     device_id, traceback.format_exc())
-        self.activePhidgets.clear()
+        with getattr(self, "_activePhidgetsLock", nullcontext()):
+            self.activePhidgets.clear()
 
         if self.discoveryInventory is not None:
             try:

@@ -36,9 +36,7 @@ class HumiditySensorPhidget(PhidgetBase):
         self.indigoDevice.updateStateImageOnServer(indigo.kStateImageSel.HumiditySensorOn)
 
     def getDeviceStateList(self):
-        newStatesList = indigo.List()
-        newStatesList.append(self.indigo_plugin.getDeviceStateDictForNumberType("humidity", "humidity", "humidity"))
-        return newStatesList
+        return self.stateList(("number", "humidity", "humidity"))
 
     def getDeviceDisplayStateId(self):
         return "humidity"

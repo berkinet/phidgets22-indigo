@@ -8,6 +8,7 @@ import indigo
 
 from lcd import LCDPhidget
 from formula_plot import Formula
+from config_util import bounded_float, bounded_int
 
 
 SUBSTITUTION_PATTERN = re.compile(
@@ -279,145 +280,116 @@ class ActionsMixin(object):
         self._updateVirtualTextStatus(valuesDict)
         return self._updateStaticOverflowLayout(valuesDict, mode, line_count)
 
+    def _validateGraphicAction(self, values, errors, line_count, mode):
+        content = values.get("graphicContentType", "text")
+        if content not in ("text", "formula", "donut"):
+            errors["graphicContentType"] = (
+                "Select Text page, Formula graph, or Spinning donut.")
+        try:
+            font = bounded_int(values.get("graphicFont", 4), choices=(3, 4, 5))
+            values["graphicFont"] = str(font)
+            values["graphicContentLayout"] = self._graphicContentLayout(
+                line_count, content)
+            values["graphicLineLayout"] = self._graphicTextLayout(
+                font, content, line_count)
+        except (TypeError, ValueError):
+            errors["graphicFont"] = "Select a supported LCD font."
+        if mode != "static" or line_count:
+            return
+        if content == "formula":
+            try:
+                Formula(values.get("formulaExpression", ""))
+            except ValueError as error:
+                errors["formulaExpression"] = str(error)
+            ranges = {}
+            for field in ("formulaXMin", "formulaXMax", "formulaYMin", "formulaYMax"):
+                try:
+                    ranges[field] = bounded_float(values.get(field, ""))
+                    values[field] = str(ranges[field])
+                except (TypeError, ValueError):
+                    errors[field] = "Enter a finite number."
+            if ranges.get("formulaXMin", 0) >= ranges.get("formulaXMax", 1):
+                errors["formulaXMin"] = "X minimum must be less than X maximum."
+            if ranges.get("formulaYMin", 0) >= ranges.get("formulaYMax", 1):
+                errors["formulaYMin"] = "Y minimum must be less than Y maximum."
+            if values.get("formulaStyle", "line") not in ("line", "pixels"):
+                errors["formulaStyle"] = "Select Connected line or Pixels."
+        elif content == "donut":
+            try:
+                values["donutInterval"] = str(bounded_float(
+                    values.get("donutInterval", "0.15"), 0.1, 2.0))
+            except (TypeError, ValueError):
+                errors["donutInterval"] = "Enter an interval from 0.1 to 2 seconds."
+
+    def _validateLCDLevelsAndPosition(self, values, errors, line_count, mode):
+        for field in ("backlight", "contrast"):
+            try:
+                values[field] = str(bounded_float(values.get(field, ""), 0.0, 1.0))
+            except (TypeError, ValueError):
+                errors[field] = "Enter a value from 0.0 to 1.0."
+        if mode == "static" and line_count == 0:
+            for field, label in (("graphicX", "X"), ("graphicY", "Y")):
+                try:
+                    values[field] = str(bounded_int(values.get(field, "0"), 0))
+                except (TypeError, ValueError):
+                    errors[field] = "%s must be zero or greater." % label
+
+    def _validateLCDAnimation(self, values, errors, line_count, mode):
+        has_substitution = (
+            mode == "static" and line_count > 0 and
+            any(SUBSTITUTION_PATTERN.search(str(values.get(
+                "animationLine%d" % number, "") or ""))
+                for number in range(1, line_count + 1)))
+        if has_substitution:
+            behavior = values.get("staticOverflowBehavior", "truncate")
+            if behavior not in ("truncate", "marquee", "reject"):
+                errors["staticOverflowBehavior"] = "Select a valid overflow behavior."
+            elif behavior == "marquee":
+                if values.get("overflowMarqueeDirection", "left") not in ("left", "right"):
+                    errors["overflowMarqueeDirection"] = "Select Left or Right."
+                for field, minimum, maximum, message, cast in (
+                        ("overflowMarqueeGap", 1, 100,
+                         "Enter a gap from 1 to 100 characters.", bounded_int),
+                        ("overflowMarqueeInterval", 0.1, 60.0,
+                         "Enter an interval from 0.1 to 60 seconds.", bounded_float)):
+                    try:
+                        values[field] = str(cast(values.get(field, ""), minimum, maximum))
+                    except (TypeError, ValueError):
+                        errors[field] = message
+        if mode != "static" and line_count == 0:
+            errors["animationMode"] = "LCD animation currently requires a text LCD."
+        if mode in ("marquee", "virtualMarquee", "flash"):
+            interval_field = ("marqueeInterval" if mode != "flash" else "flashInterval")
+            try:
+                values[interval_field] = str(bounded_float(
+                    values.get(interval_field, ""), 0.1, 60.0))
+            except (TypeError, ValueError):
+                errors[interval_field] = "Enter an interval from 0.1 to 60 seconds."
+            if mode in ("marquee", "virtualMarquee"):
+                try:
+                    values["marqueeGap"] = str(bounded_int(
+                        values.get("marqueeGap", "3"), 1, 100))
+                except (TypeError, ValueError):
+                    errors["marqueeGap"] = "Enter a gap from 1 to 100 characters."
+        if (mode == "virtualMarquee" and
+                any(character in values.get("virtualText", "")
+                    for character in ("\r", "\n"))):
+            errors["virtualText"] = "Virtual single-line marquee text must be one line."
+
     def validateActionConfigUi(self, valuesDict, typeId, deviceId):
         errors = indigo.Dict()
-        if typeId == "lcdStartAnimation":
-            # Indigo can omit a text field after an existing action value is
-            # cleared. Return every LCD text property explicitly so an empty
-            # field replaces the previously saved value.
-            for field in (["virtualText", "graphicText"] +
-                          ["graphicLine%d" % line for line in range(1, 9)] +
-                          ["animationLine%d" % line for line in range(1, 5)] +
-                          ["alternateLine%d" % line for line in range(1, 5)]):
-                valuesDict[field] = str(valuesDict.get(field, "") or "")
-            line_count = int(valuesDict.get("lineCount", 0))
-            mode = valuesDict.get("animationMode", "static")
-            graphic_content = valuesDict.get("graphicContentType", "text")
-            if graphic_content not in ("text", "formula", "donut"):
-                errors["graphicContentType"] = (
-                    "Select Text page, Formula graph, or Spinning donut.")
-            try:
-                graphic_font = int(valuesDict.get("graphicFont", 4))
-                if graphic_font not in (3, 4, 5):
-                    raise ValueError
-                valuesDict["graphicFont"] = str(graphic_font)
-                valuesDict["graphicContentLayout"] = self._graphicContentLayout(
-                    line_count, graphic_content)
-                valuesDict["graphicLineLayout"] = self._graphicTextLayout(
-                    graphic_font, graphic_content, line_count)
-            except (TypeError, ValueError):
-                errors["graphicFont"] = "Select a supported LCD font."
-            if mode == "static" and line_count == 0 and graphic_content == "formula":
-                try:
-                    Formula(valuesDict.get("formulaExpression", ""))
-                except ValueError as error:
-                    errors["formulaExpression"] = str(error)
-                ranges = {}
-                for field in ("formulaXMin", "formulaXMax",
-                              "formulaYMin", "formulaYMax"):
-                    try:
-                        ranges[field] = float(valuesDict.get(field, ""))
-                        valuesDict[field] = str(ranges[field])
-                    except (TypeError, ValueError):
-                        errors[field] = "Enter a number."
-                if ("formulaXMin" in ranges and "formulaXMax" in ranges and
-                        ranges["formulaXMin"] >= ranges["formulaXMax"]):
-                    errors["formulaXMin"] = "X minimum must be less than X maximum."
-                if ("formulaYMin" in ranges and "formulaYMax" in ranges and
-                        ranges["formulaYMin"] >= ranges["formulaYMax"]):
-                    errors["formulaYMin"] = "Y minimum must be less than Y maximum."
-                if valuesDict.get("formulaStyle", "line") not in ("line", "pixels"):
-                    errors["formulaStyle"] = "Select Connected line or Pixels."
-            if mode == "static" and line_count == 0 and graphic_content == "donut":
-                try:
-                    interval = float(valuesDict.get("donutInterval", "0.15"))
-                    if interval < 0.1 or interval > 2.0:
-                        raise ValueError
-                    valuesDict["donutInterval"] = str(interval)
-                except (TypeError, ValueError):
-                    errors["donutInterval"] = (
-                        "Enter an interval from 0.1 to 2 seconds.")
-            for field in ("backlight", "contrast"):
-                try:
-                    value = float(valuesDict.get(field, ""))
-                    if value < 0.0 or value > 1.0:
-                        raise ValueError
-                    valuesDict[field] = str(value)
-                except (TypeError, ValueError):
-                    errors[field] = "Enter a value from 0.0 to 1.0."
-            if mode == "static" and line_count == 0:
-                for field, label in (("graphicX", "X"), ("graphicY", "Y")):
-                    try:
-                        value = int(valuesDict.get(field, "0"))
-                        if value < 0:
-                            raise ValueError
-                        valuesDict[field] = str(value)
-                    except (TypeError, ValueError):
-                        errors[field] = (
-                            "%s must be a whole number of zero or greater." % label)
-            has_static_substitution = (
-                mode == "static" and line_count > 0 and
-                any(SUBSTITUTION_PATTERN.search(str(valuesDict.get(
-                    "animationLine%d" % line_number, "") or ""))
-                    for line_number in range(1, line_count + 1)))
-            if has_static_substitution:
-                overflow_behavior = valuesDict.get(
-                    "staticOverflowBehavior", "truncate")
-                if overflow_behavior not in ("truncate", "marquee", "reject"):
-                    errors["staticOverflowBehavior"] = (
-                        "Select Truncate, Marquee if needed, or Reject if too long.")
-                if overflow_behavior == "marquee":
-                    if valuesDict.get("overflowMarqueeDirection", "left") not in (
-                            "left", "right"):
-                        errors["overflowMarqueeDirection"] = (
-                            "Select Left or Right.")
-                    try:
-                        gap = int(valuesDict.get("overflowMarqueeGap", "3"))
-                        if gap < 1 or gap > 100:
-                            raise ValueError
-                        valuesDict["overflowMarqueeGap"] = str(gap)
-                    except (TypeError, ValueError):
-                        errors["overflowMarqueeGap"] = (
-                            "Enter a gap from 1 to 100 characters.")
-                    try:
-                        interval = float(valuesDict.get(
-                            "overflowMarqueeInterval", "0.4"))
-                        if interval < 0.1 or interval > 60.0:
-                            raise ValueError
-                        valuesDict["overflowMarqueeInterval"] = str(interval)
-                    except (TypeError, ValueError):
-                        errors["overflowMarqueeInterval"] = (
-                            "Enter an interval from 0.1 to 60 seconds.")
-            if mode != "static" and line_count == 0:
-                errors["animationMode"] = (
-                    "LCD animation currently requires a text LCD.")
-            if mode in ("marquee", "virtualMarquee", "flash"):
-                interval_field = (
-                    "marqueeInterval" if mode in ("marquee", "virtualMarquee")
-                    else "flashInterval")
-                try:
-                    interval = float(valuesDict.get(interval_field, ""))
-                    if interval < 0.1 or interval > 60.0:
-                        raise ValueError
-                    valuesDict[interval_field] = str(interval)
-                except (TypeError, ValueError):
-                    errors[interval_field] = (
-                        "Enter an interval from 0.1 to 60 seconds.")
-                if mode in ("marquee", "virtualMarquee"):
-                    try:
-                        gap = int(valuesDict.get("marqueeGap", "3"))
-                        if gap < 1 or gap > 100:
-                            raise ValueError
-                        valuesDict["marqueeGap"] = str(gap)
-                    except (TypeError, ValueError):
-                        errors["marqueeGap"] = (
-                            "Enter a gap from 1 to 100 characters.")
-            if (mode == "virtualMarquee" and
-                    any(character in valuesDict.get("virtualText", "")
-                        for character in ("\r", "\n"))):
-                errors["virtualText"] = (
-                    "Virtual single-line marquee text must be one line.")
-
+        if typeId != "lcdStartAnimation":
+            return (True, valuesDict)
+        for field in (["virtualText", "graphicText"] +
+                      ["graphicLine%d" % line for line in range(1, 9)] +
+                      ["animationLine%d" % line for line in range(1, 5)] +
+                      ["alternateLine%d" % line for line in range(1, 5)]):
+            valuesDict[field] = str(valuesDict.get(field, "") or "")
+        line_count = int(valuesDict.get("lineCount", 0))
+        mode = valuesDict.get("animationMode", "static")
+        self._validateGraphicAction(valuesDict, errors, line_count, mode)
+        self._validateLCDLevelsAndPosition(valuesDict, errors, line_count, mode)
+        self._validateLCDAnimation(valuesDict, errors, line_count, mode)
         if errors:
             errors["showAlertText"] = "Correct the LCD action settings."
             return (False, valuesDict, errors)

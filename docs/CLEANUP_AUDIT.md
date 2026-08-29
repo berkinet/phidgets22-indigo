@@ -17,7 +17,6 @@ No source file or Indigo XML definition was deleted.
 
 | Item | Reason retained |
 | --- | --- |
-| `scan.py` | Standalone discovery reference remains useful until hierarchical Indigo configuration is complete and validated. |
 | `NetInfo.hostname`, `port`, and `password` | Plausible seam for explicit server constraints; server-selection design is not yet complete. |
 | `NetInfo.serverDiscovery` | Records an existing preference even though the current channel path does not consume it. Remove or connect only after preference semantics are decided. |
 | Long `deviceStartComm()` conditional | Awkward but production-proven and not blocking hierarchical selection. Refactoring now would mix risk with UI work. |
@@ -39,3 +38,6 @@ A spur should be deleted only when all three conditions hold:
 1. It has no active runtime, build, diagnostic, or migration use.
 2. The replacement path is implemented and tested in Indigo.
 3. Removal is isolated in a reviewable commit with validation proving that the plugin bundle still loads.
+
+As of 0.3.28, hierarchical Indigo discovery is implemented and validated, so
+the obsolete standalone `scan.py` reference utility has been removed.

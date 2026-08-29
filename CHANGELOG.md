@@ -1,5 +1,29 @@
 # Release notes
 
+## 0.3.28 — 2026-08-29
+
+### Fixed
+
+- Reserve I2C addresses, adapter GPIO pins, and native Phidget channels across
+  all configured devices—including disabled devices—and report collisions
+  symmetrically regardless of which device type is saved second.
+- Keep configured but unavailable BME280/BMP280 sensors and I2C LCDs active so
+  they retry and recover after wiring, power, or shared-adapter interruptions.
+- Stop shared-I2C dependents before their adapter during plugin shutdown and
+  guard the active-device registry against lifecycle callback races.
+- Parse Indigo's persisted string booleans consistently, validate legacy
+  numeric settings at save time, reject non-finite values, and bound hardware
+  probes so configuration dialogs cannot wait indefinitely.
+- Correct float-safe range diagnostics, a base display-state method name, a
+  redundant digital-input attach callback, and mutable constructor defaults.
+
+### Changed
+
+- Centralize I2C ownership rules and shared peripheral lifecycle/metadata code.
+- Split device/action validation and repeated state declarations into focused,
+  reusable helpers; consolidate adapter GPIO channel construction.
+- Remove the unused developer-only `scan.py` utility from the shipped plugin.
+
 ## 0.3.27 — 2026-08-29
 
 ### Added

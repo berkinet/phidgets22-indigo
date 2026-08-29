@@ -13,6 +13,7 @@ indigo.Dict = dict
 indigo.PluginBase = type("PluginBase", (object,), {"__del__": lambda self: None})
 
 import sgp41
+import i2c_peripheral
 from Phidget22.ErrorCode import ErrorCode
 from Phidget22.PhidgetException import PhidgetException
 
@@ -89,7 +90,7 @@ class SGP41Tests(unittest.TestCase):
         adapter.i2cCommandResponse = mock.Mock(
             side_effect=PhidgetException(ErrorCode.EPHIDGET_NACK))
 
-        with mock.patch.object(sgp41.threading, "Timer") as timer:
+        with mock.patch.object(i2c_peripheral.threading, "Timer") as timer:
             wrapper.start()
 
         self.assertEqual(wrapper._state, "attached")
@@ -100,7 +101,7 @@ class SGP41Tests(unittest.TestCase):
     def test_state_list_is_rebuilt_before_first_state_update(self):
         wrapper, _, device = self.wrapper()
 
-        with mock.patch.object(sgp41.threading, "Timer"):
+        with mock.patch.object(i2c_peripheral.threading, "Timer"):
             wrapper.start()
 
         refresh_index = device.mock_calls.index(

@@ -7,6 +7,7 @@ import json
 import threading
 
 from Phidget22.Devices.Manager import Manager
+from config_util import saved_bool
 
 
 CHANNEL_CLASSES_BY_DEVICE_TYPE = {
@@ -146,12 +147,6 @@ def target_token(description):
 
 def channel_token(description):
     return _token("channel", channel_key(description))
-
-
-def _saved_bool(value):
-    if isinstance(value, str):
-        return value.strip().lower() in ("1", "true", "yes", "on")
-    return bool(value)
 
 
 def format_phidget_model(description):
@@ -317,8 +312,8 @@ class DiscoveryInventory(object):
             candidates = [item for item in candidates
                           if item.get("channel") == channel_number]
 
-        is_vint_hub = _saved_bool(saved.get("isVintHub", False))
-        is_vint_device = _saved_bool(saved.get("isVintDevice", False))
+        is_vint_hub = saved_bool(saved.get("isVintHub", False))
+        is_vint_device = saved_bool(saved.get("isVintDevice", False))
         if is_vint_hub:
             try:
                 hub_port = int(saved.get("hubPort"))

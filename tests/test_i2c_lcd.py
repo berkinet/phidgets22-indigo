@@ -199,6 +199,29 @@ class I2CLCDTests(unittest.TestCase):
         self.assertTrue(adapter.transactions)
         lcd.stop()
 
+    def test_defined_but_absent_lcd_schedules_provider_retry(self):
+        adapter = FakeAdapter()
+        adapter.i2cSendReceive = mock.Mock(
+            side_effect=PhidgetException(ErrorCode.EPHIDGET_NACK))
+        plugin = types.SimpleNamespace(
+            activePhidgets={42: adapter}, pluginPrefs={"attachTimeout": "1"},
+            triggerEvent=mock.Mock(), phidgetAttachCompleted=mock.Mock())
+        device = mock.Mock(name="Absent LCD", id=101, pluginProps={})
+        lcd = i2c_lcd.I2CLCDPhidget(
+            adapterDeviceId=42, screenSize=8, backlight=1.0, contrast=0.5,
+            restoreInitialText=False, initialText="", initialLines=[],
+            initialX=0, initialY=0, indigo_plugin=plugin,
+            channelInfo=ChannelInfo(), indigoDevice=device, logger=mock.Mock())
+
+        with (mock.patch.object(i2c_lcd.time, "sleep"),
+              mock.patch.object(i2c_lcd.threading, "Timer") as timer):
+            lcd.start()
+
+        self.assertNotEqual(lcd._state, "stopped")
+        timer.assert_called_with(1.0, lcd._retryProvider,
+                                 (lcd._provider_retry_generation,))
+        lcd.stop()
+
 
 if __name__ == "__main__":
     unittest.main()

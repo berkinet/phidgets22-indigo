@@ -15,6 +15,9 @@ indigo.Dict = dict
 indigo.PluginBase = type("PluginBase", (object,), {"__del__": lambda self: None})
 
 import bme280
+import i2c_peripheral
+from Phidget22.ErrorCode import ErrorCode
+from Phidget22.PhidgetException import PhidgetException
 
 
 class FakeAdapter(object):
@@ -106,7 +109,7 @@ class BME280Tests(unittest.TestCase):
         wrapper._generation = 1
         wrapper._read = mock.Mock(return_value=b"\x65\x5A\xC0\x7E\xED\x00\x80\x00")
 
-        with mock.patch.object(bme280.threading, "Timer"):
+        with mock.patch.object(i2c_peripheral.threading, "Timer"):
             wrapper._poll(1)
 
         state_ids = [call.args[0]
@@ -151,9 +154,25 @@ class BME280Tests(unittest.TestCase):
             wrapper.providerReattached()
 
         self.assertEqual(wrapper._state, "attached")
-        self.assertEqual(wrapper.chipModel, "BME280")
-        device.stateListOrDisplayStateIdChanged.assert_called_once_with()
+        self.assertEqual(wrapper.chipModel, "Unknown")
+        device.stateListOrDisplayStateIdChanged.assert_not_called()
         poll.assert_called_once_with(wrapper._generation)
+
+    def test_defined_but_absent_sensor_stays_active_and_retries(self):
+        wrapper, adapter, device = self.wrapper(0x60)
+        wrapper.logger = mock.Mock()
+        adapter._state = "attached"
+        adapter.i2cSendReceive = mock.Mock(
+            side_effect=PhidgetException(ErrorCode.EPHIDGET_NACK))
+
+        with mock.patch.object(i2c_peripheral.threading, "Timer") as timer:
+            wrapper.start()
+
+        self.assertEqual(wrapper._state, "attached")
+        self.assertIsNone(wrapper.chipId)
+        device.setErrorStateOnServer.assert_called_with("No response at 0x76")
+        timer.assert_called_once_with(
+            wrapper.pollInterval, wrapper._poll, (wrapper._generation,))
 
 
 if __name__ == "__main__":

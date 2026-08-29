@@ -12,9 +12,11 @@ import indigo
 from Phidget22.ErrorCode import ErrorCode
 from Phidget22.PhidgetException import PhidgetException
 from phidget import PeripheralUnavailableError
+from i2c_peripheral import I2CPeripheralBase
 
 
-class BME280Phidget(object):
+class BME280Phidget(I2CPeripheralBase):
+    PROVIDER_FUNCTION = "bme280"
     CHIP_IDS = {0x60: "BME280", 0x58: "BMP280"}
 
     def __init__(self, adapterDeviceId, i2cAddress=0x76, pollInterval=2.0,
@@ -39,14 +41,6 @@ class BME280Phidget(object):
         self._generation = 0
         self._lock = threading.RLock()
         self._offline_message = None
-
-    def _resolveAdapter(self):
-        adapter = self.indigo_plugin.activePhidgets.get(self.adapterDeviceId)
-        if adapter is None or not adapter.supportsFunction("bme280"):
-            raise RuntimeError("The selected I2C adapter is not active")
-        self.adapter = adapter
-        self.channelInfo = adapter.channelInfo
-        return adapter
 
     def _read(self, register, length):
         try:
@@ -106,6 +100,11 @@ class BME280Phidget(object):
                 (self.address, found))
         self.chipId = response[0]
         self.chipModel = self.CHIP_IDS[self.chipId]
+        if self.chipModel == "BMP280" and self.displayState == "humidity":
+            self.logger.warning(
+                "BMP280 does not provide humidity; using pressure as the "
+                "display state: device='%s'", self.indigoDevice.name)
+            self.displayState = "pressure"
         self._readCalibration()
         if self.chipModel == "BME280":
             self._write(0xF2, 0x01)  # humidity oversampling ×1
@@ -115,24 +114,7 @@ class BME280Phidget(object):
         self._offline_message = None
 
     def _publishMetadata(self):
-        adapter_states = getattr(self.adapter.indigoDevice, "states", {})
-        device_states = getattr(self.indigoDevice, "states", {})
-
-        def publish(state_id, value):
-            value = str(value or "")
-            if str(device_states.get(state_id, "") or "") != value:
-                self.indigoDevice.updateStateOnServer(state_id, value=value)
-
-        for state_id in ("connectionType", "serverName", "serverUniqueName",
-                         "serverHost", "serverPeer", "connection"):
-            publish(state_id, adapter_states.get(state_id, ""))
-        base_path = (adapter_states.get("connectionPath") or
-                     adapter_states.get("connection") or
-                     self.adapter.indigoDevice.name)
-        publish("connectionPath", "%s→%s 0x%02X" %
-                (base_path, self.chipModel, self.address))
-        publish("sensorModel", self.chipModel)
-        publish("i2cAddress", "0x%02X" % self.address)
+        self._publishI2CMetadata(self.chipModel, self.address)
 
     def _compensate(self, data):
         if len(data) != 8:
@@ -175,6 +157,9 @@ class BME280Phidget(object):
             if generation != self._generation or self._state != "attached":
                 return
             try:
+                if self.chipId is None and not self.calibration:
+                    self._initialize()
+                    self.indigoDevice.stateListOrDisplayStateIdChanged()
                 self._publishMetadata()
                 temperature, pressure, humidity = self._compensate(
                     self._read(0xF7, 8))
@@ -209,10 +194,7 @@ class BME280Phidget(object):
                     self.indigoDevice.name, traceback.format_exc())
                 self.indigoDevice.setErrorStateOnServer("I2C read failed")
             if generation == self._generation and self._state == "attached":
-                timer = threading.Timer(self.pollInterval, self._poll, (generation,))
-                timer.daemon = True
-                self._timer = timer
-                timer.start()
+                self._schedulePoll(generation, self.pollInterval)
 
     def start(self):
         with self._lock:
@@ -220,7 +202,6 @@ class BME280Phidget(object):
             if getattr(adapter, "_state", None) != "attached":
                 self._state = "starting"
                 return
-            self._initialize()
             self._generation += 1
             generation = self._generation
             self._state = "attached"
@@ -228,32 +209,18 @@ class BME280Phidget(object):
 
     def providerReattached(self):
         with self._lock:
-            self._initialize()
-            self.indigoDevice.stateListOrDisplayStateIdChanged()
+            self.chipId = None
+            self.chipModel = "Unknown"
+            self.calibration = {}
             self._generation += 1
             generation = self._generation
             self._state = "attached"
             self._poll(generation)
 
-    def serverKey(self):
-        return self.adapter.serverKey() if self.adapter is not None else "local"
-
-    def serverDisplayName(self):
-        return (self.adapter.serverDisplayName()
-                if self.adapter is not None else "I2C adapter")
-
     def _identity(self):
         return "device='%s' id=%s type=%s adapter=%s address=0x%02X" % (
             self.indigoDevice.name, self.indigoDevice.id, self.chipModel,
             self.adapterDeviceId, self.address)
-
-    def providerStopping(self):
-        with self._lock:
-            self._generation += 1
-            self._state = "detached"
-            timer, self._timer = self._timer, None
-        if timer is not None:
-            timer.cancel()
 
     def stop(self):
         self.providerStopping()

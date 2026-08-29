@@ -19,9 +19,6 @@ class DigitalInputPhidget(PhidgetBase):
         self.phidget.setOnDetachHandler(self.onDetachHandler)
         self.phidget.setOnStateChangeHandler(self.onStateChangeHandler)
 
-    def onAttachHandler(self, ph):
-        super(DigitalInputPhidget, self).onAttachHandler(ph)
-
     def updateIndigoStatus(self, state):
         # Common code between onStateChangeHandler & indigo.kSensorAction.RequestStatus
         stateImage =  getattr(indigo.kStateImageSel, "Auto")
@@ -48,11 +45,9 @@ class DigitalInputPhidget(PhidgetBase):
             self.logger.error("Unexpected action: %s" % action.deviceAction)
 
     def getDeviceStateList(self):
-        newStatesList = indigo.List()
-        newStatesList.append(self.indigo_plugin.getDeviceStateDictForBoolOnOffType('onOffState', 'onOffState', 'onOffState'))
-        newStatesList.append(self.indigo_plugin.getDeviceStateDictForStringType('lastUpdate', 'lastUpdate', 'lastUpdate'))
-
-        return newStatesList
+        return self.stateList(
+            ("bool", "onOffState", "onOffState"),
+            ("string", "lastUpdate", "lastUpdate"))
 
     def getDeviceDisplayStateId(self):
         return "onOffState"

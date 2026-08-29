@@ -10,9 +10,11 @@ import indigo
 from Phidget22.ErrorCode import ErrorCode
 from Phidget22.PhidgetException import PhidgetException
 from phidget import PeripheralUnavailableError
+from i2c_peripheral import I2CPeripheralBase
 
 
-class SGP41Phidget(object):
+class SGP41Phidget(I2CPeripheralBase):
+    PROVIDER_FUNCTION = "sgp41"
     ADDRESS = 0x59
     CONDITIONING_COMMAND = b"\x26\x12"
     MEASURE_COMMAND = b"\x26\x19"
@@ -66,14 +68,6 @@ class SGP41Phidget(object):
             words.append((data[0] << 8) | data[1])
         return words
 
-    def _resolveAdapter(self):
-        adapter = self.indigo_plugin.activePhidgets.get(self.adapterDeviceId)
-        if adapter is None or not adapter.supportsFunction("sgp41"):
-            raise RuntimeError("The selected I2C adapter is not active")
-        self.adapter = adapter
-        self.channelInfo = adapter.channelInfo
-        return adapter
-
     def _command(self, command, arguments=b"", delay=0.05, words=1):
         try:
             response = self.adapter.i2cCommandResponse(
@@ -99,23 +93,9 @@ class SGP41Phidget(object):
         self._offline_message = None
 
     def _publishMetadata(self):
-        adapter_states = getattr(self.adapter.indigoDevice, "states", {})
-        device_states = getattr(self.indigoDevice, "states", {})
-
-        def publish(state_id, value):
-            value = str(value or "")
-            if str(device_states.get(state_id, "") or "") != value:
-                self.indigoDevice.updateStateOnServer(state_id, value=value)
-
-        for state_id in ("connectionType", "serverName", "serverUniqueName",
-                         "serverHost", "serverPeer", "connection"):
-            publish(state_id, adapter_states.get(state_id, ""))
-        base_path = (adapter_states.get("connectionPath") or
-                     adapter_states.get("connection") or self.adapter.indigoDevice.name)
-        publish("connectionPath", "%s→SGP41 0x59" % base_path)
-        publish("sensorModel", "SGP41")
-        publish("i2cAddress", "0x59")
-        publish("sensorSerialNumber", self.serialNumber)
+        self._publishI2CMetadata(
+            "SGP41", self.ADDRESS,
+            {"sensorSerialNumber": self.serialNumber})
 
     def _sample(self):
         arguments = self._compensation()
@@ -157,10 +137,7 @@ class SGP41Phidget(object):
                                   self.indigoDevice.name, traceback.format_exc())
                 self.indigoDevice.setErrorStateOnServer("I2C read failed")
             if generation == self._generation and self._state == "attached":
-                timer = threading.Timer(1.0, self._poll, (generation,))
-                timer.daemon = True
-                self._timer = timer
-                timer.start()
+                self._schedulePoll(generation, 1.0)
 
     def start(self):
         with self._lock:
@@ -185,14 +162,6 @@ class SGP41Phidget(object):
             self._state = "attached"
             self._poll(self._generation)
 
-    def providerStopping(self):
-        with self._lock:
-            self._generation += 1
-            self._state = "detached"
-            timer, self._timer = self._timer, None
-        if timer is not None:
-            timer.cancel()
-
     def stop(self):
         self.providerStopping()
         if self.adapter is not None and getattr(self.adapter, "_state", None) == "attached":
@@ -201,12 +170,6 @@ class SGP41Phidget(object):
             except Exception:
                 self.logger.debug("Unable to turn off SGP41 heater during shutdown")
         self._state = "stopped"
-
-    def serverKey(self):
-        return self.adapter.serverKey() if self.adapter is not None else "local"
-
-    def serverDisplayName(self):
-        return self.adapter.serverDisplayName() if self.adapter is not None else "I2C adapter"
 
     def _identity(self):
         return "device='%s' id=%s type=SGP41 adapter=%s address=0x59" % (

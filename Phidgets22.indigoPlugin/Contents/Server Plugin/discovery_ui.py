@@ -8,6 +8,10 @@ from discovery import (CHANNEL_CLASSES_BY_DEVICE_TYPE, device_token,
                        channel_token, format_channel, format_network_diagram,
                        port_token, server_token, target_token)
 from display_providers import available_display_providers
+from config_util import (bounded_float, bounded_int, call_with_timeout,
+                         saved_bool, state_id)
+from i2c_resources import (find_address_owner,
+                            find_native_channel_owner)
 
 
 FREENOVE_I2C_PROFILE = "freenove-hd44780-pcf8574"
@@ -274,6 +278,92 @@ class DiscoveryUiMixin(object):
                 pass
         return "Not yet observed"
 
+    def _validateNativeSettings(self, values, type_id):
+        """Validate typed settings shared by the original channel wrappers."""
+        errors = indigo.Dict()
+
+        def integer(field, minimum=None, maximum=None, choices=None,
+                    message="Enter a valid whole number."):
+            try:
+                result = bounded_int(values.get(field, ""), minimum, maximum,
+                                     choices)
+                values[field] = str(result)
+                return result
+            except (TypeError, ValueError):
+                errors[field] = message
+                return None
+
+        def number(field, minimum=None, maximum=None,
+                   message="Enter a valid number."):
+            try:
+                result = bounded_float(values.get(field, ""), minimum, maximum)
+                values[field] = str(result)
+                return result
+            except (TypeError, ValueError):
+                errors[field] = message
+                return None
+
+        if type_id in ("voltageInput", "voltageRatioInput", "temperatureSensor",
+                       "humiditySensor", "frequencyCounter"):
+            integer("dataInterval", 0, 60000,
+                    message="Enter a data interval from 0 through 60000 ms.")
+            integer("decimalPlaces", -1, 6,
+                    message="Select from -1 through 6 decimal places.")
+
+        if type_id == "voltageInput":
+            integer("voltageSensorType", 0,
+                    message="Select a valid voltage sensor type.")
+            number("voltageChangeTrigger", 0,
+                   message="Enter a non-negative voltage change trigger.")
+            number("sensorValueChangeTrigger", 0,
+                   message="Enter a non-negative sensor-value trigger.")
+        elif type_id == "voltageRatioInput":
+            integer("voltageRatioSensorType", 0,
+                    message="Select a valid voltage-ratio sensor type.")
+            number("voltageRatioChangeTrigger", 0,
+                   message="Enter a non-negative ratio change trigger.")
+            number("sensorValueChangeTrigger", 0,
+                   message="Enter a non-negative sensor-value trigger.")
+        elif type_id == "temperatureSensor":
+            number("temperatureChangeTrigger", 0,
+                   message="Enter a non-negative temperature trigger.")
+            if values.get("displayTempUnit", "C").upper() not in ("C", "F"):
+                errors["displayTempUnit"] = "Select Celsius or Fahrenheit."
+            if saved_bool(values.get("useThermoCouple", False)):
+                integer("thermocoupleType", 1,
+                        message="Select a thermocouple type.")
+        elif type_id == "humiditySensor":
+            number("humidityChangeTrigger", 0, 100,
+                   message="Enter a humidity trigger from 0 through 100.")
+        elif type_id == "frequencyCounter":
+            number("frequencyCutoff", 0, 100,
+                   message="Enter a frequency cutoff from 0 through 100 Hz.")
+            integer("filterType", 0,
+                    message="Select a valid frequency filter.")
+            if values.get("displayStateName", "frequency") not in (
+                    "frequency", "count", "timeChange"):
+                errors["displayStateName"] = "Select a valid display state."
+            if saved_bool(values.get("isDAQ1400", False)):
+                integer("inputType", 0, message="Select a valid input type.")
+                integer("powerSupply", 0, message="Select a valid power supply.")
+        elif type_id == "digitalInput":
+            for field in ("onStateIcon", "offStateIcon"):
+                icon = str(values.get(field, "Auto"))
+                if not hasattr(indigo.kStateImageSel, icon):
+                    errors[field] = "Select a valid Indigo state icon."
+
+        if type_id in ("voltageInput", "voltageRatioInput") and saved_bool(
+                values.get("useCustomFormula", False)):
+            try:
+                values["customState"] = state_id(values.get("customState", ""))
+            except ValueError:
+                errors["customState"] = (
+                    "Use a state name beginning with a letter and containing "
+                    "only letters, numbers, and underscores.")
+            if not str(values.get("customFormula", "") or "").strip():
+                errors["customFormula"] = "Enter a custom formula."
+        return errors
+
     def validateDeviceConfigUi(self, valuesDict, typeId, devId):
         valuesDict["observedConnection"] = self._observedConnectionForDevice(devId)
         if typeId == "sgp41":
@@ -298,39 +388,18 @@ class DiscoveryUiMixin(object):
                     errors[key] = "Enter %s from %g through %g." % (
                         label, minimum, maximum)
             if adapter_id:
-                for other in getattr(indigo, "devices", ()):
-                    if (getattr(other, "id", None) == devId or
-                            getattr(other, "pluginId", None) != self.pluginId or
-                            not getattr(other, "enabled", True)):
-                        continue
-                    props = getattr(other, "pluginProps", {})
-                    other_type = getattr(other, "deviceTypeId", None)
-                    other_adapter = (props.get("sgpAdapterDeviceId")
-                                     if other_type == "sgp41" else
-                                     props.get("bmeAdapterDeviceId")
-                                     if other_type == "bme280" else
-                                     props.get("lcdAdapterDeviceId")
-                                     if other_type == "lcd" else None)
-                    other_address = (0x59 if other_type == "sgp41" else
-                                     props.get("bmeI2CAddress")
-                                     if other_type == "bme280" else
-                                     props.get("lcdI2CAddress")
-                                     if other_type == "lcd" else None)
-                    try:
-                        collision = (str(other_adapter) == adapter_id and
-                                     int(str(other_address), 0) == 0x59)
-                    except (TypeError, ValueError):
-                        collision = False
-                    if collision:
-                        errors["sgpAdapterSelection"] = (
-                            "Address 0x59 is already assigned to '%s'." %
-                            getattr(other, "name", "another device"))
-                        break
+                owner = find_address_owner(
+                    getattr(indigo, "devices", ()), self.pluginId,
+                    adapter_id, 0x59, devId)
+                if owner is not None:
+                    errors["sgpAdapterSelection"] = (
+                        "Address 0x59 is already assigned to '%s'." % owner.name)
                 adapter = self.activePhidgets.get(int(adapter_id))
                 if adapter is not None and "sgpAdapterSelection" not in errors:
                     try:
-                        response = bytes(adapter.i2cCommandResponse(
-                            0x59, b"\x36\x82", 0.001, 9))
+                        response = bytes(call_with_timeout(
+                            lambda: adapter.i2cCommandResponse(
+                                0x59, b"\x36\x82", 0.001, 9)))
                         if len(response) != 9:
                             raise ValueError("incomplete serial-number response")
                         for offset in range(0, 9, 3):
@@ -383,37 +452,19 @@ class DiscoveryUiMixin(object):
                 errors["decimalPlaces"] = (
                     "Enter a whole number from 0 through 6.")
             if adapter_id and address is not None:
-                for other in getattr(indigo, "devices", ()):
-                    if (getattr(other, "id", None) == devId or
-                            getattr(other, "pluginId", None) != self.pluginId or
-                            not getattr(other, "enabled", True)):
-                        continue
-                    props = getattr(other, "pluginProps", {})
-                    other_adapter = (props.get("bmeAdapterDeviceId")
-                                     if getattr(other, "deviceTypeId", None) == "bme280"
-                                     else props.get("lcdAdapterDeviceId")
-                                     if getattr(other, "deviceTypeId", None) == "lcd"
-                                     else None)
-                    other_address = (props.get("bmeI2CAddress")
-                                     if getattr(other, "deviceTypeId", None) == "bme280"
-                                     else props.get("lcdI2CAddress")
-                                     if getattr(other, "deviceTypeId", None) == "lcd"
-                                     else None)
-                    try:
-                        collision = (str(other_adapter) == adapter_id and
-                                     int(str(other_address), 0) == address)
-                    except (TypeError, ValueError):
-                        collision = False
-                    if collision:
-                        errors["bmeI2CAddress"] = (
-                            "Address 0x%02X is already assigned to '%s'." %
-                            (address, getattr(other, "name", "another device")))
-                        break
+                owner = find_address_owner(
+                    getattr(indigo, "devices", ()), self.pluginId,
+                    adapter_id, address, devId)
+                if owner is not None:
+                    errors["bmeI2CAddress"] = (
+                        "Address 0x%02X is already assigned to '%s'." %
+                        (address, owner.name))
                 adapter = self.activePhidgets.get(int(adapter_id))
                 if adapter is not None and "bmeI2CAddress" not in errors:
                     try:
-                        response = bytes(adapter.i2cSendReceive(
-                            address, bytes((0xD0,)), 1))
+                        response = bytes(call_with_timeout(
+                            lambda: adapter.i2cSendReceive(
+                                address, bytes((0xD0,)), 1)))
                         if len(response) != 1 or response[0] not in (0x58, 0x60):
                             found = "no chip ID" if not response else "chip ID 0x%02X" % response[0]
                             errors["bmeI2CAddress"] = (
@@ -471,8 +522,7 @@ class DiscoveryUiMixin(object):
                     if (getattr(other, "id", None) == devId or
                             getattr(other, "pluginId", None) != self.pluginId or
                             getattr(other, "deviceTypeId", None) not in
-                            ("adapterGPIOInput", "adapterGPIOOutput") or
-                            not getattr(other, "enabled", True)):
+                            ("adapterGPIOInput", "adapterGPIOOutput")):
                         continue
                     if (str(props.get("gpioAdapterDeviceId", "")) == adapter_id and
                             str(props.get("gpioPin", "")) == str(pin)):
@@ -518,6 +568,12 @@ class DiscoveryUiMixin(object):
                 errors["showAlertText"] = (
                     "Connect and install an appropriate device before saving.")
             return (False, valuesDict, errors)
+
+        native_errors = self._validateNativeSettings(valuesDict, typeId)
+        if native_errors:
+            native_errors["showAlertText"] = (
+                "Correct the device settings before saving.")
+            return (False, valuesDict, native_errors)
 
         selected_channel = valuesDict.get("discoveredChannel", "")
         description = None
@@ -582,32 +638,20 @@ class DiscoveryUiMixin(object):
 
                 if i2c_address is not None:
                     adapter_id = str(valuesDict.get("lcdAdapterDeviceId", ""))
-                    for other in getattr(indigo, "devices", ()):
-                        other_props = getattr(other, "pluginProps", {})
-                        if (getattr(other, "id", None) == devId or
-                                getattr(other, "pluginId", None) != self.pluginId or
-                                getattr(other, "deviceTypeId", None) != "lcd" or
-                                not getattr(other, "enabled", True) or
-                                other_props.get("lcdProviderKind") != "adapter" or
-                                str(other_props.get("lcdAdapterDeviceId", "")) != adapter_id):
-                            continue
-                        try:
-                            other_address = int(str(other_props.get(
-                                "lcdI2CAddress", "0x27")), 0)
-                        except (TypeError, ValueError):
-                            continue
-                        if other_address == i2c_address:
-                            errors["lcdI2CAddress"] = (
-                                "That address is already used by '%s' on this adapter." %
-                                getattr(other, "name", "another LCD"))
-                            break
+                    owner = find_address_owner(
+                        getattr(indigo, "devices", ()), self.pluginId,
+                        adapter_id, i2c_address, devId)
+                    if owner is not None:
+                        errors["lcdI2CAddress"] = (
+                            "That address is already used by '%s' on this adapter." %
+                            owner.name)
 
                     adapter = self.activePhidgets.get(int(adapter_id or 0))
                     probe = getattr(adapter, "i2cAddressResponds", None)
                     if ("lcdI2CAddress" not in errors and probe is not None and
                             getattr(adapter, "_state", None) == "attached"):
                         try:
-                            if not probe(i2c_address):
+                            if not call_with_timeout(lambda: probe(i2c_address)):
                                 errors["lcdI2CAddress"] = (
                                     "No I2C device responded at 0x%02X. Verify the "
                                     "address jumpers and wiring." % i2c_address)
@@ -694,10 +738,27 @@ class DiscoveryUiMixin(object):
             if label != "":
                 address_index = label
 
-        if bool(valuesDict["isVintHub"]) and not bool(valuesDict["isVintDevice"]):
+        native_type = not (
+            typeId in ("bme280", "sgp41", "adapterGPIOInput",
+                       "adapterGPIOOutput") or
+            (typeId == "lcd" and
+             valuesDict.get("lcdProviderKind") == "adapter"))
+        owner = (find_native_channel_owner(
+            getattr(indigo, "devices", ()), getattr(self, "pluginId", None),
+            valuesDict, typeId, devId) if native_type else None)
+        if owner is not None:
+            errors = indigo.Dict()
+            errors["discoveredChannel"] = (
+                "This Phidget channel is already assigned to '%s'." % owner.name)
+            errors["showAlertText"] = (
+                "Select a Phidget channel that is not already configured.")
+            return (False, valuesDict, errors)
+
+        if (saved_bool(valuesDict["isVintHub"]) and
+                not saved_bool(valuesDict["isVintDevice"])):
             valuesDict["address"] = address_index + "|p" + valuesDict["hubPort"]
-        elif (not bool(valuesDict["isVintHub"]) and
-              not bool(valuesDict["isVintDevice"])):
+        elif (not saved_bool(valuesDict["isVintHub"]) and
+              not saved_bool(valuesDict["isVintDevice"])):
             prefixes = {
                 "digitalInput": "di-",
                 "digitalOutput": "do-",

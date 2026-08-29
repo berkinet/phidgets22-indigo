@@ -2,6 +2,7 @@
 
 """Configurable HD44780/PCF8574 transport over a shared DataAdapter."""
 
+import threading
 import time
 
 from Phidget22.ChannelSubclass import ChannelSubclass
@@ -236,10 +237,49 @@ class I2CLCDPhidget(LCDPhidget):
             backlight_active_high=backlightActiveHigh)
         super(I2CLCDPhidget, self).__init__(*args, **kwargs)
         self.adapterDeviceId = int(adapterDeviceId)
+        self._provider_retry_timer = None
+        self._provider_retry_generation = 0
+
+    def _cancelProviderRetry(self):
+        self._provider_retry_generation += 1
+        timer, self._provider_retry_timer = self._provider_retry_timer, None
+        if timer is not None:
+            timer.cancel()
+
+    def _scheduleProviderRetry(self):
+        self._cancelProviderRetry()
+        generation = self._provider_retry_generation
+        timer = threading.Timer(1.0, self._retryProvider, (generation,))
+        timer.daemon = True
+        self._provider_retry_timer = timer
+        timer.start()
+
+    def _retryProvider(self, generation):
+        if (generation != self._provider_retry_generation or
+                self._state in ("stopping", "stopped")):
+            return
+        self._provider_retry_timer = None
+        self.phidget.providerAttached()
+
+    def onAttachHandler(self, ph):
+        super(I2CLCDPhidget, self).onAttachHandler(ph)
+        if self._state == "attached":
+            self._cancelProviderRetry()
+        elif (self.phidget.adapter is not None and
+              getattr(self.phidget.adapter, "_state", None) == "attached"):
+            self._scheduleProviderRetry()
 
     def providerReattached(self):
         """Reinitialize the controller after its shared adapter reconnects."""
         return self.phidget.providerAttached()
+
+    def providerStopping(self):
+        self._cancelProviderRetry()
+        super(I2CLCDPhidget, self).providerStopping()
+
+    def stop(self):
+        self._cancelProviderRetry()
+        super(I2CLCDPhidget, self).stop()
 
 
 # Source compatibility for code written against the first fixed profile.

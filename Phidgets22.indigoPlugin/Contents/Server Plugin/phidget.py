@@ -8,6 +8,7 @@ import time
 import traceback
 
 import phidget_util
+from config_util import saved_bool
 
 
 class PeripheralUnavailableError(RuntimeError):
@@ -25,12 +26,13 @@ class NetInfo():
         self.serverName = serverName
 
 class ChannelInfo():
-    def __init__(self, serialNumber=-1, hubPort=-1, isHubPortDevice=0, channel=-1, netInfo=NetInfo()):
+    def __init__(self, serialNumber=-1, hubPort=-1, isHubPortDevice=0,
+                 channel=-1, netInfo=None):
         self.serialNumber = serialNumber
         self.hubPort = hubPort
         self.isHubPortDevice = isHubPortDevice
         self.channel = channel
-        self.netInfo = netInfo
+        self.netInfo = netInfo if netInfo is not None else NetInfo()
 
 
 class PhidgetBase(object):
@@ -41,15 +43,17 @@ class PhidgetBase(object):
     PHIDGET_DEFAULT_DATA_INTERVAL = 1000  # ms
     DETACH_GRACE_SECONDS = 2.0
 
-    def __init__(self, phidget, indigo_plugin, channelInfo=ChannelInfo(), indigoDevice=None, logger=None, decimalPlaces=-1):
+    def __init__(self, phidget, indigo_plugin, channelInfo=None,
+                 indigoDevice=None, logger=None, decimalPlaces=-1):
         self.phidget = phidget      # PhidgetAPI object for this phidget
         self.phidget.parent = self  # Reference back to this object from the PhidgetAPI
         self.logger = logger        # Where do we log?
-        self.channelInfo = channelInfo
+        self.channelInfo = channelInfo if channelInfo is not None else ChannelInfo()
         self.indigoDevice = indigoDevice
         self.indigo_plugin = indigo_plugin
         self.decimalPlaces = decimalPlaces # Number of decimal places for Indigo do display for numbers. -1 means default (likely 5)
-        self.pluginSuppressErrors = bool(self.indigo_plugin.pluginPrefs.get('suppressErrors', False))
+        self.pluginSuppressErrors = saved_bool(
+            self.indigo_plugin.pluginPrefs.get('suppressErrors', False))
 
         self.initial_connection_timeout = int(indigo_plugin.pluginPrefs.get('attachTimeout', '5'))
 
@@ -305,7 +309,8 @@ class PhidgetBase(object):
                     "Deferring transient startup contention for up to %d seconds: %s",
                     self.initial_connection_timeout, self._identity())
                 return
-            deviceSuppressErrors = bool(self.indigoDevice.pluginProps.get("suppressErrors", False))
+            deviceSuppressErrors = saved_bool(
+                self.indigoDevice.pluginProps.get("suppressErrors", False))
             suppressed = ((deviceSuppressErrors and errorCode == 4103) or
                           (self.pluginSuppressErrors and errorCode in (4098, 4099)))
             log = self.logger.debug if suppressed else self.logger.error
@@ -437,11 +442,28 @@ class PhidgetBase(object):
     def addPhidgetHandlers(self):
         raise Exception("addPhidgetHandlers() must be handled by subclass")
 
-    def getDeviceDisplayStatesId(self):
+    def getDeviceDisplayStateId(self):
         raise Exception("getDeviceDisplayStateId() must be handled by subclass")
 
     def getDeviceStateList(self):
         raise Exception("getDeviceStateList() must be handled by subclass")
+
+    def stateList(self, *specifications):
+        """Build simple Indigo state lists without repeating SDK boilerplate.
+
+        Each specification is ``(kind, state_id, label)`` where kind is one of
+        ``number``, ``string``, or ``bool``.
+        """
+        import indigo
+        states = indigo.List()
+        factories = {
+            "number": self.indigo_plugin.getDeviceStateDictForNumberType,
+            "string": self.indigo_plugin.getDeviceStateDictForStringType,
+            "bool": self.indigo_plugin.getDeviceStateDictForBoolOnOffType,
+        }
+        for kind, state_id, label in specifications:
+            states.append(factories[kind](state_id, label, state_id))
+        return states
 
     def actionControlDevice(self, action):
         raise Exception("actionControlDevice() may be handled by subclass")
@@ -455,9 +477,11 @@ class PhidgetBase(object):
     #
 
     def outOfRangeError(self, field, minValue, maxValue, value):
-        self.logger.error("Out of range " + field + " for Indigo device '" + str(self.indigoDevice.name) +
-                          "' (%d): " % self.indigoDevice.id +
-                          "%d (valid range: [%d-%d])" % (value, minValue, maxValue))
+        self.logger.error(
+            "Out of range %s for Indigo device '%s' (%d): %s "
+            "(valid range: [%s-%s])",
+            field, self.indigoDevice.name, self.indigoDevice.id,
+            value, minValue, maxValue)
 
     def checkValueRange(self, fieldname, value, minValue, maxValue, zero_ok=False):
         """Helper utility to check that a value is in a range (or, optionally zero)"""

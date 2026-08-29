@@ -47,10 +47,9 @@ class TemperatureSensorPhidget(PhidgetBase):
         self.indigoDevice.updateStateImageOnServer(indigo.kStateImageSel.TemperatureSensorOn)
 
     def getDeviceStateList(self):
-        newStatesList = indigo.List()
-        newStatesList.append(self.indigo_plugin.getDeviceStateDictForNumberType("tempF", "tempF", "tempF"))
-        newStatesList.append(self.indigo_plugin.getDeviceStateDictForNumberType("tempC", "tempC", "tempC"))
-        return newStatesList
+        return self.stateList(
+            ("number", "tempF", "tempF"),
+            ("number", "tempC", "tempC"))
 
     def getDeviceDisplayStateId(self):
         if self.displayTempUnit.upper() == "F":

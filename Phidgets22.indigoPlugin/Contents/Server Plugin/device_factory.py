@@ -18,12 +18,7 @@ from dataadapter import DataAdapterPhidget
 from adapter_gpio import AdapterGPIOInputPhidget, AdapterGPIOOutputPhidget
 from bme280 import BME280Phidget
 from sgp41 import SGP41Phidget
-
-
-def _saved_bool(value):
-    if isinstance(value, str):
-        return value.strip().lower() in ("1", "true", "yes", "on")
-    return bool(value)
+from config_util import saved_bool
 
 
 def _channel_info(plugin, device):
@@ -34,9 +29,9 @@ def _channel_info(plugin, device):
     channel = int(channel) if channel else -1
 
     is_vint_hub = props.get("isVintHub", None)
-    is_vint_hub = bool(is_vint_hub) if is_vint_hub else 0
+    is_vint_hub = saved_bool(is_vint_hub)
     is_vint_device = props.get("isVintDevice", None)
-    is_vint_device = bool(is_vint_device) if is_vint_device else 0
+    is_vint_device = saved_bool(is_vint_device)
     is_hub_port_device = int(is_vint_hub and not is_vint_device)
     hub_port = props.get("hubPort", -1)
     hub_port = int(hub_port) if hub_port else -1
@@ -47,8 +42,9 @@ def _channel_info(plugin, device):
         isHubPortDevice=is_hub_port_device,
         hubPort=hub_port,
         netInfo=NetInfo(
-            isRemote=plugin.pluginPrefs.get("networkPhidgets", False),
-            serverDiscovery=plugin.pluginPrefs.get("enableServerDiscovery", False),
+            isRemote=saved_bool(plugin.pluginPrefs.get("networkPhidgets", False)),
+            serverDiscovery=saved_bool(plugin.pluginPrefs.get(
+                "enableServerDiscovery", False)),
             serverName=props.get("serverName", None),
         ),
     )
@@ -71,7 +67,7 @@ def _common(plugin, device):
 
 
 def _custom_formula(props):
-    if props.get("useCustomFormula", False):
+    if saved_bool(props.get("useCustomFormula", False)):
         return props.get("customState", None), props.get("customFormula", None)
     return None, None
 
@@ -108,7 +104,7 @@ def _digital_input(plugin, device, common):
     props = device.pluginProps
     return DigitalInputPhidget(
         **common["base"],
-        isAlarm=bool(props.get("isAlarm", False)),
+        isAlarm=saved_bool(props.get("isAlarm", False)),
         onStateIcon=str(props.get("onStateIcon", "SensorOn")),
         offStateIcon=str(props.get("offStateIcon", "SensorOff")))
 
@@ -116,7 +112,7 @@ def _digital_input(plugin, device, common):
 def _temperature_sensor(plugin, device, common):
     props = device.pluginProps
     thermocouple_type = (int(props.get("thermocoupleType", None))
-                         if props.get("useThermoCouple", False) else None)
+                         if saved_bool(props.get("useThermoCouple", False)) else None)
     return TemperatureSensorPhidget(
         **common["base"], decimalPlaces=common["decimalPlaces"],
         displayTempUnit=props.get("displayTempUnit", "C"),
@@ -133,7 +129,7 @@ def _frequency_counter(plugin, device, common):
         dataInterval=common["dataInterval"],
         displayStateName=props.get("displayStateName", None),
         frequencyCutoff=float(props.get("frequencyCutoff", 1)),
-        isDAQ1400=bool(props.get("isDAQ1400", False)),
+        isDAQ1400=saved_bool(props.get("isDAQ1400", False)),
         inputType=int(props.get("inputType", 0)),
         powerSupply=int(props.get("powerSupply", 0)))
 
@@ -162,7 +158,7 @@ def _lcd(plugin, device, common):
                 ("d4", "D4", 4), ("d5", "D5", 5),
                 ("d6", "D6", 6), ("d7", "D7", 7))
         },
-        "backlightActiveHigh": _saved_bool(
+        "backlightActiveHigh": saved_bool(
             props.get("lcdI2CBacklightActiveHigh", True)),
     }
              if lcd_class is I2CLCDPhidget else {})
@@ -172,7 +168,7 @@ def _lcd(plugin, device, common):
         screenSize=int(props.get("lcdScreenSize", 1)),
         backlight=float(props.get("lcdBacklight", 1.0)),
         contrast=float(props.get("lcdContrast", 0.5)),
-        restoreInitialText=_saved_bool(props.get("lcdRestoreInitialText", False)),
+        restoreInitialText=saved_bool(props.get("lcdRestoreInitialText", False)),
         initialText=props.get("lcdInitialText", ""),
         initialLines=[props.get("lcdInitialLine%d" % line_number, "")
                       for line_number in range(1, 5)],
@@ -192,15 +188,15 @@ def _adapter_gpio_channel_info(plugin, device):
     adapter = plugin.activePhidgets.get(int(device.pluginProps["gpioAdapterDeviceId"]))
     if adapter is None:
         adapter_device = indigo.devices[int(device.pluginProps["gpioAdapterDeviceId"])]
-        info = _channel_info(plugin, adapter_device)
+        source = _channel_info(plugin, adapter_device)
     else:
         source = adapter.channelInfo
-        info = ChannelInfo(
-            serialNumber=source.serialNumber, hubPort=source.hubPort,
-            isHubPortDevice=source.isHubPortDevice,
-            netInfo=source.netInfo)
-    info.channel = int(device.pluginProps.get("gpioPin", 0))
-    return info
+    return ChannelInfo(
+        serialNumber=source.serialNumber,
+        hubPort=source.hubPort,
+        isHubPortDevice=source.isHubPortDevice,
+        channel=int(device.pluginProps.get("gpioPin", 0)),
+        netInfo=source.netInfo)
 
 
 def _adapter_gpio_input(plugin, device, common):
@@ -209,7 +205,7 @@ def _adapter_gpio_input(plugin, device, common):
     return AdapterGPIOInputPhidget(
         **common["base"], adapterDeviceId=int(props["gpioAdapterDeviceId"]),
         inputMode=props.get("gpioInputMode", "pullup"),
-        inverted=_saved_bool(props.get("gpioInverted", True)),
+        inverted=saved_bool(props.get("gpioInverted", True)),
         debounceMilliseconds=int(props.get("gpioDebounceMilliseconds", 50)),
         isAlarm=False, onStateIcon="SensorOn", offStateIcon="SensorOff")
 
