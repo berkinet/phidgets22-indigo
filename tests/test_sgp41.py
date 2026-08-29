@@ -92,6 +92,20 @@ class SGP41Tests(unittest.TestCase):
         device.setErrorStateOnServer.assert_called_with("No response at 0x59")
         timer.assert_called_once_with(1.0, wrapper._poll, (wrapper._generation,))
 
+    def test_state_list_is_rebuilt_before_first_state_update(self):
+        wrapper, _, device = self.wrapper()
+
+        with mock.patch.object(sgp41.threading, "Timer"):
+            wrapper.start()
+
+        refresh_index = device.mock_calls.index(
+            mock.call.stateListOrDisplayStateIdChanged())
+        first_update_index = next(
+            index for index, call in enumerate(device.mock_calls)
+            if call == mock.call.updateStateOnServer(
+                "connectionPath", value="Mac→I2C Adapter→SGP41 0x59"))
+        self.assertLess(refresh_index, first_update_index)
+
 
 if __name__ == "__main__":
     unittest.main()

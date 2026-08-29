@@ -167,6 +167,10 @@ class SGP41Phidget(object):
             if getattr(adapter, "_state", None) != "attached":
                 self._state = "starting"
                 return
+            # Indigo may retain the previous device type's dynamic states while
+            # a copied device is being saved. Install the SGP41 state list before
+            # the synchronous first poll publishes any values.
+            self.indigoDevice.stateListOrDisplayStateIdChanged()
             self._generation += 1
             self._state = "attached"
             self._poll(self._generation)

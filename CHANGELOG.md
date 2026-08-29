@@ -1,5 +1,14 @@
 # Release notes
 
+## 0.3.26 — 2026-08-29
+
+### Fixed
+
+- Rebuild a newly saved SGP41 device's dynamic state list before its first
+  synchronous measurement publishes metadata or sensor values. This prevents
+  transient `state key ... not defined` errors, particularly when the device
+  was created by copying another I2C sensor.
+
 ## 0.3.25 — 2026-08-29
 
 ### Added
