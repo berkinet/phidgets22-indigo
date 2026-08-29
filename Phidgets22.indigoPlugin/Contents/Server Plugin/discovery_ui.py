@@ -10,6 +10,7 @@ from discovery import (CHANNEL_CLASSES_BY_DEVICE_TYPE, device_token,
 from display_providers import available_display_providers
 from config_util import (bounded_float, bounded_int, call_with_timeout,
                          saved_bool, state_id)
+from formula import Formula
 from i2c_resources import (find_address_owner,
                             find_native_channel_owner)
 
@@ -360,8 +361,10 @@ class DiscoveryUiMixin(object):
                 errors["customState"] = (
                     "Use a state name beginning with a letter and containing "
                     "only letters, numbers, and underscores.")
-            if not str(values.get("customFormula", "") or "").strip():
-                errors["customFormula"] = "Enter a custom formula."
+            try:
+                Formula(values.get("customFormula", ""))
+            except ValueError as error:
+                errors["customFormula"] = str(error)
         return errors
 
     def validateDeviceConfigUi(self, valuesDict, typeId, devId):

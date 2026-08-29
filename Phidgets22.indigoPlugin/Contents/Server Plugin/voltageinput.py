@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-import traceback
 import indigo
 
 from Phidget22.Devices.VoltageInput import VoltageInput
 from Phidget22.VoltageSensorType import VoltageSensorType
 
 from phidget import PhidgetBase
+from formula import Formula
 
 import sensortypes
 
@@ -23,6 +23,8 @@ class VoltageInputPhidget(PhidgetBase):
         self.sensorValueChangeTrigger = sensorValueChangeTrigger
         self.customState = customState
         self.customFormula = customFormula
+        self.formula = (Formula(customFormula)
+                        if customState and customFormula else None)
 
         self.sensorUnit = sensortypes.getVoltageSensorUnit(sensorType)
         (self.sensorStateName, self.sensorSymbol) = sensortypes.getNameAndSymbol(self.sensorUnit)
@@ -55,13 +57,16 @@ class VoltageInputPhidget(PhidgetBase):
 
     def onVoltageChangeHandler(self, ph, voltage):
         self.indigoDevice.updateStateOnServer("voltage_in", value=voltage, decimalPlaces=self.decimalPlaces)
-        if self.sensorType == VoltageSensorType.SENSOR_TYPE_VOLTAGE and self.customState and self.customFormula:
+        if (self.sensorType == VoltageSensorType.SENSOR_TYPE_VOLTAGE and
+                self.customState and self.formula is not None):
             try:
-                formula = lambda x: eval(self.customFormula)
-                customValue = formula(float(voltage))
+                customValue = self.formula.evaluate(voltage)
                 self.indigoDevice.updateStateOnServer(self.customState, value=customValue, decimalPlaces=self.decimalPlaces)
-            except Exception as e:
-                self.logger.error('onVoltageChangeHandler: %s received for device: %s' %  (traceback.format_exc(), self.indigoDevice.name))
+            except (ArithmeticError, TypeError, ValueError) as error:
+                self.logger.error(
+                    "Custom voltage formula failed: device='%s' formula=%r "
+                    "input=%s: %s", self.indigoDevice.name,
+                    self.customFormula, voltage, error)
 
     def onSensorChangeHandler(self, ph, sensorValue, sensorUnit):
         self.indigoDevice.updateStateOnServer(self.sensorStateName , value=sensorValue, decimalPlaces=self.decimalPlaces)

@@ -64,6 +64,15 @@ Only network phidgets are supported. To use local attached phidgets, enable the 
 
 See the [Phidget Documentation](https://www.phidgets.com/docs/Addressing_Phidgets]) for details on how to address a Phidget.
 
+## Custom sensor formulas
+
+Voltage Input and Voltage Ratio Input devices can calculate a custom state from
+the raw reading. In a formula, `x` is the reading. Formulas may contain numeric
+constants, parentheses, `+`, `-`, `*`, `/`, `%`, `**`, the constants `pi` and
+`e`, and these functions: `abs`, `min`, `max`, `sqrt`, `exp`, `log`, `log10`,
+`sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `sinh`, `cosh`, `tanh`, `floor`,
+and `ceil`. Other Python names and operations are not supported.
+
 ## Development documentation
 
 The runtime code is divided by responsibility: `plugin.py` coordinates Indigo

@@ -71,10 +71,35 @@ class ConfigurationTests(unittest.TestCase):
                 "_validateDataAdapterSettings", "_validateChannelConfig"):
             self.assertTrue(hasattr(discovery_ui.DiscoveryUiMixin, name), name)
 
+    def test_custom_sensor_formula_is_validated_before_save(self):
+        instance = object.__new__(plugin.Plugin)
+        values = indigo.Dict({
+            "dataInterval": "1000", "decimalPlaces": "2",
+            "voltageSensorType": "0", "voltageChangeTrigger": "0",
+            "sensorValueChangeTrigger": "0", "useCustomFormula": True,
+            "customState": "converted",
+            "customFormula": "__import__('os').system('id')",
+        })
+
+        errors = instance._validateNativeSettings(values, "voltageInput")
+
+        self.assertIn("customFormula", errors)
+        self.assertIn("unsupported operation", errors["customFormula"])
+
+    def test_custom_formula_language_is_documented_in_device_dialogs(self):
+        devices = ElementTree.parse(SERVER_PLUGIN / "Devices.xml").getroot()
+        help_labels = [field.find("Label").text for field in devices.iter("Field")
+                       if field.get("id") == "customFormulaHelp"]
+
+        self.assertEqual(len(help_labels), 2)
+        for label in help_labels:
+            self.assertIn("Allowed: x, numbers", label)
+            self.assertIn("sin, cos, tan", label)
+
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.29</string>", plist)
+        self.assertIn("<string>0.3.30</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):

@@ -1,5 +1,19 @@
 # Release notes
 
+## 0.3.30 — 2026-08-29
+
+### Changed
+
+- Replace direct Python evaluation in Voltage Input and Voltage Ratio Input
+  custom formulas with the restricted mathematical interpreter already used by
+  LCD formula graphs.
+- Validate custom formulas before device configuration is saved, compile each
+  accepted expression once, and provide concise runtime calculation errors.
+- Document the complete allowed formula language in both device configuration
+  dialogs and the README.
+- Move the evaluator into a shared formula module while preserving the original
+  `formula_plot.Formula` import for compatibility.
+
 ## 0.3.29 — 2026-08-29
 
 ### Changed

@@ -7,7 +7,7 @@ import re
 import indigo
 
 from lcd import LCDPhidget
-from formula_plot import Formula
+from formula import Formula
 from config_util import bounded_float, bounded_int
 
 

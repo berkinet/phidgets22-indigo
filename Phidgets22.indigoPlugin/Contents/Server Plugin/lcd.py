@@ -15,7 +15,7 @@ from Phidget22.ErrorCode import ErrorCode
 from Phidget22.PhidgetException import PhidgetException
 
 from phidget import PhidgetBase
-from formula_plot import Formula
+from formula import Formula
 
 
 class LCDPhidget(PhidgetBase):

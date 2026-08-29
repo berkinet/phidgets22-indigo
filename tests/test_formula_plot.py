@@ -13,12 +13,13 @@ class FormulaTests(unittest.TestCase):
     def test_math_expression_uses_x_constants_and_approved_functions(self):
         formula = Formula("sin(x) + cos(pi) + max(2, e)")
         self.assertAlmostEqual(formula.evaluate(0), -1 + 2.718281828459045)
+        self.assertEqual(Formula("x**-2").evaluate(2), 0.25)
 
     def test_rejects_names_attributes_keywords_and_code_execution(self):
         for expression in (
                 "unknown(x)", "x.real", "__import__('os')",
                 "max(x=1, 2)", "[x for x in (1, 2)]", "x**x",
-                "x**101", "10000000000000"):
+                "x**101", "x**-101", "10000000000000", "True"):
             with self.subTest(expression=expression):
                 with self.assertRaises(ValueError):
                     Formula(expression)

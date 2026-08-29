@@ -209,7 +209,9 @@ These are potential deficiencies or ambiguities found by inspection. Because the
 7. **Device-stop assumptions**: `deviceStopComm()` pops without a default. Confirm Indigo never invokes stop for a device absent from `activePhidgets`, including failed construction/start cases.
 8. **Server-discovery preference semantics**: `enableServerDiscovery` is stored in `NetInfo` but not consulted by startup or `PhidgetBase`. Confirm whether it is intentionally fixed true and should remain a compatibility-only preference.
 9. **Unused network fields**: `NetInfo.hostname`, `port`, and `password` are unused. Determine whether they are abandoned scaffolding or the intended seam for explicit server support.
-10. **Custom formulas**: voltage and voltage-ratio custom formulas use Python `eval()` on user-supplied plugin configuration. This is existing advanced functionality with security and support implications; document the trusted-admin assumption before considering release.
+10. **Custom formulas**: resolved in 0.3.30. Voltage and voltage-ratio custom
+   formulas use the same restricted mathematical interpreter as LCD formula
+   graphs and are validated before configuration is saved.
 11. **Boolean property interpretation**: several values are coerced with `bool(value)`. Confirm Indigo supplies actual booleans rather than strings for all relevant checkbox fields.
 12. **Legacy suppression codes**: error codes `4098`, `4099`, and `4103` are suppressed by numeric value. Verify their meaning against the bundled/current Phidget22 SDK and the physical devices that generate them.
 
