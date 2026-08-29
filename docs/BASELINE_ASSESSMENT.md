@@ -33,7 +33,7 @@ The plugin bundles the complete generated Phidget22 Python API under `Server Plu
 | Shared Phidget lifecycle | `phidget.py` | Channel/network descriptors, asynchronous open, initial attachment timeout, common attach/detach/error handlers, close, and range checking |
 | Device integrations | `digitalinput.py`, `digitaloutput.py`, `frequencycounter.py`, `humiditysensor.py`, `temperaturesensor.py`, `voltageinput.py`, `voltageratioinput.py` | Phidget22 object creation, channel-specific configuration, event handlers, Indigo states, display state, and supported Indigo actions |
 | Indigo UI and declarations | `Devices.xml`, `PluginConfig.xml`, `Events.xml`, `Actions.xml`, `MenuItems.xml` | Device configuration forms, plugin preferences, attach/detach triggers, and declared action/menu surfaces |
-| Sensor metadata | `PhidgetInfo.py`, `sensortypes.py`, `Resources/phidgets.json` | Builds Indigo menu choices and maps Phidget units to Indigo state names |
+| Sensor metadata | `PhidgetInfo.py`, `phidget_enum_labels.py`, `sensortypes.py` | Discovers installed SDK enum values, applies stable Indigo labels, and maps Phidget units to Indigo state names |
 | Diagnostics utility | `phidget_util.py` | Formats physical/channel information for attach and detach log messages |
 | Standalone discovery utility | `scan.py` | Command-line Manager-based scanner; it is not imported by the running Indigo plugin |
 | Metadata | `Info.plist`, `README.md` | Plugin identity, versions, requirements, and high-level support statement |
@@ -46,7 +46,8 @@ Indigo constructs `Plugin` from `plugin.py`. The constructor:
 
 - initializes file and Indigo logging;
 - creates `activePhidgets`, a map from Indigo device ID to wrapper instance;
-- loads `Resources/phidgets.json` through `PhidgetInfo` for configuration menus; and
+- builds configuration menus from installed Phidget22 enums through
+  `PhidgetInfo`, applying source-controlled label overrides; and
 - initializes an in-memory trigger registry.
 
 ### 2. Plugin startup
@@ -194,7 +195,8 @@ Consequently, the current runtime does not select a named server for a device. I
 - Actions: none declared in `Actions.xml`; standard Indigo device/sensor actions are handled through plugin callbacks.
 - Menu items: none declared.
 - Plugin preferences: network mode, server discovery, attach timeout, error suppression, plugin logging, and low-level Phidget API logging.
-- Dynamic menus: sensor/filter/thermocouple/input/power types are populated from `phidgets.json`.
+- Dynamic menus: sensor/filter/thermocouple/input/power types are discovered
+  from the installed SDK and labeled by `phidget_enum_labels.py`.
 
 ## Observations requiring controlled verification
 
@@ -222,7 +224,7 @@ The following non-hardware checks passed against the baseline:
 - Python compilation for all plugin-specific and bundled `.py` files using the system Python 3 interpreter, with bytecode redirected outside the repository.
 - XML well-formedness for `Actions.xml`, `Devices.xml`, `Events.xml`, `MenuItems.xml`, and `PluginConfig.xml` using `xmllint`.
 - Property-list validation for `Info.plist` using `plutil`.
-- JSON parsing for `Resources/phidgets.json`; its top-level object contains 48 entries.
+- Runtime enum discovery for the six SDK enum classes used by Indigo menus.
 - Clean Git working tree before documentation was added.
 
 These checks do not validate Indigo XML semantics, native Phidget library loading, Indigo API behavior, network discovery, or hardware behavior.

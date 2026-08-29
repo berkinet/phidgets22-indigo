@@ -36,7 +36,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         self.indigo_log_handler.setLevel(logging.INFO)
         self.activePhidgets = {}
         self._activePhidgetsLock = threading.RLock()
-        self.phidgetInfo = PhidgetInfo(phidgetInfoFile="../Resources/phidgets.json")
+        self.phidgetInfo = PhidgetInfo()
         self.logger.setLevel(logging.DEBUG)
         self.trigger_dict = {}
 

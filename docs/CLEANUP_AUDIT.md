@@ -45,3 +45,8 @@ Before v1.0.0, the obsolete top-level `make_phidget_lists.py` generator was
 archived outside the public repository and removed. Its default input referred
 to the no-longer-bundled Phidget22 package and could overwrite the maintained
 `phidgets.json` resource with an empty object when run without arguments.
+
+The generated `phidgets.json` snapshot was subsequently archived outside the
+public repository and removed. The plugin now discovers the six enum classes it
+uses from the installed Phidget22 SDK and applies source-controlled labels from
+`phidget_enum_labels.py`, including readable fallbacks for future constants.

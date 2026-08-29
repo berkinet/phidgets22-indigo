@@ -1,5 +1,19 @@
 # Release notes
 
+## 0.3.34 — 2026-08-29
+
+### Changed
+
+- Replace the static `phidgets.json` snapshot with runtime discovery of the six
+  installed Phidget22 enum classes used by Indigo configuration menus.
+- Preserve current menu wording in the source-controlled
+  `phidget_enum_labels.py` override table and generate readable labels for new
+  SDK constants that do not yet have an override.
+- Add the installed SDK's 5 V power-supply and VCP4116 sensor options and
+  remove 42 unused enum groups from the public plugin download.
+- Archive `phidgets.json` outside the public repository and remove its startup
+  file dependency.
+
 ## 0.3.33 — 2026-08-29
 
 ### Changed
