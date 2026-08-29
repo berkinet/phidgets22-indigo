@@ -454,6 +454,7 @@ class PhidgetBase(object):
         Each specification is ``(kind, state_id, label)`` where kind is one of
         ``number``, ``string``, or ``bool``.
         """
+        # Keep the Indigo SDK optional while this base lifecycle module loads.
         import indigo
         states = indigo.List()
         factories = {

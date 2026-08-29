@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.3.29 — 2026-08-29
+
+### Changed
+
+- Replace the 422-line device-configuration validator with a small dispatcher
+  and focused SGP41, BME280/BMP280, adapter GPIO, LCD, DataAdapter, and shared
+  native-channel validation methods in the same UI module.
+- Document why the shared Phidget base imports Indigo only when constructing a
+  dynamic state list, preserving standalone lifecycle testability.
+
 ## 0.3.28 — 2026-08-29
 
 ### Fixed

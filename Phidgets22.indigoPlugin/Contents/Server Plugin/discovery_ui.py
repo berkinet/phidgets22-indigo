@@ -366,191 +366,342 @@ class DiscoveryUiMixin(object):
 
     def validateDeviceConfigUi(self, valuesDict, typeId, devId):
         valuesDict["observedConnection"] = self._observedConnectionForDevice(devId)
-        if typeId == "sgp41":
-            errors = indigo.Dict()
-            selection = valuesDict.get("sgpAdapterSelection", "")
-            valuesDict = self._applySGPAdapter(valuesDict, selection)
-            adapter_id = str(valuesDict.get("sgpAdapterDeviceId", ""))
-            if not adapter_id or adapter_id != str(selection):
-                errors["sgpAdapterSelection"] = "Select an available I2C adapter."
-            display_state = valuesDict.get("sgpDisplayState", "rawVoc")
-            if display_state not in ("rawVoc", "rawNox"):
-                errors["sgpDisplayState"] = "Select Raw VOC or Raw NOx."
-            for key, label, minimum, maximum in (
-                    ("sgpRelativeHumidity", "relative humidity", 0.0, 100.0),
-                    ("sgpTemperature", "temperature", -45.0, 130.0)):
-                try:
-                    value = float(valuesDict.get(key, ""))
-                    if value < minimum or value > maximum:
-                        raise ValueError
-                    valuesDict[key] = str(value)
-                except (TypeError, ValueError):
-                    errors[key] = "Enter %s from %g through %g." % (
-                        label, minimum, maximum)
-            if adapter_id:
-                owner = find_address_owner(
-                    getattr(indigo, "devices", ()), self.pluginId,
-                    adapter_id, 0x59, devId)
-                if owner is not None:
-                    errors["sgpAdapterSelection"] = (
-                        "Address 0x59 is already assigned to '%s'." % owner.name)
-                adapter = self.activePhidgets.get(int(adapter_id))
-                if adapter is not None and "sgpAdapterSelection" not in errors:
-                    try:
-                        response = bytes(call_with_timeout(
-                            lambda: adapter.i2cCommandResponse(
-                                0x59, b"\x36\x82", 0.001, 9)))
-                        if len(response) != 9:
-                            raise ValueError("incomplete serial-number response")
-                        for offset in range(0, 9, 3):
-                            if response[offset + 2] != _sensirion_crc(
-                                    response[offset:offset + 2]):
-                                raise ValueError("invalid serial-number CRC")
-                    except Exception as error:
-                        errors["sgpAdapterSelection"] = (
-                            "Unable to verify SGP41 at 0x59: %s" % error)
-            if errors:
-                errors["showAlertText"] = "Correct the SGP41 settings before saving."
-                return (False, valuesDict, errors)
-            valuesDict["address"] = "sgp41-%s-59" % adapter_id
-            valuesDict["observedConnection"] = "%s→SGP41 0x59" % (
-                indigo.devices[int(adapter_id)].name)
-            return (True, valuesDict)
-        if typeId == "bme280":
-            errors = indigo.Dict()
-            selection = valuesDict.get("bmeAdapterSelection", "")
-            valuesDict = self._applyBMEAdapter(valuesDict, selection)
-            adapter_id = str(valuesDict.get("bmeAdapterDeviceId", ""))
-            if not adapter_id or adapter_id != str(selection):
-                errors["bmeAdapterSelection"] = "Select an available I2C adapter."
-            display_state = valuesDict.get("bmeDisplayState", "pressure")
-            if display_state not in ("temperature", "pressure", "humidity"):
-                errors["bmeDisplayState"] = (
-                    "Select temperature, pressure, or humidity.")
-            try:
-                address = int(str(valuesDict.get("bmeI2CAddress", "")), 0)
-                if address not in (0x76, 0x77):
-                    raise ValueError
-                valuesDict["bmeI2CAddress"] = "0x%02X" % address
-            except (TypeError, ValueError):
-                address = None
-                errors["bmeI2CAddress"] = "Select address 0x76 or 0x77."
-            try:
-                interval = float(valuesDict.get("bmePollInterval", "2"))
-                if interval < 1.0 or interval > 3600.0:
-                    raise ValueError
-                valuesDict["bmePollInterval"] = str(interval)
-            except (TypeError, ValueError):
-                errors["bmePollInterval"] = (
-                    "Enter a polling interval from 1 to 3600 seconds.")
-            try:
-                decimal_places = int(valuesDict.get("decimalPlaces", "2"))
-                if decimal_places < 0 or decimal_places > 6:
-                    raise ValueError
-                valuesDict["decimalPlaces"] = str(decimal_places)
-            except (TypeError, ValueError):
-                errors["decimalPlaces"] = (
-                    "Enter a whole number from 0 through 6.")
-            if adapter_id and address is not None:
-                owner = find_address_owner(
-                    getattr(indigo, "devices", ()), self.pluginId,
-                    adapter_id, address, devId)
-                if owner is not None:
-                    errors["bmeI2CAddress"] = (
-                        "Address 0x%02X is already assigned to '%s'." %
-                        (address, owner.name))
-                adapter = self.activePhidgets.get(int(adapter_id))
-                if adapter is not None and "bmeI2CAddress" not in errors:
-                    try:
-                        response = bytes(call_with_timeout(
-                            lambda: adapter.i2cSendReceive(
-                                address, bytes((0xD0,)), 1)))
-                        if len(response) != 1 or response[0] not in (0x58, 0x60):
-                            found = "no chip ID" if not response else "chip ID 0x%02X" % response[0]
-                            errors["bmeI2CAddress"] = (
-                                "No BME280/BMP280 found at 0x%02X (%s)." %
-                                (address, found))
-                        elif (response[0] == 0x58 and
-                              display_state == "humidity"):
-                            errors["bmeDisplayState"] = (
-                                "BMP280 does not provide a humidity state.")
-                    except Exception as error:
-                        errors["bmeI2CAddress"] = (
-                            "Unable to verify address 0x%02X: %s" %
-                            (address, error))
-            if errors:
-                errors["showAlertText"] = (
-                    "Correct the BME280/BMP280 settings before saving.")
-                return (False, valuesDict, errors)
-            valuesDict["address"] = "bme280-%s-%02x" % (adapter_id, address)
-            valuesDict["observedConnection"] = "%s→BME/BMP280 0x%02X" % (
-                indigo.devices[int(adapter_id)].name, address)
-            return (True, valuesDict)
+        validators = {
+            "sgp41": self._validateSGP41Config,
+            "bme280": self._validateBME280Config,
+            "lcd": self._validateLCDConfig,
+            "dataAdapter": self._validateDataAdapterConfig,
+        }
+        validator = validators.get(typeId)
+        if validator is not None:
+            return validator(valuesDict, devId)
         if typeId in ("adapterGPIOInput", "adapterGPIOOutput"):
-            errors = indigo.Dict()
-            selection = valuesDict.get("gpioAdapterSelection", "")
-            valuesDict = self._applyGPIOAdapter(valuesDict, selection)
-            adapter_id = str(valuesDict.get("gpioAdapterDeviceId", ""))
-            if not adapter_id or adapter_id != str(selection):
-                errors["gpioAdapterSelection"] = "Select an available I2C adapter."
+            return self._validateAdapterGPIOConfig(valuesDict, typeId, devId)
+        return self._validateChannelConfig(valuesDict, typeId, devId)
+
+    def _validateSGP41Config(self, valuesDict, devId):
+        errors = indigo.Dict()
+        selection = valuesDict.get("sgpAdapterSelection", "")
+        valuesDict = self._applySGPAdapter(valuesDict, selection)
+        adapter_id = str(valuesDict.get("sgpAdapterDeviceId", ""))
+        if not adapter_id or adapter_id != str(selection):
+            errors["sgpAdapterSelection"] = "Select an available I2C adapter."
+        display_state = valuesDict.get("sgpDisplayState", "rawVoc")
+        if display_state not in ("rawVoc", "rawNox"):
+            errors["sgpDisplayState"] = "Select Raw VOC or Raw NOx."
+        for key, label, minimum, maximum in (
+                ("sgpRelativeHumidity", "relative humidity", 0.0, 100.0),
+                ("sgpTemperature", "temperature", -45.0, 130.0)):
             try:
-                pin = int(valuesDict.get("gpioPin", ""))
-                if pin not in (0, 1):
+                value = float(valuesDict.get(key, ""))
+                if value < minimum or value > maximum:
                     raise ValueError
-                valuesDict["gpioPin"] = str(pin)
+                valuesDict[key] = str(value)
             except (TypeError, ValueError):
-                pin = None
-                errors["gpioPin"] = "Select GPIO 0 or GPIO 1."
-
-            if typeId == "adapterGPIOInput":
-                if valuesDict.get("gpioInputMode", "pullup") not in (
-                        "pullup", "floating"):
-                    errors["gpioInputMode"] = "Select Pull-up or Floating."
+                errors[key] = "Enter %s from %g through %g." % (
+                    label, minimum, maximum)
+        if adapter_id:
+            owner = find_address_owner(
+                getattr(indigo, "devices", ()), self.pluginId,
+                adapter_id, 0x59, devId)
+            if owner is not None:
+                errors["sgpAdapterSelection"] = (
+                    "Address 0x59 is already assigned to '%s'." % owner.name)
+            adapter = self.activePhidgets.get(int(adapter_id))
+            if adapter is not None and "sgpAdapterSelection" not in errors:
                 try:
-                    debounce = int(valuesDict.get(
-                        "gpioDebounceMilliseconds", "50"))
-                    if debounce < 0 or debounce > 5000:
-                        raise ValueError
-                    valuesDict["gpioDebounceMilliseconds"] = str(debounce)
-                except (TypeError, ValueError):
-                    errors["gpioDebounceMilliseconds"] = (
-                        "Enter a whole number from 0 through 5000.")
+                    response = bytes(call_with_timeout(
+                        lambda: adapter.i2cCommandResponse(
+                            0x59, b"\x36\x82", 0.001, 9)))
+                    if len(response) != 9:
+                        raise ValueError("incomplete serial-number response")
+                    for offset in range(0, 9, 3):
+                        if response[offset + 2] != _sensirion_crc(
+                                response[offset:offset + 2]):
+                            raise ValueError("invalid serial-number CRC")
+                except Exception as error:
+                    errors["sgpAdapterSelection"] = (
+                        "Unable to verify SGP41 at 0x59: %s" % error)
+        if errors:
+            errors["showAlertText"] = "Correct the SGP41 settings before saving."
+            return (False, valuesDict, errors)
+        valuesDict["address"] = "sgp41-%s-59" % adapter_id
+        valuesDict["observedConnection"] = "%s→SGP41 0x59" % (
+            indigo.devices[int(adapter_id)].name)
+        return (True, valuesDict)
 
-            if adapter_id and pin is not None:
-                for other in getattr(indigo, "devices", ()):
-                    props = getattr(other, "pluginProps", {})
-                    if (getattr(other, "id", None) == devId or
-                            getattr(other, "pluginId", None) != self.pluginId or
-                            getattr(other, "deviceTypeId", None) not in
-                            ("adapterGPIOInput", "adapterGPIOOutput")):
-                        continue
-                    if (str(props.get("gpioAdapterDeviceId", "")) == adapter_id and
-                            str(props.get("gpioPin", "")) == str(pin)):
-                        errors["gpioPin"] = (
-                            "GPIO %d is already assigned to '%s'." %
-                            (pin, getattr(other, "name", "another device")))
-                        break
-            if errors:
-                errors["showAlertText"] = "Correct the GPIO settings before saving."
-                return (False, valuesDict, errors)
-            valuesDict["address"] = "gpio-%s-%s" % (adapter_id, pin)
-            valuesDict["observedConnection"] = "%s→GPIO %s" % (
-                indigo.devices[int(adapter_id)].name, pin)
-            return (True, valuesDict)
-        if typeId == "lcd":
-            selection = valuesDict.get("lcdDisplayProvider", "")
-            providers = {provider["id"]: provider
-                         for provider in available_display_providers(self)}
-            saved_native_offline = bool(
-                devId and valuesDict.get("lcdProviderKind", "native") == "native" and
-                str(valuesDict.get("serialNumber", "")).strip() and
-                str(valuesDict.get("channel", "")).strip())
-            if selection not in providers and not saved_native_offline:
-                errors = indigo.Dict()
-                errors["lcdDisplayProvider"] = "Select an available display."
-                errors["showAlertText"] = "Select an available display before saving."
-                return (False, valuesDict, errors)
-            valuesDict = self._applyDisplayProvider(valuesDict, selection, devId)
+    def _validateBME280Config(self, valuesDict, devId):
+        errors = indigo.Dict()
+        selection = valuesDict.get("bmeAdapterSelection", "")
+        valuesDict = self._applyBMEAdapter(valuesDict, selection)
+        adapter_id = str(valuesDict.get("bmeAdapterDeviceId", ""))
+        if not adapter_id or adapter_id != str(selection):
+            errors["bmeAdapterSelection"] = "Select an available I2C adapter."
+        display_state = valuesDict.get("bmeDisplayState", "pressure")
+        if display_state not in ("temperature", "pressure", "humidity"):
+            errors["bmeDisplayState"] = (
+                "Select temperature, pressure, or humidity.")
+        try:
+            address = int(str(valuesDict.get("bmeI2CAddress", "")), 0)
+            if address not in (0x76, 0x77):
+                raise ValueError
+            valuesDict["bmeI2CAddress"] = "0x%02X" % address
+        except (TypeError, ValueError):
+            address = None
+            errors["bmeI2CAddress"] = "Select address 0x76 or 0x77."
+        try:
+            interval = float(valuesDict.get("bmePollInterval", "2"))
+            if interval < 1.0 or interval > 3600.0:
+                raise ValueError
+            valuesDict["bmePollInterval"] = str(interval)
+        except (TypeError, ValueError):
+            errors["bmePollInterval"] = (
+                "Enter a polling interval from 1 to 3600 seconds.")
+        try:
+            decimal_places = int(valuesDict.get("decimalPlaces", "2"))
+            if decimal_places < 0 or decimal_places > 6:
+                raise ValueError
+            valuesDict["decimalPlaces"] = str(decimal_places)
+        except (TypeError, ValueError):
+            errors["decimalPlaces"] = (
+                "Enter a whole number from 0 through 6.")
+        if adapter_id and address is not None:
+            owner = find_address_owner(
+                getattr(indigo, "devices", ()), self.pluginId,
+                adapter_id, address, devId)
+            if owner is not None:
+                errors["bmeI2CAddress"] = (
+                    "Address 0x%02X is already assigned to '%s'." %
+                    (address, owner.name))
+            adapter = self.activePhidgets.get(int(adapter_id))
+            if adapter is not None and "bmeI2CAddress" not in errors:
+                try:
+                    response = bytes(call_with_timeout(
+                        lambda: adapter.i2cSendReceive(
+                            address, bytes((0xD0,)), 1)))
+                    if len(response) != 1 or response[0] not in (0x58, 0x60):
+                        found = "no chip ID" if not response else "chip ID 0x%02X" % response[0]
+                        errors["bmeI2CAddress"] = (
+                            "No BME280/BMP280 found at 0x%02X (%s)." %
+                            (address, found))
+                    elif (response[0] == 0x58 and
+                          display_state == "humidity"):
+                        errors["bmeDisplayState"] = (
+                            "BMP280 does not provide a humidity state.")
+                except Exception as error:
+                    errors["bmeI2CAddress"] = (
+                        "Unable to verify address 0x%02X: %s" %
+                        (address, error))
+        if errors:
+            errors["showAlertText"] = (
+                "Correct the BME280/BMP280 settings before saving.")
+            return (False, valuesDict, errors)
+        valuesDict["address"] = "bme280-%s-%02x" % (adapter_id, address)
+        valuesDict["observedConnection"] = "%s→BME/BMP280 0x%02X" % (
+            indigo.devices[int(adapter_id)].name, address)
+        return (True, valuesDict)
+
+    def _validateAdapterGPIOConfig(self, valuesDict, typeId, devId):
+        errors = indigo.Dict()
+        selection = valuesDict.get("gpioAdapterSelection", "")
+        valuesDict = self._applyGPIOAdapter(valuesDict, selection)
+        adapter_id = str(valuesDict.get("gpioAdapterDeviceId", ""))
+        if not adapter_id or adapter_id != str(selection):
+            errors["gpioAdapterSelection"] = "Select an available I2C adapter."
+        try:
+            pin = int(valuesDict.get("gpioPin", ""))
+            if pin not in (0, 1):
+                raise ValueError
+            valuesDict["gpioPin"] = str(pin)
+        except (TypeError, ValueError):
+            pin = None
+            errors["gpioPin"] = "Select GPIO 0 or GPIO 1."
+
+        if typeId == "adapterGPIOInput":
+            if valuesDict.get("gpioInputMode", "pullup") not in (
+                    "pullup", "floating"):
+                errors["gpioInputMode"] = "Select Pull-up or Floating."
+            try:
+                debounce = int(valuesDict.get(
+                    "gpioDebounceMilliseconds", "50"))
+                if debounce < 0 or debounce > 5000:
+                    raise ValueError
+                valuesDict["gpioDebounceMilliseconds"] = str(debounce)
+            except (TypeError, ValueError):
+                errors["gpioDebounceMilliseconds"] = (
+                    "Enter a whole number from 0 through 5000.")
+
+        if adapter_id and pin is not None:
+            for other in getattr(indigo, "devices", ()):
+                props = getattr(other, "pluginProps", {})
+                if (getattr(other, "id", None) == devId or
+                        getattr(other, "pluginId", None) != self.pluginId or
+                        getattr(other, "deviceTypeId", None) not in
+                        ("adapterGPIOInput", "adapterGPIOOutput")):
+                    continue
+                if (str(props.get("gpioAdapterDeviceId", "")) == adapter_id and
+                        str(props.get("gpioPin", "")) == str(pin)):
+                    errors["gpioPin"] = (
+                        "GPIO %d is already assigned to '%s'." %
+                        (pin, getattr(other, "name", "another device")))
+                    break
+        if errors:
+            errors["showAlertText"] = "Correct the GPIO settings before saving."
+            return (False, valuesDict, errors)
+        valuesDict["address"] = "gpio-%s-%s" % (adapter_id, pin)
+        valuesDict["observedConnection"] = "%s→GPIO %s" % (
+            indigo.devices[int(adapter_id)].name, pin)
+        return (True, valuesDict)
+
+    def _validateLCDConfig(self, valuesDict, devId):
+        selection = valuesDict.get("lcdDisplayProvider", "")
+        providers = {provider["id"]: provider
+                     for provider in available_display_providers(self)}
+        saved_native_offline = bool(
+            devId and valuesDict.get("lcdProviderKind", "native") == "native" and
+            str(valuesDict.get("serialNumber", "")).strip() and
+            str(valuesDict.get("channel", "")).strip())
+        if selection not in providers and not saved_native_offline:
+            errors = indigo.Dict()
+            errors["lcdDisplayProvider"] = "Select an available display."
+            errors["showAlertText"] = "Select an available display before saving."
+            return (False, valuesDict, errors)
+        valuesDict = self._applyDisplayProvider(valuesDict, selection, devId)
+        return self._validateChannelConfig(
+            valuesDict, "lcd", devId, self._validateLCDSettings)
+
+    def _validateLCDSettings(self, valuesDict, devId, description):
+        errors = indigo.Dict()
+        try:
+            screen_size = int(valuesDict.get("lcdScreenSize", "1"))
+            if screen_size < 1 or screen_size > 12:
+                raise ValueError
+        except (TypeError, ValueError):
+            errors["lcdScreenSize"] = "Select a valid LCD screen size."
+            screen_size = 1
+
+        if valuesDict.get("lcdProviderKind") == "adapter":
+            if valuesDict.get("lcdProfile") == FREENOVE_I2C_PROFILE:
+                for key, default in FREENOVE_I2C_DEFAULTS.items():
+                    if key != "lcdI2CAddress":
+                        valuesDict[key] = default
+            if screen_size not in (5, 8):
+                errors["lcdScreenSize"] = (
+                    "Select 2 rows × 16 characters or 4 rows × 20 characters.")
+            i2c_address = None
+            try:
+                i2c_address = int(str(valuesDict.get(
+                    "lcdI2CAddress", "0x27")).strip(), 0)
+                if i2c_address < 0x08 or i2c_address > 0x77:
+                    raise ValueError
+                valuesDict["lcdI2CAddress"] = "0x%02X" % i2c_address
+            except (TypeError, ValueError):
+                errors["lcdI2CAddress"] = (
+                    "Enter a 7-bit I2C address from 0x08 through 0x77.")
+
+            if i2c_address is not None:
+                adapter_id = str(valuesDict.get("lcdAdapterDeviceId", ""))
+                owner = find_address_owner(
+                    getattr(indigo, "devices", ()), self.pluginId,
+                    adapter_id, i2c_address, devId)
+                if owner is not None:
+                    errors["lcdI2CAddress"] = (
+                        "That address is already used by '%s' on this adapter." %
+                        owner.name)
+
+                adapter = self.activePhidgets.get(int(adapter_id or 0))
+                probe = getattr(adapter, "i2cAddressResponds", None)
+                if ("lcdI2CAddress" not in errors and probe is not None and
+                        getattr(adapter, "_state", None) == "attached"):
+                    try:
+                        if not call_with_timeout(lambda: probe(i2c_address)):
+                            errors["lcdI2CAddress"] = (
+                                "No I2C device responded at 0x%02X. Verify the "
+                                "address jumpers and wiring." % i2c_address)
+                    except Exception:
+                        self.logger.warning(
+                            "Unable to verify I2C address 0x%02X during LCD "
+                            "configuration", i2c_address, exc_info=True)
+
+            pins = []
+            for field in ("lcdI2CRSPin", "lcdI2CRWPin",
+                          "lcdI2CEnablePin", "lcdI2CBacklightPin",
+                          "lcdI2CD4Pin", "lcdI2CD5Pin",
+                          "lcdI2CD6Pin", "lcdI2CD7Pin"):
+                try:
+                    pin = int(valuesDict.get(field, ""))
+                    if pin < 0 or pin > 7:
+                        raise ValueError
+                    valuesDict[field] = str(pin)
+                    pins.append(pin)
+                except (TypeError, ValueError):
+                    errors[field] = "Enter an expander pin number from 0 through 7."
+            if len(pins) == 8 and len(set(pins)) != 8:
+                errors["lcdI2CRSPin"] = (
+                    "Each LCD signal must use a different expander pin.")
+
+        for field, label in (("lcdBacklight", "backlight"),
+                             ("lcdContrast", "contrast")):
+            try:
+                value = float(valuesDict.get(field, ""))
+                if value < 0.0 or value > 1.0:
+                    raise ValueError
+            except (TypeError, ValueError):
+                errors[field] = (
+                    "Enter a %s value from 0.0 to 1.0." % label)
+
+        for field, label in (("lcdInitialX", "X"), ("lcdInitialY", "Y")):
+            try:
+                value = int(valuesDict.get(field, "0"))
+                if value < 0:
+                    raise ValueError
+                valuesDict[field] = str(value)
+            except (TypeError, ValueError):
+                errors[field] = (
+                    "Enter a whole-number %s position of zero or greater." % label)
+
+        if (description is not None and
+                str(description.get("deviceSKU") or "").startswith("1204") and
+                screen_size == 1):
+            errors["lcdScreenSize"] = (
+                "Select the dimensions of the panel connected to this text LCD adapter.")
+
+        if (description is not None and
+                description.get("channelSubclass") == 80 and screen_size != 1):
+            errors["lcdScreenSize"] = (
+                "Use Automatic / graphic LCD for a graphic display.")
+
+        if errors:
+            errors["showAlertText"] = "Correct the LCD settings before saving."
+        return errors
+
+
+    def _validateDataAdapterConfig(self, valuesDict, devId):
+        return self._validateChannelConfig(
+            valuesDict, "dataAdapter", devId, self._validateDataAdapterSettings)
+
+    def _validateDataAdapterSettings(self, valuesDict, devId, description):
+        errors = indigo.Dict()
+        try:
+            voltage = int(valuesDict.get("dataAdapterVoltage", ""))
+            if voltage not in (1, 3, 4, 5):
+                raise ValueError
+        except (TypeError, ValueError):
+            errors["dataAdapterVoltage"] = "Select a supported bus voltage."
+        try:
+            frequency = int(valuesDict.get("dataAdapterFrequency", ""))
+            if frequency not in (1, 2, 3):
+                raise ValueError
+        except (TypeError, ValueError):
+            errors["dataAdapterFrequency"] = "Select a supported I2C frequency."
+        if errors:
+            errors["showAlertText"] = (
+                "Correct the I2C adapter settings before saving.")
+        return errors
+
+
+    def _validateChannelConfig(self, valuesDict, typeId, devId,
+                               settingsValidator=None):
         inventory = getattr(self, "discoveryInventory", None)
         compatible_available = bool(
             inventory is not None and inventory.server_choices(typeId))
@@ -607,128 +758,9 @@ class DiscoveryUiMixin(object):
             valuesDict["hubPort"] = (
                 str(description.get("hubPort")) if is_vint else "")
 
-        if typeId == "lcd":
-            errors = indigo.Dict()
-            try:
-                screen_size = int(valuesDict.get("lcdScreenSize", "1"))
-                if screen_size < 1 or screen_size > 12:
-                    raise ValueError
-            except (TypeError, ValueError):
-                errors["lcdScreenSize"] = "Select a valid LCD screen size."
-                screen_size = 1
-
-            if valuesDict.get("lcdProviderKind") == "adapter":
-                if valuesDict.get("lcdProfile") == FREENOVE_I2C_PROFILE:
-                    for key, default in FREENOVE_I2C_DEFAULTS.items():
-                        if key != "lcdI2CAddress":
-                            valuesDict[key] = default
-                if screen_size not in (5, 8):
-                    errors["lcdScreenSize"] = (
-                        "Select 2 rows × 16 characters or 4 rows × 20 characters.")
-                i2c_address = None
-                try:
-                    i2c_address = int(str(valuesDict.get(
-                        "lcdI2CAddress", "0x27")).strip(), 0)
-                    if i2c_address < 0x08 or i2c_address > 0x77:
-                        raise ValueError
-                    valuesDict["lcdI2CAddress"] = "0x%02X" % i2c_address
-                except (TypeError, ValueError):
-                    errors["lcdI2CAddress"] = (
-                        "Enter a 7-bit I2C address from 0x08 through 0x77.")
-
-                if i2c_address is not None:
-                    adapter_id = str(valuesDict.get("lcdAdapterDeviceId", ""))
-                    owner = find_address_owner(
-                        getattr(indigo, "devices", ()), self.pluginId,
-                        adapter_id, i2c_address, devId)
-                    if owner is not None:
-                        errors["lcdI2CAddress"] = (
-                            "That address is already used by '%s' on this adapter." %
-                            owner.name)
-
-                    adapter = self.activePhidgets.get(int(adapter_id or 0))
-                    probe = getattr(adapter, "i2cAddressResponds", None)
-                    if ("lcdI2CAddress" not in errors and probe is not None and
-                            getattr(adapter, "_state", None) == "attached"):
-                        try:
-                            if not call_with_timeout(lambda: probe(i2c_address)):
-                                errors["lcdI2CAddress"] = (
-                                    "No I2C device responded at 0x%02X. Verify the "
-                                    "address jumpers and wiring." % i2c_address)
-                        except Exception:
-                            self.logger.warning(
-                                "Unable to verify I2C address 0x%02X during LCD "
-                                "configuration", i2c_address, exc_info=True)
-
-                pins = []
-                for field in ("lcdI2CRSPin", "lcdI2CRWPin",
-                              "lcdI2CEnablePin", "lcdI2CBacklightPin",
-                              "lcdI2CD4Pin", "lcdI2CD5Pin",
-                              "lcdI2CD6Pin", "lcdI2CD7Pin"):
-                    try:
-                        pin = int(valuesDict.get(field, ""))
-                        if pin < 0 or pin > 7:
-                            raise ValueError
-                        valuesDict[field] = str(pin)
-                        pins.append(pin)
-                    except (TypeError, ValueError):
-                        errors[field] = "Enter an expander pin number from 0 through 7."
-                if len(pins) == 8 and len(set(pins)) != 8:
-                    errors["lcdI2CRSPin"] = (
-                        "Each LCD signal must use a different expander pin.")
-
-            for field, label in (("lcdBacklight", "backlight"),
-                                 ("lcdContrast", "contrast")):
-                try:
-                    value = float(valuesDict.get(field, ""))
-                    if value < 0.0 or value > 1.0:
-                        raise ValueError
-                except (TypeError, ValueError):
-                    errors[field] = (
-                        "Enter a %s value from 0.0 to 1.0." % label)
-
-            for field, label in (("lcdInitialX", "X"), ("lcdInitialY", "Y")):
-                try:
-                    value = int(valuesDict.get(field, "0"))
-                    if value < 0:
-                        raise ValueError
-                    valuesDict[field] = str(value)
-                except (TypeError, ValueError):
-                    errors[field] = (
-                        "Enter a whole-number %s position of zero or greater." % label)
-
-            if (description is not None and
-                    str(description.get("deviceSKU") or "").startswith("1204") and
-                    screen_size == 1):
-                errors["lcdScreenSize"] = (
-                    "Select the dimensions of the panel connected to this text LCD adapter.")
-
-            if (description is not None and
-                    description.get("channelSubclass") == 80 and screen_size != 1):
-                errors["lcdScreenSize"] = (
-                    "Use Automatic / graphic LCD for a graphic display.")
-
+        if settingsValidator is not None:
+            errors = settingsValidator(valuesDict, devId, description)
             if errors:
-                errors["showAlertText"] = "Correct the LCD settings before saving."
-                return (False, valuesDict, errors)
-
-        if typeId == "dataAdapter":
-            errors = indigo.Dict()
-            try:
-                voltage = int(valuesDict.get("dataAdapterVoltage", ""))
-                if voltage not in (1, 3, 4, 5):
-                    raise ValueError
-            except (TypeError, ValueError):
-                errors["dataAdapterVoltage"] = "Select a supported bus voltage."
-            try:
-                frequency = int(valuesDict.get("dataAdapterFrequency", ""))
-                if frequency not in (1, 2, 3):
-                    raise ValueError
-            except (TypeError, ValueError):
-                errors["dataAdapterFrequency"] = "Select a supported I2C frequency."
-            if errors:
-                errors["showAlertText"] = (
-                    "Correct the I2C adapter settings before saving.")
                 return (False, valuesDict, errors)
 
         address_index = str(valuesDict["serialNumber"])
