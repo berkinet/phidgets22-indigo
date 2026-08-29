@@ -68,10 +68,17 @@ See the [Phidget Documentation](https://www.phidgets.com/docs/Addressing_Phidget
 
 Voltage Input and Voltage Ratio Input devices can calculate a custom state from
 the raw reading. In a formula, `x` is the reading. Formulas may contain numeric
-constants, parentheses, `+`, `-`, `*`, `/`, `%`, `**`, the constants `pi` and
-`e`, and these functions: `abs`, `min`, `max`, `sqrt`, `exp`, `log`, `log10`,
-`sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `sinh`, `cosh`, `tanh`, `floor`,
-and `ceil`. Other Python names and operations are not supported.
+constants, parentheses, `+`, `-`, `*`, `/`, `%`, `**`, comparisons (`<`, `<=`,
+`>`, `>=`, `==`, `!=`), `and`, `or`, `not`, `True`, `False`, and conditional
+expressions such as `1 if x > 2.5 else 0`. Boolean results become numeric `1.0`
+or `0.0` in Indigo custom states.
+
+The constants `pi` and `e` and these functions are available: `abs`, `min`,
+`max`, `round`, `clamp`, `sqrt`, `exp`, `log`, `log10`, `sin`, `cos`, `tan`,
+`asin`, `acos`, `atan`, `sinh`, `cosh`, `tanh`, `floor`, and `ceil`. `round`
+accepts an optional whole-number digit count from -15 through 15. `clamp`
+accepts a value, minimum, and maximum. Other Python names and operations are
+not supported.
 
 ## Development documentation
 

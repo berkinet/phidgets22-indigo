@@ -64,7 +64,7 @@
 			<Field id="customFormula" type="textfield" visibleBindingId="useCustomFormula" visibleBindingValue="true">
 				<Label>Formula to be applied to sensor reading</Label>
 			</Field>
-			<Field id="customFormulaHelp" type="label" visibleBindingId="useCustomFormula" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Allowed: x, numbers, parentheses, +, -, *, /, %, **, pi, e, and abs, min, max, sqrt, exp, log, log10, sin, cos, tan, asin, acos, atan, sinh, cosh, tanh, floor, ceil.</Label></Field>
+			<Field id="customFormulaHelp" type="label" visibleBindingId="useCustomFormula" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Allowed: x, numbers, True/False, arithmetic and comparison operators, and/or/not, value if condition else value, pi, e, round, clamp, and the documented math functions.</Label></Field>
 			<Field id="customState" type="textfield" visibleBindingId="useCustomFormula" visibleBindingValue="true">
 				<Label>Name to be given to custom state</Label>
 			</Field>
@@ -126,7 +126,7 @@
 			<Field id="customFormula" type="textfield" visibleBindingId="useCustomFormula" visibleBindingValue="true">
 				<Label>Formula to be applied to sensor reading</Label>
 			</Field>
-			<Field id="customFormulaHelp" type="label" visibleBindingId="useCustomFormula" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Allowed: x, numbers, parentheses, +, -, *, /, %, **, pi, e, and abs, min, max, sqrt, exp, log, log10, sin, cos, tan, asin, acos, atan, sinh, cosh, tanh, floor, ceil.</Label></Field>
+			<Field id="customFormulaHelp" type="label" visibleBindingId="useCustomFormula" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Allowed: x, numbers, True/False, arithmetic and comparison operators, and/or/not, value if condition else value, pi, e, round, clamp, and the documented math functions.</Label></Field>
 			<Field id="customState" type="textfield" visibleBindingId="useCustomFormula" visibleBindingValue="true">
 				<Label>Name to be given to custom state</Label>
 			</Field>

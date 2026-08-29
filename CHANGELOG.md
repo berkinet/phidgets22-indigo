@@ -1,5 +1,18 @@
 # Release notes
 
+## 0.3.31 — 2026-08-29
+
+### Added
+
+- Add safe comparisons, chained comparisons, `and`, `or`, `not`, boolean
+  constants, and conditional expressions to custom sensor and LCD formulas.
+- Convert boolean formula results to numeric `1.0` and `0.0`, allowing formulas
+  such as `x > 2.5` to drive existing numeric custom states.
+- Add `round(value[, digits])` with a bounded digit count and
+  `clamp(value, minimum, maximum)` to the restricted formula language.
+- Document the expanded language and its numeric boolean behavior in the
+  device configuration dialogs and README.
+
 ## 0.3.30 — 2026-08-29
 
 ### Changed

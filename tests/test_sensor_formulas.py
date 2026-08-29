@@ -73,6 +73,21 @@ class SensorFormulaTests(unittest.TestCase):
               self.assertRaisesRegex(ValueError, "unsupported operation")):
             voltageinput.VoltageInputPhidget(**arguments)
 
+    def test_boolean_sensor_formula_publishes_numeric_on_off(self):
+        arguments = self.wrapper_arguments()
+        arguments.update(sensorType=VoltageSensorType.SENSOR_TYPE_VOLTAGE,
+                         voltageChangeTrigger=0.0,
+                         customFormula="x > 2.5")
+        with mock.patch.object(voltageinput, "VoltageInput",
+                               return_value=FakeChannel()):
+            wrapper = voltageinput.VoltageInputPhidget(**arguments)
+
+        wrapper.onVoltageChangeHandler(None, 3.0)
+
+        self.assertEqual(
+            wrapper.indigoDevice.updateStateOnServer.call_args_list[-1],
+            mock.call("converted", value=1.0, decimalPlaces=-1))
+
 
 if __name__ == "__main__":
     unittest.main()

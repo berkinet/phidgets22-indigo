@@ -94,12 +94,13 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(len(help_labels), 2)
         for label in help_labels:
             self.assertIn("Allowed: x, numbers", label)
-            self.assertIn("sin, cos, tan", label)
+            self.assertIn("and/or/not", label)
+            self.assertIn("round, clamp", label)
 
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.30</string>", plist)
+        self.assertIn("<string>0.3.31</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
