@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.3.33 — 2026-08-29
+
+### Changed
+
+- Remove the obsolete `make_phidget_lists.py` developer utility from the
+  public repository and GitHub Code download. Its defaults targeted the
+  no-longer-bundled Phidget22 package and could erase maintained menu metadata.
+- Retain `phidgets.json` as the plugin's maintained runtime enum metadata and
+  clarify its source documentation.
+
 ## 0.3.32 — 2026-08-29
 
 ### Added
