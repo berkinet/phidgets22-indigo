@@ -86,12 +86,27 @@ class ConfigurationTests(unittest.TestCase):
         self.assertIn("customFormula", errors)
         self.assertIn("unsupported operation", errors["customFormula"])
 
+        values["customFormula"] = "'Low' if x < 2.5 else 'High'"
+        values["customOutputType"] = "text"
+        errors = instance._validateNativeSettings(values, "voltageInput")
+        self.assertNotIn("customFormula", errors)
+
     def test_custom_formula_language_is_documented_in_device_dialogs(self):
         devices = ElementTree.parse(SERVER_PLUGIN / "Devices.xml").getroot()
         help_labels = [field.find("Label").text for field in devices.iter("Field")
                        if field.get("id") == "customFormulaHelp"]
 
         self.assertEqual(len(help_labels), 2)
+        output_fields = [field for field in devices.iter("Field")
+                         if field.get("id") == "customOutputType"]
+        self.assertEqual(len(output_fields), 2)
+        for field in output_fields:
+            self.assertEqual(field.get("visibleBindingId"), "useCustomFormula")
+            self.assertEqual(
+                [(option.get("value"), option.text)
+                 for option in field.iter("Option")],
+                [("number", "Number"), ("text", "Text"),
+                 ("boolean", "On/Off")])
         for label in help_labels:
             self.assertIn("Allowed: x, numbers", label)
             self.assertIn("and/or/not", label)
@@ -100,7 +115,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.31</string>", plist)
+        self.assertIn("<string>0.3.32</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -258,6 +273,28 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(constructor.call_args.kwargs["relativeHumidity"], 55.5)
         self.assertEqual(constructor.call_args.kwargs["temperature"], 22.25)
         self.assertEqual(constructor.call_args.kwargs["displayState"], "rawNox")
+
+    def test_custom_formula_output_type_reaches_sensor_wrapper(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.pluginPrefs = {
+            "networkPhidgets": True, "enableServerDiscovery": True}
+        instance.logger = logging.getLogger("test.configuration.formula-output")
+        device = types.SimpleNamespace(
+            deviceTypeId="voltageInput", pluginProps={
+                "serialNumber": "123", "channel": "0", "isVintHub": False,
+                "isVintDevice": False, "useCustomFormula": True,
+                "customState": "status", "customFormula": "'On'",
+                "customOutputType": "text", "voltageSensorType": "0",
+                "voltageChangeTrigger": "0", "sensorValueChangeTrigger": "0",
+                "decimalPlaces": "2"})
+
+        with mock.patch.object(
+                device_factory, "VoltageInputPhidget",
+                return_value=mock.sentinel.wrapper) as constructor:
+            result = device_factory.create_phidget(instance, device)
+
+        self.assertIs(result, mock.sentinel.wrapper)
+        self.assertEqual(constructor.call_args.kwargs["customOutputType"], "text")
 
     def test_data_adapter_device_is_declared(self):
         devices = ElementTree.parse(SERVER_PLUGIN / "Devices.xml").getroot()
@@ -976,6 +1013,16 @@ class ConfigurationTests(unittest.TestCase):
         self.assertFalse(valid)
         self.assertIn("marqueeInterval", errors)
         self.assertIn("marqueeGap", errors)
+
+        valid, values, errors = instance.validateActionConfigUi(indigo.Dict({
+            "lineCount": "0", "animationMode": "static",
+            "graphicContentType": "formula", "formulaExpression": "'text'",
+            "formulaXMin": "-1", "formulaXMax": "1",
+            "formulaYMin": "-1", "formulaYMax": "1",
+            "formulaStyle": "line", "backlight": "1.0", "contrast": "0.5",
+        }), "lcdStartAnimation", 42)
+        self.assertFalse(valid)
+        self.assertIn("formulaExpression", errors)
 
         valid, values = instance.validateActionConfigUi(indigo.Dict({
             "lineCount": "0", "animationMode": "static",

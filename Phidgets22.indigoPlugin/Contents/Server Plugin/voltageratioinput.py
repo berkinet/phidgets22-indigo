@@ -11,6 +11,7 @@ import sensortypes
 
 class VoltageRatioInputPhidget(PhidgetBase):
     def __init__(self, sensorType, dataInterval, voltageRatioChangeTrigger, sensorValueChangeTrigger, customState, customFormula, *args, **kwargs):
+        self.customOutputType = kwargs.pop("customOutputType", "number")
         super(VoltageRatioInputPhidget, self).__init__(phidget=VoltageRatioInput(), *args, **kwargs)
         self.sensorType = sensorType
         self.dataInterval = dataInterval
@@ -20,6 +21,8 @@ class VoltageRatioInputPhidget(PhidgetBase):
         self.customFormula = customFormula
         self.formula = (Formula(customFormula)
                         if customState and customFormula else None)
+        if self.formula is not None:
+            self.formula.validateOutputType(self.customOutputType)
 
         self.sensorUnit = sensortypes.getVoltageRatioSensorUnit(sensorType)
         (self.sensorStateName, self.sensorSymbol) = sensortypes.getNameAndSymbol(self.sensorUnit)
@@ -55,8 +58,13 @@ class VoltageRatioInputPhidget(PhidgetBase):
         if (self.sensorType == VoltageRatioSensorType.SENSOR_TYPE_VOLTAGERATIO and
                 self.customState and self.formula is not None):
             try:
-                customValue = self.formula.evaluate(voltageRatio)
-                self.indigoDevice.updateStateOnServer(self.customState, value=customValue, decimalPlaces=self.decimalPlaces)
+                customValue = self.formula.evaluate(
+                    voltageRatio, self.customOutputType)
+                arguments = {"value": customValue}
+                if self.customOutputType == "number":
+                    arguments["decimalPlaces"] = self.decimalPlaces
+                self.indigoDevice.updateStateOnServer(
+                    self.customState, **arguments)
             except (ArithmeticError, TypeError, ValueError) as error:
                 self.logger.error(
                     "Custom voltage-ratio formula failed: device='%s' "
@@ -84,7 +92,13 @@ class VoltageRatioInputPhidget(PhidgetBase):
             if self.sensorStateName == "tempC":
                 newStatesList.append(self.indigo_plugin.getDeviceStateDictForNumberType("tempF", "tempF", "tempF"))
         elif self.customState and self.customFormula:
-            newStatesList.append(self.indigo_plugin.getDeviceStateDictForNumberType(self.customState, self.customState, self.customState))
+            factory_name = {
+                "number": "getDeviceStateDictForNumberType",
+                "text": "getDeviceStateDictForStringType",
+                "boolean": "getDeviceStateDictForBoolOnOffType",
+            }[self.customOutputType]
+            newStatesList.append(getattr(self.indigo_plugin, factory_name)(
+                self.customState, self.customState, self.customState))
         return newStatesList
 
     def getDeviceDisplayStateId(self):

@@ -68,32 +68,36 @@ def _common(plugin, device):
 
 def _custom_formula(props):
     if saved_bool(props.get("useCustomFormula", False)):
-        return props.get("customState", None), props.get("customFormula", None)
-    return None, None
+        return (props.get("customState", None),
+                props.get("customFormula", None),
+                props.get("customOutputType", "number"))
+    return None, None, "number"
 
 
 def _voltage_input(plugin, device, common):
     props = device.pluginProps
-    custom_state, custom_formula = _custom_formula(props)
+    custom_state, custom_formula, custom_output_type = _custom_formula(props)
     return VoltageInputPhidget(
         **common["base"], decimalPlaces=common["decimalPlaces"],
         sensorType=int(props.get("voltageSensorType", 0)),
         dataInterval=common["dataInterval"],
         voltageChangeTrigger=float(props.get("voltageChangeTrigger", 0)),
         sensorValueChangeTrigger=float(props.get("sensorValueChangeTrigger", 0)),
-        customState=custom_state, customFormula=custom_formula)
+        customState=custom_state, customFormula=custom_formula,
+        customOutputType=custom_output_type)
 
 
 def _voltage_ratio_input(plugin, device, common):
     props = device.pluginProps
-    custom_state, custom_formula = _custom_formula(props)
+    custom_state, custom_formula, custom_output_type = _custom_formula(props)
     return VoltageRatioInputPhidget(
         **common["base"], decimalPlaces=common["decimalPlaces"],
         sensorType=int(props.get("voltageRatioSensorType", 0)),
         dataInterval=common["dataInterval"],
         voltageRatioChangeTrigger=float(props.get("voltageRatioChangeTrigger", 0)),
         sensorValueChangeTrigger=float(props.get("sensorValueChangeTrigger", 0)),
-        customState=custom_state, customFormula=custom_formula)
+        customState=custom_state, customFormula=custom_formula,
+        customOutputType=custom_output_type)
 
 
 def _digital_output(plugin, device, common):

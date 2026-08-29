@@ -298,7 +298,8 @@ class ActionsMixin(object):
             return
         if content == "formula":
             try:
-                Formula(values.get("formulaExpression", ""))
+                Formula(values.get("formulaExpression", "")).validateOutputType(
+                    "number")
             except ValueError as error:
                 errors["formulaExpression"] = str(error)
             ranges = {}

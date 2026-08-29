@@ -51,6 +51,27 @@ class FormulaTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             Formula("clamp(x, 10, 0)").evaluate(5)
 
+    def test_typed_text_results_are_inert_and_bounded(self):
+        formula = Formula("'Off' if x <= 2.5 else 'On'")
+        self.assertEqual(formula.evaluate(2.5, "text"), "Off")
+        self.assertEqual(formula.evaluate(3, "text"), "On")
+        for expression in (
+                "'a' + 'b'", "'a' * 10", "'a'.upper()",
+                "'line\\nbreak'", repr("not printable\x7f"), repr("x" * 101)):
+            with self.subTest(expression=expression):
+                with self.assertRaises(ValueError):
+                    Formula(expression)
+
+    def test_selected_output_type_must_match_every_branch(self):
+        Formula("x > 2.5").validateOutputType("boolean")
+        with self.assertRaisesRegex(ValueError, "not text"):
+            Formula("1 if x > 2.5 else 0").validateOutputType("text")
+        with self.assertRaisesRegex(ValueError, "not boolean"):
+            Formula("'On' if x > 2.5 else 'Off'").validateOutputType(
+                "boolean")
+        with self.assertRaisesRegex(ValueError, "number, text"):
+            Formula("'On' if x > 2.5 else 0").validateOutputType("text")
+
 
 if __name__ == "__main__":
     unittest.main()

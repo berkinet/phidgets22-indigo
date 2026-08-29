@@ -71,7 +71,20 @@ the raw reading. In a formula, `x` is the reading. Formulas may contain numeric
 constants, parentheses, `+`, `-`, `*`, `/`, `%`, `**`, comparisons (`<`, `<=`,
 `>`, `>=`, `==`, `!=`), `and`, `or`, `not`, `True`, `False`, and conditional
 expressions such as `1 if x > 2.5 else 0`. Boolean results become numeric `1.0`
-or `0.0` in Indigo custom states.
+or `0.0` when Number output is selected.
+
+The custom formula controls include an **Output type** choice:
+
+- **Number** requires numeric branches and also accepts boolean results as
+  `1.0` or `0.0` for backward compatibility.
+- **Text** requires every result branch to be a quoted string literal of no
+  more than 100 printable characters. For example,
+  `"Off" if x <= 2.5 else "On"`.
+- **On/Off** requires a boolean result, such as `x > 2.5`, and creates a real
+  Indigo boolean state.
+
+Text supports literal and conditional selection only. String concatenation,
+repetition, methods, formatting, and use as a function argument are rejected.
 
 The constants `pi` and `e` and these functions are available: `abs`, `min`,
 `max`, `round`, `clamp`, `sqrt`, `exp`, `log`, `log10`, `sin`, `cos`, `tan`,

@@ -73,11 +73,12 @@ class SensorFormulaTests(unittest.TestCase):
               self.assertRaisesRegex(ValueError, "unsupported operation")):
             voltageinput.VoltageInputPhidget(**arguments)
 
-    def test_boolean_sensor_formula_publishes_numeric_on_off(self):
+    def test_boolean_sensor_formula_publishes_on_off_state(self):
         arguments = self.wrapper_arguments()
         arguments.update(sensorType=VoltageSensorType.SENSOR_TYPE_VOLTAGE,
                          voltageChangeTrigger=0.0,
-                         customFormula="x > 2.5")
+                         customFormula="x > 2.5",
+                         customOutputType="boolean")
         with mock.patch.object(voltageinput, "VoltageInput",
                                return_value=FakeChannel()):
             wrapper = voltageinput.VoltageInputPhidget(**arguments)
@@ -86,7 +87,33 @@ class SensorFormulaTests(unittest.TestCase):
 
         self.assertEqual(
             wrapper.indigoDevice.updateStateOnServer.call_args_list[-1],
-            mock.call("converted", value=1.0, decimalPlaces=-1))
+            mock.call("converted", value=True))
+        wrapper.indigo_plugin.getDeviceStateDictForNumberType = mock.Mock(
+            return_value="raw")
+        wrapper.indigo_plugin.getDeviceStateDictForBoolOnOffType = mock.Mock(
+            return_value="boolean")
+        self.assertEqual(wrapper.getDeviceStateList(), ["raw", "boolean"])
+
+    def test_text_sensor_formula_publishes_string_state(self):
+        arguments = self.wrapper_arguments()
+        arguments.update(sensorType=VoltageSensorType.SENSOR_TYPE_VOLTAGE,
+                         voltageChangeTrigger=0.0,
+                         customFormula="'Off' if x <= 2.5 else 'On'",
+                         customOutputType="text")
+        with mock.patch.object(voltageinput, "VoltageInput",
+                               return_value=FakeChannel()):
+            wrapper = voltageinput.VoltageInputPhidget(**arguments)
+
+        wrapper.onVoltageChangeHandler(None, 3.0)
+
+        self.assertEqual(
+            wrapper.indigoDevice.updateStateOnServer.call_args_list[-1],
+            mock.call("converted", value="On"))
+        wrapper.indigo_plugin.getDeviceStateDictForNumberType = mock.Mock(
+            return_value="raw")
+        wrapper.indigo_plugin.getDeviceStateDictForStringType = mock.Mock(
+            return_value="text")
+        self.assertEqual(wrapper.getDeviceStateList(), ["raw", "text"])
 
 
 if __name__ == "__main__":

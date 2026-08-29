@@ -361,8 +361,16 @@ class DiscoveryUiMixin(object):
                 errors["customState"] = (
                     "Use a state name beginning with a letter and containing "
                     "only letters, numbers, and underscores.")
+            output_type = str(values.get("customOutputType", "number"))
+            if output_type not in ("number", "text", "boolean"):
+                errors["customOutputType"] = (
+                    "Select Number, Text, or On/Off output.")
+            else:
+                values["customOutputType"] = output_type
             try:
-                Formula(values.get("customFormula", ""))
+                formula = Formula(values.get("customFormula", ""))
+                if "customOutputType" not in errors:
+                    formula.validateOutputType(output_type)
             except ValueError as error:
                 errors["customFormula"] = str(error)
         return errors

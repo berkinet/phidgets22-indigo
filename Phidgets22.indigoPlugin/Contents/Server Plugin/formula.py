@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-"""Restricted mathematical expressions shared by plugin features."""
+"""Restricted typed expressions shared by plugin features."""
 
 import ast
 import math
@@ -37,6 +37,8 @@ COMPARISON_OPERATORS = {
 
 
 class Formula(object):
+    MAX_TEXT_LENGTH = 100
+
     def __init__(self, expression):
         self.expression = str(expression or "").strip()
         if not self.expression:
@@ -47,7 +49,7 @@ class Formula(object):
             self.tree = ast.parse(self.expression, mode="eval").body
         except SyntaxError:
             raise ValueError("The formula is not valid mathematical syntax")
-        self._validate(self.tree)
+        self.resultKinds = self._validate(self.tree)
 
     @staticmethod
     def _numericLiteral(node):
@@ -63,16 +65,23 @@ class Formula(object):
     def _validate(self, node):
         if isinstance(node, ast.Constant):
             if type(node.value) is bool:
-                return
+                return {"boolean"}
+            if type(node.value) is str:
+                if (len(node.value) > self.MAX_TEXT_LENGTH or
+                        any(not character.isprintable()
+                            for character in node.value)):
+                    raise ValueError(
+                        "Formula text must be 100 printable characters or fewer")
+                return {"text"}
             if type(node.value) not in (int, float):
                 raise ValueError("Formula constants must be numbers")
             if abs(node.value) > 1e12:
                 raise ValueError("Formula constants are too large")
-            return
+            return {"number"}
         if isinstance(node, ast.Name):
             if node.id not in set(["x"] + list(CONSTANTS)):
                 raise ValueError("Unknown formula name '%s'" % node.id)
-            return
+            return {"number"}
         if isinstance(node, ast.BinOp) and type(node.op) in BINARY_OPERATORS:
             if isinstance(node.op, ast.Pow):
                 try:
@@ -82,31 +91,36 @@ class Formula(object):
                 if abs(exponent) > 100:
                     raise ValueError(
                         "Formula exponents must be constants from -100 through 100")
-            self._validate(node.left)
-            self._validate(node.right)
-            return
+            if (self._validate(node.left) != {"number"} or
+                    self._validate(node.right) != {"number"}):
+                raise ValueError("Arithmetic operands must be numbers")
+            return {"number"}
         if isinstance(node, ast.UnaryOp) and type(node.op) in UNARY_OPERATORS:
-            self._validate(node.operand)
-            return
+            if self._validate(node.operand) != {"number"}:
+                raise ValueError("Unary arithmetic operands must be numbers")
+            return {"number"}
         if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
-            self._validate(node.operand)
-            return
+            if "text" in self._validate(node.operand):
+                raise ValueError("Text cannot be used as a boolean condition")
+            return {"boolean"}
         if (isinstance(node, ast.Compare) and node.ops and
                 all(type(item) in COMPARISON_OPERATORS for item in node.ops)):
-            self._validate(node.left)
+            if "text" in self._validate(node.left):
+                raise ValueError("Formula comparisons require numeric values")
             for comparator in node.comparators:
-                self._validate(comparator)
-            return
+                if "text" in self._validate(comparator):
+                    raise ValueError("Formula comparisons require numeric values")
+            return {"boolean"}
         if (isinstance(node, ast.BoolOp) and
                 isinstance(node.op, (ast.And, ast.Or))):
             for value in node.values:
-                self._validate(value)
-            return
+                if "text" in self._validate(value):
+                    raise ValueError("Text cannot be used as a boolean condition")
+            return {"boolean"}
         if isinstance(node, ast.IfExp):
-            self._validate(node.test)
-            self._validate(node.body)
-            self._validate(node.orelse)
-            return
+            if "text" in self._validate(node.test):
+                raise ValueError("Conditional tests must be numeric or boolean")
+            return self._validate(node.body) | self._validate(node.orelse)
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             if node.func.id not in FUNCTIONS or node.keywords:
                 raise ValueError("Unknown or unsupported formula function")
@@ -125,8 +139,9 @@ class Formula(object):
             if node.func.id == "clamp" and len(node.args) != 3:
                 raise ValueError("clamp requires value, minimum, and maximum")
             for argument in node.args:
-                self._validate(argument)
-            return
+                if self._validate(argument) != {"number"}:
+                    raise ValueError("Formula function arguments must be numbers")
+            return {"number"}
         raise ValueError("The formula contains an unsupported operation")
 
     def _evaluate(self, node, x):
@@ -161,8 +176,35 @@ class Formula(object):
         return FUNCTIONS[node.func.id](
             *[self._evaluate(argument, x) for argument in node.args])
 
-    def evaluate(self, x):
-        value = float(self._evaluate(self.tree, float(x)))
+    def validateOutputType(self, output_type):
+        output_type = str(output_type or "number")
+        allowed = {
+            "number": ({"number"}, {"boolean"}, {"number", "boolean"}),
+            "text": ({"text"},),
+            "boolean": ({"boolean"},),
+        }
+        if output_type not in allowed:
+            raise ValueError("Select Number, Text, or On/Off output")
+        if self.resultKinds not in allowed[output_type]:
+            labels = ", ".join(sorted(self.resultKinds))
+            raise ValueError(
+                "Formula can return %s, not %s" % (labels, output_type))
+        return output_type
+
+    def evaluate(self, x, output_type="number"):
+        output_type = self.validateOutputType(output_type)
+        value = self._evaluate(self.tree, float(x))
+        if output_type == "text":
+            if (type(value) is not str or len(value) > self.MAX_TEXT_LENGTH or
+                    any(not character.isprintable() for character in value)):
+                raise ValueError(
+                    "Formula text must be 100 printable characters or fewer")
+            return value
+        if output_type == "boolean":
+            if type(value) is not bool:
+                raise ValueError("Formula result is not On/Off")
+            return value
+        value = float(value)
         if not math.isfinite(value):
             raise ValueError("Formula result is not finite")
         return value

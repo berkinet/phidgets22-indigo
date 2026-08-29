@@ -1,5 +1,18 @@
 # Release notes
 
+## 0.3.32 — 2026-08-29
+
+### Added
+
+- Add a custom-formula output type, shown only when custom formulas are
+  enabled, with Number, Text, and On/Off choices.
+- Allow bounded printable string literals and conditional string selection,
+  while rejecting string operations, methods, formatting, and function use.
+- Create correctly typed Indigo number, string, or boolean custom states and
+  verify every possible formula branch matches the selected output type.
+- Preserve Number as the default for existing configurations and continue
+  converting boolean Number results to `1.0` or `0.0`.
+
 ## 0.3.31 — 2026-08-29
 
 ### Added
