@@ -189,10 +189,11 @@ class BME280Phidget(I2CPeripheralBase):
                 self.indigoDevice.setErrorStateOnServer(
                     "No response at 0x%02X" % self.address)
             except Exception:
-                self.logger.error(
-                    "BME280/BMP280 poll failed: device='%s'\n%s",
-                    self.indigoDevice.name, traceback.format_exc())
-                self.indigoDevice.setErrorStateOnServer("I2C read failed")
+                if not self._pollInterruptedByProviderDetach():
+                    self.logger.error(
+                        "BME280/BMP280 poll failed: device='%s'\n%s",
+                        self.indigoDevice.name, traceback.format_exc())
+                    self.indigoDevice.setErrorStateOnServer("I2C read failed")
             if generation == self._generation and self._state == "attached":
                 self._schedulePoll(generation, self.pollInterval)
 

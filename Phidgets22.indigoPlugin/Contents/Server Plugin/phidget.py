@@ -354,6 +354,14 @@ class PhidgetBase(object):
                 self._state = "detached"
                 self._detached_at = time.monotonic()
                 self._detach_announced = False
+            coordinator = getattr(self.indigo_plugin, "phidgetDetachStarted", None)
+            if coordinator is not None:
+                try:
+                    coordinator(self)
+                except Exception:
+                    self.logger.error(
+                        "Unable to quiesce dependent devices after detach: %s\n%s",
+                        self._identity(), traceback.format_exc())
             self._schedule_detach_grace_timer()
             self._schedule_attach_timer()
             try:

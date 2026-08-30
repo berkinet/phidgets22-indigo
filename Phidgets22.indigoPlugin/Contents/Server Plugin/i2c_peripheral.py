@@ -50,6 +50,14 @@ class I2CPeripheralBase(object):
         if timer is not None:
             timer.cancel()
 
+    def _pollInterruptedByProviderDetach(self):
+        """Quiesce a poll that raced the physical adapter detach callback."""
+        if (self.adapter is None or
+                getattr(self.adapter, "_state", None) == "attached"):
+            return False
+        self.providerStopping()
+        return True
+
     def serverKey(self):
         return self.adapter.serverKey() if self.adapter is not None else "local"
 

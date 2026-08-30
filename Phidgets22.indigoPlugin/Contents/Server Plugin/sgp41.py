@@ -215,9 +215,10 @@ class SGP41Phidget(I2CPeripheralBase):
                     self._offline_message = message
                 self.indigoDevice.setErrorStateOnServer("No response at 0x59")
             except Exception:
-                self.logger.error("SGP41 poll failed: device='%s'\n%s",
-                                  self.indigoDevice.name, traceback.format_exc())
-                self.indigoDevice.setErrorStateOnServer("I2C read failed")
+                if not self._pollInterruptedByProviderDetach():
+                    self.logger.error("SGP41 poll failed: device='%s'\n%s",
+                                      self.indigoDevice.name, traceback.format_exc())
+                    self.indigoDevice.setErrorStateOnServer("I2C read failed")
             if generation == self._generation and self._state == "attached":
                 elapsed = time.monotonic() - poll_started
                 self._schedulePoll(generation, max(0.0, 1.0 - elapsed))

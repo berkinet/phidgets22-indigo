@@ -22,6 +22,7 @@ from Phidget22.PhidgetException import PhidgetException
 
 class FakeAdapter(object):
     def __init__(self, registers):
+        self._state = "attached"
         self.registers = registers
         self.writes = []
         self.channelInfo = mock.sentinel.channel_info
@@ -173,6 +174,26 @@ class BME280Tests(unittest.TestCase):
         device.setErrorStateOnServer.assert_called_with("No response at 0x76")
         timer.assert_called_once_with(
             wrapper.pollInterval, wrapper._poll, (wrapper._generation,))
+
+    def test_detach_during_poll_stops_quietly(self):
+        wrapper, adapter, device = self.wrapper(0x60)
+        wrapper.logger = mock.Mock()
+        wrapper._state = "attached"
+        wrapper._generation = 1
+        wrapper.chipId = 0x60
+        wrapper.chipModel = "BME280"
+        wrapper.calibration = dict(self.CALIBRATION)
+
+        def detached_read(*args):
+            adapter._state = "detached"
+            raise RuntimeError("I2C adapter is not attached")
+
+        wrapper._read = detached_read
+        wrapper._poll(1)
+
+        self.assertEqual(wrapper._state, "detached")
+        wrapper.logger.error.assert_not_called()
+        device.setErrorStateOnServer.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -115,7 +115,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.36</string>", plist)
+        self.assertIn("<string>0.3.37</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -935,6 +935,19 @@ class ConfigurationTests(unittest.TestCase):
             detach_announced=False)
 
         instance.deviceStartComm.assert_called_once_with(lcd_device)
+
+    def test_adapter_detach_immediately_stops_dependent_polling(self):
+        instance = object.__new__(plugin.Plugin)
+        dependent = types.SimpleNamespace(
+            adapterDeviceId=42, providerStopping=mock.Mock())
+        adapter = types.SimpleNamespace(
+            indigoDevice=types.SimpleNamespace(id=42),
+            supportsFunction=mock.Mock())
+        instance.activePhidgets = {42: adapter, 99: dependent}
+
+        instance.phidgetDetachStarted(adapter)
+
+        dependent.providerStopping.assert_called_once_with()
 
     def test_lcd_action_resolves_target_from_action_when_device_is_none(self):
         instance = object.__new__(plugin.Plugin)

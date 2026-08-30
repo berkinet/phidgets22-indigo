@@ -142,6 +142,20 @@ class SGP41Tests(unittest.TestCase):
         self.assertEqual(callback, wrapper._poll)
         self.assertEqual(args, (wrapper._generation,))
 
+    def test_detach_during_poll_stops_quietly(self):
+        wrapper, adapter, device = self.wrapper()
+
+        def detached_sample():
+            adapter._state = "detached"
+            raise RuntimeError("I2C adapter is not attached")
+
+        wrapper._sample = detached_sample
+        wrapper.start()
+
+        self.assertEqual(wrapper._state, "detached")
+        wrapper.logger.error.assert_not_called()
+        device.setErrorStateOnServer.assert_not_called()
+
     def test_poll_interval_accounts_for_sensor_transaction_time(self):
         wrapper, _, _ = self.wrapper()
 

@@ -112,6 +112,14 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         timer.start()
 
     def phidgetDetachAnnounced(self, phidget, detached_for):
+        self.phidgetDetachStarted(phidget)
+        server_key = phidget.serverKey()
+        with self._outageLock:
+            self._detachBatches.setdefault(server_key, set()).add(phidget)
+        self._scheduleBatch("detach", server_key, self._flushDetachBatch)
+
+    def phidgetDetachStarted(self, phidget):
+        """Immediately quiesce logical children of a detached provider."""
         supports = getattr(phidget, "supportsFunction", None)
         if supports is not None:
             adapter_id = phidget.indigoDevice.id
@@ -122,10 +130,6 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                 callback = getattr(dependent, "providerStopping", None)
                 if callback is not None:
                     callback()
-        server_key = phidget.serverKey()
-        with self._outageLock:
-            self._detachBatches.setdefault(server_key, set()).add(phidget)
-        self._scheduleBatch("detach", server_key, self._flushDetachBatch)
 
     def phidgetStartupContentionExpired(self, phidget, detached_for):
         physical_key = (

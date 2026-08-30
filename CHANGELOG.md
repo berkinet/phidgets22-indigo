@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.3.37 — 2026-08-30
+
+### Fixed
+
+- Stop logical I2C peripheral polling as soon as its shared DataAdapter
+  detaches, instead of waiting for the physical-device detach grace period.
+- Treat a BME280/BMP280 or SGP41 transaction interrupted by an adapter unplug
+  as an expected lifecycle event, avoiding repeated poll-failure tracebacks
+  while preserving error reporting for genuine sensor and bus failures.
+
 ## 0.3.36 — 2026-08-30
 
 ### Added
