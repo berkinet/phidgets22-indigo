@@ -222,6 +222,26 @@ class I2CLCDTests(unittest.TestCase):
                                  (lcd._provider_retry_generation,))
         lcd.stop()
 
+    def test_provider_detach_marks_lcd_detached_and_keeps_queued_request(self):
+        adapter = FakeAdapter()
+        plugin = types.SimpleNamespace(
+            activePhidgets={42: adapter}, pluginPrefs={"attachTimeout": "1"},
+            triggerEvent=mock.Mock(), phidgetAttachCompleted=mock.Mock())
+        device = mock.Mock(name="Detached LCD", id=102, pluginProps={})
+        lcd = i2c_lcd.I2CLCDPhidget(
+            adapterDeviceId=42, screenSize=8, backlight=1.0, contrast=0.5,
+            restoreInitialText=False, initialText="", initialLines=[],
+            initialX=0, initialY=0, indigo_plugin=plugin,
+            channelInfo=ChannelInfo(), indigoDevice=device, logger=mock.Mock())
+        pending = mock.Mock()
+        lcd._pending_display_request = pending
+        lcd._state = "attached"
+
+        lcd.providerStopping()
+
+        self.assertEqual(lcd._state, "detached")
+        self.assertIs(lcd._pending_display_request, pending)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -273,8 +273,13 @@ class I2CLCDPhidget(LCDPhidget):
         """Reinitialize the controller after its shared adapter reconnects."""
         return self.phidget.providerAttached()
 
+    def _displayProviderDetached(self):
+        return (self.phidget.adapter is None or
+                getattr(self.phidget.adapter, "_state", None) != "attached")
+
     def providerStopping(self):
         self._cancelProviderRetry()
+        self._state = "detached"
         super(I2CLCDPhidget, self).providerStopping()
 
     def stop(self):

@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.3.38 — 2026-08-30
+
+### Fixed
+
+- Mark I2C LCDs detached as soon as their shared DataAdapter disconnects so
+  display actions queue instead of attempting writes against the lost bus.
+- Recover an LCD action interrupted mid-command by an adapter detach, retaining
+  the newest requested display for automatic replay after reattachment without
+  hiding unrelated display errors.
+
 ## 0.3.37 — 2026-08-30
 
 ### Fixed

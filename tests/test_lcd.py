@@ -243,6 +243,30 @@ class LCDTests(unittest.TestCase):
         callback.assert_called_once_with()
         self.assertIsNone(wrapper._pending_display_request)
 
+    def test_provider_detach_during_display_request_queues_it(self):
+        native = FakeLCD()
+        logger = mock.Mock()
+        wrapper = make_wrapper(native, logger=logger)
+        wrapper._state = "attached"
+        wrapper._displayProviderDetached = mock.Mock(return_value=True)
+        callback = mock.Mock(side_effect=RuntimeError(
+            "I2C adapter is not attached"))
+
+        self.assertFalse(wrapper.runDisplayWhenAttached(callback))
+
+        self.assertEqual(wrapper._state, "detached")
+        self.assertIs(wrapper._pending_display_request, callback)
+        logger.warning.assert_called_once()
+
+    def test_genuine_attached_display_error_is_not_hidden(self):
+        native = FakeLCD()
+        wrapper = make_wrapper(native)
+        wrapper._state = "attached"
+        callback = mock.Mock(side_effect=ValueError("invalid display data"))
+
+        with self.assertRaisesRegex(ValueError, "invalid display data"):
+            wrapper.runDisplayWhenAttached(callback)
+
     def test_configures_text_adapter_and_restores_initial_text(self):
         native = FakeLCD()
         wrapper = make_wrapper(

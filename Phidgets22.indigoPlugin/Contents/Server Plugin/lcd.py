@@ -186,7 +186,9 @@ class LCDPhidget(PhidgetBase):
         """Quiesce background display work before a shared provider stops."""
         with self._display_lock:
             self._cancel_animation_locked()
-            self._pending_display_request = None
+
+    def _displayProviderDetached(self):
+        return False
 
     def runDisplayWhenAttached(self, callback):
         """Run a display request now or retain only the newest detached request."""
@@ -199,8 +201,19 @@ class LCDPhidget(PhidgetBase):
                     "replaced the previously queued request" if replaced else "queued",
                     self.indigoDevice.name)
                 return False
-            callback()
-            return True
+            try:
+                callback()
+                return True
+            except Exception:
+                if not self._displayProviderDetached():
+                    raise
+                self._state = "detached"
+                self._pending_display_request = callback
+                self.logger.warning(
+                    "LCD display request interrupted by provider detach and "
+                    "queued until attachment: device='%s'",
+                    self.indigoDevice.name)
+                return False
 
     def _replay_pending_display_request(self):
         with self._display_lock:
