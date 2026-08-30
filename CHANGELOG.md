@@ -1,5 +1,19 @@
 # Release notes
 
+## 0.3.36 — 2026-08-30
+
+### Added
+
+- Process SGP41 raw signals through independent, persistent Sensirion VOC and
+  NOx Gas Index Algorithm instances at a drift-corrected one-second cadence.
+- Publish `vocIndex`, `noxIndex`, algorithm warm-up status, actual compensation
+  values, and compensation-source status while retaining both raw signals.
+- Allow temperature and relative-humidity compensation to independently use a
+  direct value or an arbitrary Indigo device state, with validated selection,
+  bounded values, one-time fallback warnings, and automatic source recovery.
+- Bundle Adafruit's BSD-licensed pure-Python port of Sensirion's fixed-point Gas
+  Index Algorithm 3.2.0 and document its third-party attribution.
+
 ## 0.3.35 — 2026-08-29
 
 ### Changed

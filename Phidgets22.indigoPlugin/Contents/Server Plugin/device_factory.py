@@ -238,7 +238,13 @@ def _sgp41(plugin, device, common):
         adapterDeviceId=int(props["sgpAdapterDeviceId"]),
         relativeHumidity=float(props.get("sgpRelativeHumidity", 50.0)),
         temperature=float(props.get("sgpTemperature", 25.0)),
-        displayState=props.get("sgpDisplayState", "rawVoc"))
+        humiditySource=props.get("sgpHumiditySource", "fixed"),
+        humidityDeviceId=props.get("sgpHumidityDeviceId", ""),
+        humidityState=props.get("sgpHumidityState", ""),
+        temperatureSource=props.get("sgpTemperatureSource", "fixed"),
+        temperatureDeviceId=props.get("sgpTemperatureDeviceId", ""),
+        temperatureState=props.get("sgpTemperatureState", ""),
+        displayState=props.get("sgpDisplayState", "vocIndex"))
 
 
 _BUILDERS = {

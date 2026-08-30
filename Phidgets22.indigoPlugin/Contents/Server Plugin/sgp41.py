@@ -3,6 +3,7 @@
 """Sensirion SGP41 VOC/NOx sensor on a shared ADP0001 I2C bus."""
 
 import threading
+import time
 import traceback
 
 import indigo
@@ -11,6 +12,8 @@ from Phidget22.ErrorCode import ErrorCode
 from Phidget22.PhidgetException import PhidgetException
 from phidget import PeripheralUnavailableError
 from i2c_peripheral import I2CPeripheralBase
+from sensirion_gas_index_algorithm import (
+    ALGORITHM_TYPE_NOX, ALGORITHM_TYPE_VOC, GasIndexAlgorithm)
 
 
 class SGP41Phidget(I2CPeripheralBase):
@@ -24,10 +27,19 @@ class SGP41Phidget(I2CPeripheralBase):
 
     def __init__(self, adapterDeviceId, relativeHumidity=50.0,
                  temperature=25.0, indigo_plugin=None, indigoDevice=None,
-                 logger=None, displayState="rawVoc", channelInfo=None, **kwargs):
+                 logger=None, displayState="vocIndex", channelInfo=None,
+                 humiditySource="fixed", humidityDeviceId="",
+                 humidityState="", temperatureSource="fixed",
+                 temperatureDeviceId="", temperatureState="", **kwargs):
         self.adapterDeviceId = int(adapterDeviceId)
         self.relativeHumidity = float(relativeHumidity)
         self.temperature = float(temperature)
+        self.humiditySource = str(humiditySource)
+        self.humidityDeviceId = str(humidityDeviceId)
+        self.humidityState = str(humidityState)
+        self.temperatureSource = str(temperatureSource)
+        self.temperatureDeviceId = str(temperatureDeviceId)
+        self.temperatureState = str(temperatureState)
         self.displayState = str(displayState)
         self.indigo_plugin = indigo_plugin
         self.indigoDevice = indigoDevice
@@ -36,6 +48,12 @@ class SGP41Phidget(I2CPeripheralBase):
         self.adapter = None
         self.serialNumber = None
         self._conditioning_count = 0
+        self._algorithm_sample_count = 0
+        self._voc_algorithm = None
+        self._nox_algorithm = None
+        self._actual_humidity = self.relativeHumidity
+        self._actual_temperature = self.temperature
+        self._compensation_issue = None
         self._state = "stopped"
         self._timer = None
         self._generation = 0
@@ -79,17 +97,60 @@ class SGP41Phidget(I2CPeripheralBase):
                     "No SGP41 responded at 0x59") from None
             raise
 
+    def _source_value(self, source, device_id, state_id, fallback,
+                      label, minimum, maximum):
+        if source != "device":
+            return fallback, None
+        try:
+            source_device = indigo.devices[int(device_id)]
+            value = float(source_device.states[state_id])
+            if value < minimum or value > maximum:
+                raise ValueError("value %s is outside %g through %g" % (
+                    value, minimum, maximum))
+            return value, None
+        except Exception as error:
+            return fallback, (
+                "%s source device=%s state='%s' unavailable (%s); using %s" %
+                (label, device_id, state_id, error, fallback))
+
     def _compensation(self):
-        humidity = round(max(0.0, min(100.0, self.relativeHumidity)) * 65535.0 / 100.0)
-        temperature = round((max(-45.0, min(130.0, self.temperature)) + 45.0) *
+        humidity, humidity_issue = self._source_value(
+            self.humiditySource, self.humidityDeviceId, self.humidityState,
+            self.relativeHumidity, "humidity", 0.0, 100.0)
+        temperature, temperature_issue = self._source_value(
+            self.temperatureSource, self.temperatureDeviceId,
+            self.temperatureState, self.temperature,
+            "temperature", -45.0, 130.0)
+        issues = [issue for issue in (humidity_issue, temperature_issue) if issue]
+        issue = "; ".join(issues) if issues else None
+        if issue != self._compensation_issue:
+            if issue:
+                self.logger.warning(
+                    "SGP41 compensation fallback: device='%s': %s",
+                    self.indigoDevice.name, issue)
+            elif self._compensation_issue:
+                self.logger.info(
+                    "SGP41 compensation source recovered: device='%s'",
+                    self.indigoDevice.name)
+            self._compensation_issue = issue
+        self._actual_humidity = humidity
+        self._actual_temperature = temperature
+        humidity = round(max(0.0, min(100.0, humidity)) * 65535.0 / 100.0)
+        temperature = round((max(-45.0, min(130.0, temperature)) + 45.0) *
                             65535.0 / 175.0)
         return self._word(humidity) + self._word(temperature)
+
+    def _reset_algorithms(self):
+        self._voc_algorithm = GasIndexAlgorithm(ALGORITHM_TYPE_VOC)
+        self._nox_algorithm = GasIndexAlgorithm(ALGORITHM_TYPE_NOX)
+        self._algorithm_sample_count = 0
 
     def _initialize(self):
         self._resolveAdapter()
         serial = self._command(self.SERIAL_COMMAND, delay=0.001, words=3)
         self.serialNumber = "%04X%04X%04X" % tuple(serial)
         self._conditioning_count = 0
+        self._reset_algorithms()
         self._offline_message = None
 
     def _publishMetadata(self):
@@ -106,6 +167,7 @@ class SGP41Phidget(I2CPeripheralBase):
         return tuple(self._command(self.MEASURE_COMMAND, arguments, words=2))
 
     def _poll(self, generation):
+        poll_started = time.monotonic()
         with self._lock:
             if generation != self._generation or self._state != "attached":
                 return
@@ -114,13 +176,33 @@ class SGP41Phidget(I2CPeripheralBase):
                     self._initialize()
                 self._publishMetadata()
                 voc, nox = self._sample()
+                voc_index = self._voc_algorithm.process(voc)
+                nox_index = self._nox_algorithm.process(
+                    nox if nox is not None else 0)
+                self._algorithm_sample_count += 1
                 self.indigoDevice.updateStateOnServer("rawVoc", value=voc)
+                self.indigoDevice.updateStateOnServer(
+                    "vocIndex", value=voc_index)
+                self.indigoDevice.updateStateOnServer(
+                    "noxIndex", value=nox_index)
                 self.indigoDevice.updateStateOnServer(
                     "conditioning", value=nox is None,
                     uiValue=("conditioning (%d/10)" % self._conditioning_count
                              if nox is None else "ready"))
                 if nox is not None:
                     self.indigoDevice.updateStateOnServer("rawNox", value=nox)
+                self.indigoDevice.updateStateOnServer(
+                    "indexStatus",
+                    value=("ready" if voc_index or nox_index else "warming up"),
+                    uiValue=("ready" if voc_index or nox_index else
+                             "warming up (%d s)" % self._algorithm_sample_count))
+                self.indigoDevice.updateStateOnServer(
+                    "compensationHumidity", value=self._actual_humidity)
+                self.indigoDevice.updateStateOnServer(
+                    "compensationTemperature", value=self._actual_temperature)
+                self.indigoDevice.updateStateOnServer(
+                    "compensationStatus",
+                    value=("fallback" if self._compensation_issue else "configured"))
                 if self._offline_message is not None:
                     self.logger.info("SGP41 recovered: device='%s'", self.indigoDevice.name)
                     self._offline_message = None
@@ -137,7 +219,8 @@ class SGP41Phidget(I2CPeripheralBase):
                                   self.indigoDevice.name, traceback.format_exc())
                 self.indigoDevice.setErrorStateOnServer("I2C read failed")
             if generation == self._generation and self._state == "attached":
-                self._schedulePoll(generation, 1.0)
+                elapsed = time.monotonic() - poll_started
+                self._schedulePoll(generation, max(0.0, 1.0 - elapsed))
 
     def start(self):
         with self._lock:
@@ -177,12 +260,20 @@ class SGP41Phidget(I2CPeripheralBase):
 
     def getDeviceStateList(self):
         states = indigo.List()
-        for state_id, label in (("rawVoc", "Raw VOC signal"),
-                                ("rawNox", "Raw NOx signal")):
+        for state_id, label in (("vocIndex", "VOC Index"),
+                                ("noxIndex", "NOx Index"),
+                                ("rawVoc", "Raw VOC signal"),
+                                ("rawNox", "Raw NOx signal"),
+                                ("compensationHumidity", "Compensation humidity"),
+                                ("compensationTemperature", "Compensation temperature")):
             states.append(self.indigo_plugin.getDeviceStateDictForNumberType(
                 state_id, label, state_id))
-        states.append(self.indigo_plugin.getDeviceStateDictForStringType(
-            "conditioning", "NOx conditioning", "conditioning"))
+        for state_id, label in (
+                ("conditioning", "NOx conditioning"),
+                ("indexStatus", "Gas index status"),
+                ("compensationStatus", "Compensation status")):
+            states.append(self.indigo_plugin.getDeviceStateDictForStringType(
+                state_id, label, state_id))
         for state_id, label in (("sensorModel", "Sensor model"),
                                 ("i2cAddress", "I2C address"),
                                 ("sensorSerialNumber", "Sensor serial number")):

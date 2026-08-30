@@ -115,7 +115,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.35</string>", plist)
+        self.assertIn("<string>0.3.36</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -263,7 +263,12 @@ class ConfigurationTests(unittest.TestCase):
         device = types.SimpleNamespace(
             deviceTypeId="sgp41", pluginProps={
                 "sgpAdapterDeviceId": "42", "sgpRelativeHumidity": "55.5",
-                "sgpTemperature": "22.25", "sgpDisplayState": "rawNox"})
+                "sgpTemperature": "22.25", "sgpDisplayState": "noxIndex",
+                "sgpHumiditySource": "device", "sgpHumidityDeviceId": "81",
+                "sgpHumidityState": "humidity",
+                "sgpTemperatureSource": "device",
+                "sgpTemperatureDeviceId": "82",
+                "sgpTemperatureState": "temperature"})
         with mock.patch.object(
                 device_factory, "SGP41Phidget",
                 return_value=mock.sentinel.wrapper) as constructor:
@@ -272,7 +277,13 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(constructor.call_args.kwargs["adapterDeviceId"], 42)
         self.assertEqual(constructor.call_args.kwargs["relativeHumidity"], 55.5)
         self.assertEqual(constructor.call_args.kwargs["temperature"], 22.25)
-        self.assertEqual(constructor.call_args.kwargs["displayState"], "rawNox")
+        self.assertEqual(constructor.call_args.kwargs["displayState"], "noxIndex")
+        self.assertEqual(constructor.call_args.kwargs["humiditySource"], "device")
+        self.assertEqual(constructor.call_args.kwargs["humidityDeviceId"], "81")
+        self.assertEqual(constructor.call_args.kwargs["humidityState"], "humidity")
+        self.assertEqual(constructor.call_args.kwargs["temperatureSource"], "device")
+        self.assertEqual(constructor.call_args.kwargs["temperatureDeviceId"], "82")
+        self.assertEqual(constructor.call_args.kwargs["temperatureState"], "temperature")
 
     def test_custom_formula_output_type_reaches_sensor_wrapper(self):
         instance = object.__new__(plugin.Plugin)
@@ -447,6 +458,70 @@ class ConfigurationTests(unittest.TestCase):
         adapter.i2cCommandResponse.assert_called_once_with(
             0x59, b"\x36\x82", 0.001, 9)
         self.assertEqual(values["address"], "sgp41-42-59")
+
+    def test_sgp41_validation_accepts_device_state_compensation(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.pluginId = "com.yikes.eric.phidgets-indigo"
+        adapter_device = IdentityDevice(
+            id=42, name="I2C Adapter", pluginId=instance.pluginId,
+            deviceTypeId="dataAdapter", enabled=True, pluginProps={}, states={})
+        climate_device = IdentityDevice(
+            id=81, name="Climate", pluginId="another.plugin",
+            deviceTypeId="sensor", enabled=True, pluginProps={},
+            states={"humidity": 56.5, "temperature": 22.75})
+        devices = DeviceCollection({42: adapter_device, 81: climate_device})
+        adapter = mock.Mock()
+        adapter.i2cCommandResponse.return_value = (
+            b"\x12\x34\x37\x56\x78\x7D\x9A\xBC\xE0")
+        instance.activePhidgets = {42: adapter}
+        values = indigo.Dict({
+            "sgpAdapterSelection": "42", "sgpRelativeHumidity": "50",
+            "sgpTemperature": "25", "sgpDisplayState": "vocIndex",
+            "sgpHumiditySource": "device", "sgpHumidityDeviceId": "81",
+            "sgpHumidityState": "humidity",
+            "sgpTemperatureSource": "device",
+            "sgpTemperatureDeviceId": "81",
+            "sgpTemperatureState": "temperature"})
+
+        with mock.patch.object(indigo, "devices", devices, create=True):
+            valid, returned = instance.validateDeviceConfigUi(
+                values, "sgp41", 0)
+            device_menu = instance.getSGPCompensationDeviceMenu(valuesDict=values)
+            humidity_states = instance.getSGPHumidityStateMenu(valuesDict=values)
+
+        self.assertTrue(valid)
+        self.assertIs(returned, values)
+        self.assertIn(("81", "Climate"), device_menu)
+        self.assertIn(("humidity", "humidity"), humidity_states)
+
+    def test_sgp41_validation_rejects_missing_or_nonnumeric_source_state(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.pluginId = "com.yikes.eric.phidgets-indigo"
+        adapter_device = IdentityDevice(
+            id=42, name="I2C Adapter", pluginId=instance.pluginId,
+            deviceTypeId="dataAdapter", enabled=True, pluginProps={}, states={})
+        climate_device = IdentityDevice(
+            id=81, name="Climate", pluginId="another.plugin",
+            deviceTypeId="sensor", enabled=True, pluginProps={},
+            states={"status": "unknown"})
+        devices = DeviceCollection({42: adapter_device, 81: climate_device})
+        instance.activePhidgets = {}
+        values = indigo.Dict({
+            "sgpAdapterSelection": "42", "sgpRelativeHumidity": "50",
+            "sgpTemperature": "25", "sgpDisplayState": "vocIndex",
+            "sgpHumiditySource": "device", "sgpHumidityDeviceId": "81",
+            "sgpHumidityState": "status",
+            "sgpTemperatureSource": "device",
+            "sgpTemperatureDeviceId": "81",
+            "sgpTemperatureState": "missing"})
+
+        with mock.patch.object(indigo, "devices", devices, create=True):
+            valid, _, errors = instance.validateDeviceConfigUi(
+                values, "sgp41", 0)
+
+        self.assertFalse(valid)
+        self.assertIn("sgpHumidityState", errors)
+        self.assertIn("sgpTemperatureState", errors)
 
     def test_new_device_cannot_save_without_a_compatible_channel(self):
         instance = object.__new__(plugin.Plugin)

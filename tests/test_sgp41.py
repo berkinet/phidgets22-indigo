@@ -60,6 +60,45 @@ class SGP41Tests(unittest.TestCase):
         self.assertEqual(wrapper.crc(b"\x66\x66"), 0x93)
         self.assertEqual(wrapper._compensation(), b"\x80\x00\xA2\x66\x66\x93")
 
+    def test_compensation_can_follow_independent_indigo_device_states(self):
+        wrapper, _, _ = self.wrapper()
+        wrapper.humiditySource = "device"
+        wrapper.humidityDeviceId = "91"
+        wrapper.humidityState = "humidity"
+        wrapper.temperatureSource = "device"
+        wrapper.temperatureDeviceId = "92"
+        wrapper.temperatureState = "temperature"
+        devices = {
+            91: types.SimpleNamespace(states={"humidity": 61.5}),
+            92: types.SimpleNamespace(states={"temperature": 21.25}),
+        }
+
+        with mock.patch.object(indigo, "devices", devices, create=True):
+            wrapper._compensation()
+
+        self.assertEqual(wrapper._actual_humidity, 61.5)
+        self.assertEqual(wrapper._actual_temperature, 21.25)
+        self.assertIsNone(wrapper._compensation_issue)
+
+    def test_missing_compensation_state_logs_once_and_uses_fallback(self):
+        wrapper, _, _ = self.wrapper()
+        wrapper.humiditySource = "device"
+        wrapper.humidityDeviceId = "91"
+        wrapper.humidityState = "humidity"
+
+        with mock.patch.object(indigo, "devices", {}, create=True):
+            first = wrapper._compensation()
+            second = wrapper._compensation()
+
+        self.assertEqual(first, b"\x80\x00\xA2\x66\x66\x93")
+        self.assertEqual(second, first)
+        wrapper.logger.warning.assert_called_once()
+
+        devices = {91: types.SimpleNamespace(states={"humidity": 60.0})}
+        with mock.patch.object(indigo, "devices", devices, create=True):
+            wrapper._compensation()
+        wrapper.logger.info.assert_called_once()
+
     def test_initialization_reads_and_validates_serial_number(self):
         wrapper, adapter, _ = self.wrapper()
         wrapper._initialize()
@@ -91,12 +130,30 @@ class SGP41Tests(unittest.TestCase):
             side_effect=PhidgetException(ErrorCode.EPHIDGET_NACK))
 
         with mock.patch.object(i2c_peripheral.threading, "Timer") as timer:
-            wrapper.start()
+            with mock.patch.object(
+                    sgp41.time, "monotonic", side_effect=(100.0, 100.05)):
+                wrapper.start()
 
         self.assertEqual(wrapper._state, "attached")
         self.assertIsNone(wrapper.serialNumber)
         device.setErrorStateOnServer.assert_called_with("No response at 0x59")
-        timer.assert_called_once_with(1.0, wrapper._poll, (wrapper._generation,))
+        delay, callback, args = timer.call_args.args
+        self.assertAlmostEqual(delay, 0.95)
+        self.assertEqual(callback, wrapper._poll)
+        self.assertEqual(args, (wrapper._generation,))
+
+    def test_poll_interval_accounts_for_sensor_transaction_time(self):
+        wrapper, _, _ = self.wrapper()
+
+        with mock.patch.object(i2c_peripheral.threading, "Timer") as timer:
+            with mock.patch.object(
+                    sgp41.time, "monotonic", side_effect=(20.0, 20.05)):
+                wrapper.start()
+
+        delay, callback, args = timer.call_args.args
+        self.assertAlmostEqual(delay, 0.95)
+        self.assertEqual(callback, wrapper._poll)
+        self.assertEqual(args, (wrapper._generation,))
 
     def test_state_list_is_rebuilt_before_first_state_update(self):
         wrapper, _, device = self.wrapper()
@@ -111,6 +168,21 @@ class SGP41Tests(unittest.TestCase):
             if call == mock.call.updateStateOnServer(
                 "connectionPath", value="Mac→I2C Adapter→SGP41 0x59"))
         self.assertLess(refresh_index, first_update_index)
+
+    def test_first_poll_publishes_warming_indices_and_compensation(self):
+        wrapper, _, device = self.wrapper()
+
+        with mock.patch.object(i2c_peripheral.threading, "Timer"):
+            wrapper.start()
+
+        device.updateStateOnServer.assert_any_call("vocIndex", value=0)
+        device.updateStateOnServer.assert_any_call("noxIndex", value=0)
+        device.updateStateOnServer.assert_any_call(
+            "indexStatus", value="warming up", uiValue="warming up (1 s)")
+        device.updateStateOnServer.assert_any_call(
+            "compensationHumidity", value=50.0)
+        device.updateStateOnServer.assert_any_call(
+            "compensationTemperature", value=25.0)
 
 
 if __name__ == "__main__":

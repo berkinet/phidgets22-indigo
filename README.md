@@ -47,7 +47,8 @@ The following Phidget classes are currently supported:
 * FrequencyCounter
 * HumiditySensor
 * BME280/BMP280 environmental sensors through an ADP0001 I2C adapter
-* SGP41 raw VOC/NOx gas sensors through an ADP0001 I2C adapter
+* SGP41 VOC/NOx gas sensors through an ADP0001 I2C adapter, including raw
+  signals and Sensirion VOC/NOx indices
 * LCD
   * Native Phidget LCD channels
   * Configurable HD44780/PCF8574-compatible character LCDs through an ADP0001
@@ -59,6 +60,24 @@ The following Phidget classes are currently supported:
 * VoltageRatioInput
 
 Only network phidgets are supported. To use local attached phidgets, enable the [network server](https://www.phidgets.com/docs/Phidget_Network_Server).
+
+## SGP41 gas indices
+
+The SGP41 device samples once per second and publishes both raw sensor signals
+and the stateful Sensirion `vocIndex` and `noxIndex` values. The indices remain
+zero during the algorithm's initial warm-up and then range from 1 through 500.
+They describe changes relative to the sensor's learned recent environment; they
+are not gas concentrations or regulatory exposure measurements.
+
+Temperature and relative-humidity compensation can each use either a directly
+entered value or an arbitrary Indigo device state. A selected temperature state
+must contain degrees Celsius and a humidity state must contain percent relative
+humidity. If a selected state becomes unavailable or invalid, sampling continues
+with the corresponding directly entered fallback value and logs one warning.
+
+The bundled pure-Python Gas Index Algorithm is derived from Sensirion's
+BSD-licensed reference implementation. Attribution is recorded in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Phidget Addressing
 

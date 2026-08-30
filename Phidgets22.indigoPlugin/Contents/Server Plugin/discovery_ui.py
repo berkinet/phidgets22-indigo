@@ -132,6 +132,37 @@ class DiscoveryUiMixin(object):
         return self._applySGPAdapter(
             valuesDict, valuesDict.get("sgpAdapterSelection", ""))
 
+    def getSGPCompensationDeviceMenu(self, filter="", valuesDict=None,
+                                     typeId="", targetId=0):
+        devices = sorted(
+            getattr(indigo, "devices", ()),
+            key=lambda device: str(getattr(device, "name", "")).lower())
+        return [("selectDevice", "Select an Indigo device")] + [
+            (str(device.id), device.name) for device in devices]
+
+    def _sgpCompensationStateMenu(self, valuesDict, device_key):
+        try:
+            device = indigo.devices[int(valuesDict.get(device_key, ""))]
+        except (IndexError, KeyError, TypeError, ValueError):
+            return [("selectState", "Select a device first")]
+        states = getattr(device, "states", {})
+        return [("selectState", "Select a device state")] + [
+            (str(state_id), str(state_id))
+            for state_id in sorted(states, key=lambda value: str(value).lower())]
+
+    def getSGPTemperatureStateMenu(self, filter="", valuesDict=None,
+                                   typeId="", targetId=0):
+        return self._sgpCompensationStateMenu(
+            valuesDict or {}, "sgpTemperatureDeviceId")
+
+    def getSGPHumidityStateMenu(self, filter="", valuesDict=None,
+                                typeId="", targetId=0):
+        return self._sgpCompensationStateMenu(
+            valuesDict or {}, "sgpHumidityDeviceId")
+
+    def sgpCompensationChanged(self, valuesDict, typeId, devId):
+        return valuesDict
+
     def _applyDisplayProvider(self, valuesDict, selection, devId=0):
         providers = {provider["id"]: provider
                      for provider in available_display_providers(self)}
@@ -397,12 +428,20 @@ class DiscoveryUiMixin(object):
         adapter_id = str(valuesDict.get("sgpAdapterDeviceId", ""))
         if not adapter_id or adapter_id != str(selection):
             errors["sgpAdapterSelection"] = "Select an available I2C adapter."
-        display_state = valuesDict.get("sgpDisplayState", "rawVoc")
-        if display_state not in ("rawVoc", "rawNox"):
-            errors["sgpDisplayState"] = "Select Raw VOC or Raw NOx."
-        for key, label, minimum, maximum in (
-                ("sgpRelativeHumidity", "relative humidity", 0.0, 100.0),
-                ("sgpTemperature", "temperature", -45.0, 130.0)):
+        display_state = valuesDict.get("sgpDisplayState", "vocIndex")
+        if display_state not in ("vocIndex", "noxIndex", "rawVoc", "rawNox"):
+            errors["sgpDisplayState"] = (
+                "Select VOC Index, NOx Index, Raw VOC, or Raw NOx.")
+        compensation_fields = (
+            ("sgpRelativeHumidity", "sgpHumiditySource",
+             "sgpHumidityDeviceId", "sgpHumidityState",
+             "relative humidity", 0.0, 100.0),
+            ("sgpTemperature", "sgpTemperatureSource",
+             "sgpTemperatureDeviceId", "sgpTemperatureState",
+             "temperature", -45.0, 130.0),
+        )
+        for (key, source_key, device_key, state_key, label,
+             minimum, maximum) in compensation_fields:
             try:
                 value = float(valuesDict.get(key, ""))
                 if value < minimum or value > maximum:
@@ -411,6 +450,30 @@ class DiscoveryUiMixin(object):
             except (TypeError, ValueError):
                 errors[key] = "Enter %s from %g through %g." % (
                     label, minimum, maximum)
+            source = str(valuesDict.get(source_key, "fixed"))
+            if source not in ("fixed", "device"):
+                errors[source_key] = "Select Direct entry or Indigo device state."
+                continue
+            valuesDict[source_key] = source
+            if source == "fixed":
+                continue
+            try:
+                source_device = indigo.devices[int(valuesDict.get(device_key, ""))]
+            except (IndexError, KeyError, TypeError, ValueError):
+                errors[device_key] = "Select an Indigo device."
+                continue
+            state_id = str(valuesDict.get(state_key, ""))
+            if state_id not in getattr(source_device, "states", {}):
+                errors[state_key] = "Select a state provided by that device."
+                continue
+            try:
+                state_value = float(source_device.states[state_id])
+                if state_value < minimum or state_value > maximum:
+                    raise ValueError
+            except (TypeError, ValueError):
+                errors[state_key] = (
+                    "The selected state must currently contain %s from %g "
+                    "through %g." % (label, minimum, maximum))
         if adapter_id:
             owner = find_address_owner(
                 getattr(indigo, "devices", ()), self.pluginId,

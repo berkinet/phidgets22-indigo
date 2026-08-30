@@ -587,11 +587,17 @@
 		<ConfigUI>
 			<Field id="sgpAdapterDeviceId" type="textfield" hidden="true"/>
 			<Field id="sgpAdapterSelection" type="menu" defaultValue="selectAdapter"><Label>I2C adapter:</Label><List class="self" method="getAvailableGPIOAdapterMenu" dynamicReload="true"/><CallbackMethod>sgpAdapterChanged</CallbackMethod></Field>
-			<Field id="sgpRelativeHumidity" type="textfield" defaultValue="50"><Label>Relative humidity compensation (%RH):</Label></Field>
-			<Field id="sgpTemperature" type="textfield" defaultValue="25"><Label>Temperature compensation (°C):</Label></Field>
-			<Field id="sgpDisplayState" type="menu" defaultValue="rawVoc"><Label>Display state:</Label><List><Option value="rawVoc">Raw VOC signal</Option><Option value="rawNox">Raw NOx signal</Option></List></Field>
+			<Field id="sgpHumiditySource" type="menu" defaultValue="fixed"><Label>Humidity source:</Label><List><Option value="fixed">Direct entry</Option><Option value="device">Indigo device state</Option></List><CallbackMethod>sgpCompensationChanged</CallbackMethod></Field>
+			<Field id="sgpRelativeHumidity" type="textfield" defaultValue="50"><Label>Direct/fallback humidity (%RH):</Label></Field>
+			<Field id="sgpHumidityDeviceId" type="menu" defaultValue="selectDevice" visibleBindingId="sgpHumiditySource" visibleBindingValue="device" alwaysUseInDialogHeightCalc="true"><Label>Humidity device:</Label><List class="self" method="getSGPCompensationDeviceMenu" dynamicReload="true"/><CallbackMethod>sgpCompensationChanged</CallbackMethod></Field>
+			<Field id="sgpHumidityState" type="menu" defaultValue="selectState" visibleBindingId="sgpHumiditySource" visibleBindingValue="device" alwaysUseInDialogHeightCalc="true"><Label>Humidity state:</Label><List class="self" method="getSGPHumidityStateMenu" dynamicReload="true"/></Field>
+			<Field id="sgpTemperatureSource" type="menu" defaultValue="fixed"><Label>Temperature source:</Label><List><Option value="fixed">Direct entry</Option><Option value="device">Indigo device state</Option></List><CallbackMethod>sgpCompensationChanged</CallbackMethod></Field>
+			<Field id="sgpTemperature" type="textfield" defaultValue="25"><Label>Direct/fallback temperature (°C):</Label></Field>
+			<Field id="sgpTemperatureDeviceId" type="menu" defaultValue="selectDevice" visibleBindingId="sgpTemperatureSource" visibleBindingValue="device" alwaysUseInDialogHeightCalc="true"><Label>Temperature device:</Label><List class="self" method="getSGPCompensationDeviceMenu" dynamicReload="true"/><CallbackMethod>sgpCompensationChanged</CallbackMethod></Field>
+			<Field id="sgpTemperatureState" type="menu" defaultValue="selectState" visibleBindingId="sgpTemperatureSource" visibleBindingValue="device" alwaysUseInDialogHeightCalc="true"><Label>Temperature state (°C):</Label><List class="self" method="getSGPTemperatureStateMenu" dynamicReload="true"/></Field>
+			<Field id="sgpDisplayState" type="menu" defaultValue="vocIndex"><Label>Display state:</Label><List><Option value="vocIndex">VOC Index</Option><Option value="noxIndex">NOx Index</Option><Option value="rawVoc">Raw VOC signal</Option><Option value="rawNox">Raw NOx signal</Option></List></Field>
 			<Field id="observedConnection" type="textfield" readonly="true"><Label>Sensor path:</Label></Field>
-			<Field id="sgpHelp" type="label"><Label>The SGP41 uses fixed address 0x59. After every start, the plugin performs the required 10-second NOx conditioning phase, then publishes raw VOC and NOx signals once per second.</Label></Field>
+			<Field id="sgpHelp" type="label"><Label>The SGP41 uses address 0x59, conditions NOx for 10 seconds, and feeds both raw signals to Sensirion's stateful Gas Index Algorithm once per second. Indices remain 0 during its initial 45-second warm-up. Device-state compensation falls back to the entered value if its source is temporarily unavailable.</Label></Field>
 		</ConfigUI>
 	</Device>
 
