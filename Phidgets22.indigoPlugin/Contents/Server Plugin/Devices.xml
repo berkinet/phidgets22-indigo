@@ -558,6 +558,7 @@
 			<Field id="lcdBacklight" type="textfield" defaultValue="1.0"><Label>Initial backlight (0.0–1.0):</Label></Field>
 			<Field id="lcdContrast" type="textfield" defaultValue="0.5" visibleBindingId="lcdProviderKind" visibleBindingValue="native" alwaysUseInDialogHeightCalc="true"><Label>Initial contrast (0.0–1.0):</Label></Field>
 			<Field id="lcdRestoreInitialText" type="checkbox" defaultValue="false"><Label>Write the initial text below after every attachment?</Label></Field>
+			<Field id="lcdInitialActionGroup" type="menu" defaultValue="0"><Label>Action group after attachment:</Label><List class="self" method="getActionGroupMenu" dynamicReload="true"/></Field>
 			<Field id="lcdInitialText" type="textfield" visibleBindingId="lcdScreenSize" visibleBindingValue="1" alwaysUseInDialogHeightCalc="true"><Label>Initial graphic text:</Label></Field>
 			<Field id="lcdInitialX" type="textfield" defaultValue="0" visibleBindingId="lcdScreenSize" visibleBindingValue="1" alwaysUseInDialogHeightCalc="true"><Label>Initial X position:</Label></Field>
 			<Field id="lcdInitialY" type="textfield" defaultValue="0" visibleBindingId="lcdScreenSize" visibleBindingValue="1" alwaysUseInDialogHeightCalc="true"><Label>Initial Y position:</Label></Field>

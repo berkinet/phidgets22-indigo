@@ -37,6 +37,15 @@ def _sensirion_crc(data):
 
 
 class DiscoveryUiMixin(object):
+
+    def getActionGroupMenu(self, filter="", valuesDict=None, typeId="", targetId=0):
+        groups = sorted(
+            ((int(group.id), str(group.name))
+             for group in getattr(indigo, "actionGroups", ())),
+            key=lambda item: item[1].lower())
+        return [("0", "None")] + [
+            (str(group_id), name) for group_id, name in groups]
+
     LCD_SCREEN_SIZES = [
         ("1", "Automatic / graphic LCD"),
         ("2", "1 row × 8 characters"), ("3", "2 rows × 8 characters"),
@@ -646,6 +655,14 @@ class DiscoveryUiMixin(object):
 
     def _validateLCDSettings(self, valuesDict, devId, description):
         errors = indigo.Dict()
+        try:
+            action_group_id = int(valuesDict.get("lcdInitialActionGroup", 0) or 0)
+            if action_group_id:
+                getattr(indigo, "actionGroups", {})[action_group_id]
+            valuesDict["lcdInitialActionGroup"] = str(action_group_id)
+        except (IndexError, KeyError, TypeError, ValueError):
+            errors["lcdInitialActionGroup"] = "Select an available action group."
+
         try:
             screen_size = int(valuesDict.get("lcdScreenSize", "1"))
             if screen_size < 1 or screen_size > 12:

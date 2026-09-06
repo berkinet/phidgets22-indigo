@@ -1,5 +1,16 @@
 # Release notes
 
+## 0.3.41 — 2026-09-06
+
+### Added
+
+- Add an optional Action Group selector to LCD device configuration for both
+  native Phidget and I2C displays.
+- Execute the selected Action Group after each successful display attachment,
+  once initialization, state publication, and pending-display replay complete.
+- Validate saved Action Group selections against Indigo's current Action Groups
+  and log execution success or failure without destabilizing LCD attachment.
+
 ## 0.3.40 — 2026-09-06
 
 ### Fixed

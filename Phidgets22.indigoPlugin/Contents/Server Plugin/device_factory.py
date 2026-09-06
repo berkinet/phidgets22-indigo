@@ -177,7 +177,8 @@ def _lcd(plugin, device, common):
         initialLines=[props.get("lcdInitialLine%d" % line_number, "")
                       for line_number in range(1, 5)],
         initialX=int(props.get("lcdInitialX", 0)),
-        initialY=int(props.get("lcdInitialY", 0)))
+        initialY=int(props.get("lcdInitialY", 0)),
+        initialActionGroupId=int(props.get("lcdInitialActionGroup", 0) or 0))
 
 
 def _data_adapter(plugin, device, common):

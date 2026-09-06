@@ -115,7 +115,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.40</string>", plist)
+        self.assertIn("<string>0.3.41</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -596,7 +596,8 @@ class ConfigurationTests(unittest.TestCase):
         self.assertIsNotNone(lcd_device)
         lcd_fields = {field.get("id") for field in lcd_device.iter("Field")}
         self.assertTrue({"lcdScreenSize", "lcdBacklight",
-                         "lcdContrast", "lcdRestoreInitialText"}.issubset(lcd_fields))
+                         "lcdContrast", "lcdRestoreInitialText",
+                         "lcdInitialActionGroup"}.issubset(lcd_fields))
 
         actions = ElementTree.parse(SERVER_PLUGIN / "Actions.xml").getroot()
         action_ids = {action.get("id") for action in actions.findall("Action")}
@@ -632,6 +633,37 @@ class ConfigurationTests(unittest.TestCase):
 
         self.assertTrue(instance.validatePrefsConfigUi(values))
         self.assertEqual(values["attachTimeout"], "12")
+
+    def test_action_group_menu_is_optional_and_sorted(self):
+        groups = [types.SimpleNamespace(id=8, name="Zulu"),
+                  types.SimpleNamespace(id=3, name="Alpha")]
+        instance = object.__new__(plugin.Plugin)
+
+        with mock.patch.object(indigo, "actionGroups", groups, create=True):
+            menu = instance.getActionGroupMenu()
+
+        self.assertEqual(menu, [("0", "None"), ("3", "Alpha"), ("8", "Zulu")])
+
+    def test_lcd_attachment_action_group_must_exist(self):
+        instance = object.__new__(plugin.Plugin)
+        values = indigo.Dict({
+            "lcdInitialActionGroup": "23", "lcdScreenSize": "1",
+            "lcdProviderKind": "native", "lcdBacklight": "1.0",
+            "lcdContrast": "0.5", "lcdInitialX": "0", "lcdInitialY": "0",
+        })
+
+        with mock.patch.object(
+                indigo, "actionGroups", {23: mock.sentinel.group}, create=True):
+            errors = instance._validateLCDSettings(values, 0, None)
+
+        self.assertNotIn("lcdInitialActionGroup", errors)
+        self.assertEqual(values["lcdInitialActionGroup"], "23")
+
+        values["lcdInitialActionGroup"] = "99"
+        with mock.patch.object(
+                indigo, "actionGroups", {23: mock.sentinel.group}, create=True):
+            errors = instance._validateLCDSettings(values, 0, None)
+        self.assertIn("lcdInitialActionGroup", errors)
 
     def test_attach_timeout_rejects_invalid_values(self):
         instance = object.__new__(plugin.Plugin)
@@ -694,6 +726,7 @@ class ConfigurationTests(unittest.TestCase):
             "lcdBacklight": "0.8",
             "lcdContrast": "0.4",
             "lcdRestoreInitialText": False,
+            "lcdInitialActionGroup": "2468",
             "lcdInitialText": "Ready",
             "lcdInitialLine1": "",
             "lcdInitialLine2": "",
@@ -710,6 +743,7 @@ class ConfigurationTests(unittest.TestCase):
         factory.assert_called_once()
         self.assertEqual(factory.call_args.kwargs["screenSize"], 1)
         self.assertEqual(factory.call_args.kwargs["backlight"], 0.8)
+        self.assertEqual(factory.call_args.kwargs["initialActionGroupId"], 2468)
 
         active_lcd = object.__new__(actions.LCDPhidget)
         active_lcd.writeText = mock.Mock()

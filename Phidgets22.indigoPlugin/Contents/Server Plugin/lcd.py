@@ -46,6 +46,7 @@ class LCDPhidget(PhidgetBase):
 
     def __init__(self, screenSize, backlight, contrast,
                  restoreInitialText, initialText, initialLines, initialX, initialY,
+                 initialActionGroupId=0,
                  *args, **kwargs):
         phidget = kwargs.pop("phidget", None)
         if phidget is None:
@@ -59,6 +60,7 @@ class LCDPhidget(PhidgetBase):
         self.initialLines = list(initialLines or [])
         self.initialX = int(initialX)
         self.initialY = int(initialY)
+        self.initialActionGroupId = int(initialActionGroupId or 0)
         self.lastText = ""
         self.lcdType = "unknown"
         self.screenWidth = None
@@ -170,6 +172,21 @@ class LCDPhidget(PhidgetBase):
         if self._state == "attached":
             self.updateIndigoStatus()
             self._replay_pending_display_request()
+            self._runInitialActionGroup()
+
+    def _runInitialActionGroup(self):
+        if not self.initialActionGroupId:
+            return
+        try:
+            indigo.actionGroup.execute(self.initialActionGroupId)
+            self.logger.info(
+                "LCD attachment action group executed: device='%s' groupId=%d",
+                self.indigoDevice.name, self.initialActionGroupId)
+        except Exception:
+            self.logger.error(
+                "Unable to execute LCD attachment action group: device='%s' "
+                "groupId=%d\n%s", self.indigoDevice.name,
+                self.initialActionGroupId, traceback.format_exc())
 
     def onDetachHandler(self, ph):
         with self._display_lock:

@@ -211,6 +211,27 @@ class LCDTests(unittest.TestCase):
         self.assertEqual(set(native.handlers), {
             "setOnErrorHandler", "setOnAttachHandler", "setOnDetachHandler"})
 
+    def test_attachment_executes_configured_action_group_after_initialization(self):
+        native = FakeLCD()
+        logger = mock.Mock()
+        wrapper = make_wrapper(
+            native, screenSize=LCDScreenSize.SCREEN_SIZE_2x16,
+            initialActionGroupId=12345, logger=logger)
+        wrapper.indigo_plugin.triggerEvent = mock.Mock()
+        wrapper._state = "starting"
+        execute = mock.Mock()
+
+        with mock.patch.object(
+                lcd.indigo, "actionGroup",
+                types.SimpleNamespace(execute=execute), create=True):
+            wrapper.onAttachHandler(native)
+
+        execute.assert_called_once_with(12345)
+        self.assertEqual(wrapper._state, "attached")
+        logger.info.assert_called_once_with(
+            "LCD attachment action group executed: device='%s' groupId=%d",
+            wrapper.indigoDevice.name, 12345)
+
     def test_detached_display_queue_replays_only_the_latest_request(self):
         native = FakeLCD()
         logger = mock.Mock()
