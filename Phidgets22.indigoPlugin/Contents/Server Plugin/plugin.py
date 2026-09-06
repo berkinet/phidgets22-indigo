@@ -46,6 +46,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         self._detachBatches = {}
         self._recoveryBatches = {}
         self._startupContentionBatches = {}
+        self._startupUnavailableBatches = {}
         self._batchTimers = {}
         self._serverOutages = {}
 
@@ -141,6 +142,54 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         self._scheduleBatch(
             "startup-contention", physical_key,
             self._flushStartupContentionBatch)
+
+    def phidgetStartupUnavailableExpired(self, phidget, detached_for, state):
+        """Batch simultaneous startup timeouts by physical serial number."""
+        serial_number = phidget.channelInfo.serialNumber
+        with self._outageLock:
+            self._startupUnavailableBatches.setdefault(
+                serial_number, {})[phidget] = (detached_for, state)
+        self._scheduleBatch(
+            "startup-unavailable", serial_number,
+            self._flushStartupUnavailableBatch)
+
+    def _flushStartupUnavailableBatch(self, serial_number):
+        with self._outageLock:
+            self._batchTimers.pop(
+                ("startup-unavailable", serial_number), None)
+            pending = self._startupUnavailableBatches.pop(serial_number, {})
+        affected = {
+            phidget: details for phidget, details in pending.items()
+            if phidget._state in ("starting", "detached")
+        }
+        if not affected:
+            return
+        configured = [
+            phidget for phidget in list(self.activePhidgets.values())
+            if phidget.channelInfo.serialNumber == serial_number]
+        all_unavailable = (len(configured) > 1 and
+                           set(affected) == set(configured))
+        if not all_unavailable:
+            for phidget, (detached_for, state) in affected.items():
+                self.logger.error(
+                    "Phidget remains detached after %.1f seconds (%s): %s; "
+                    "automatic attachment remains active",
+                    detached_for, state, phidget._identity())
+            return
+        servers = ", ".join(sorted(set(
+            phidget.serverDisplayName() for phidget in affected)))
+        names = ", ".join(sorted(
+            "'%s' (hub port %s, channel %s)" % (
+                phidget.indigoDevice.name, phidget.channelInfo.hubPort,
+                phidget.channelInfo.channel)
+            for phidget in affected))
+        longest = max(details[0] for details in affected.values())
+        self.logger.error(
+            "Physical Phidget serial %s remains unavailable after %.1f seconds; "
+            "all %d configured channels are detached (server: %s): %s. "
+            "Check the Phidget and Network Server; automatic attachment "
+            "remains active.",
+            serial_number, longest, len(affected), servers, names)
 
     def _flushStartupContentionBatch(self, physical_key):
         with self._outageLock:
@@ -387,6 +436,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             self._detachBatches.clear()
             self._recoveryBatches.clear()
             self._startupContentionBatches.clear()
+            self._startupUnavailableBatches.clear()
             self._serverOutages.clear()
         for timer in timers:
             timer.cancel()

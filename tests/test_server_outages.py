@@ -44,6 +44,7 @@ class FakePhidget(object):
         self._detach_announced = state == "detached"
         self._detached_at = time.monotonic() - 3
         self._startup_contention_message = None
+        self._startup_error_message = None
 
     def serverKey(self):
         return "Test-Server-B._phidget22server._tcp.local"
@@ -67,6 +68,7 @@ class ServerOutageTests(unittest.TestCase):
         self.plugin._detachBatches = {}
         self.plugin._recoveryBatches = {}
         self.plugin._startupContentionBatches = {}
+        self.plugin._startupUnavailableBatches = {}
         self.plugin._batchTimers = {}
         self.plugin._serverOutages = {}
         self.server_key = "Test-Server-B._phidget22server._tcp.local"
@@ -124,6 +126,38 @@ class ServerOutageTests(unittest.TestCase):
         self.assertIn("remained in use", arguments[0])
         self.assertIn("'Test device 1' (channel 0)", arguments[-1])
         self.assertIn("'Test device 2' (channel 1)", arguments[-1])
+
+    def test_all_startup_timeouts_for_serial_are_one_physical_device_error(self):
+        first = FakePhidget(1, 622666, state="starting", channel=0, hub_port=0)
+        second = FakePhidget(2, 622666, state="starting", channel=0, hub_port=1)
+        self.plugin.activePhidgets = {1: first, 2: second}
+        self.plugin._startupUnavailableBatches[622666] = {
+            first: (7200.0, "starting"), second: (7200.1, "starting")}
+
+        self.plugin._flushStartupUnavailableBatch(622666)
+
+        self.plugin.logger.error.assert_called_once()
+        arguments = self.plugin.logger.error.call_args.args
+        self.assertIn("Physical Phidget serial %s remains unavailable", arguments[0])
+        self.assertIn("all %d configured channels are detached", arguments[0])
+        self.assertIn("automatic attachment remains active", arguments[0])
+        self.assertEqual(arguments[1:5], (622666, 7200.1, 2, "Test-Server-B"))
+        self.assertIn("'Test device 1' (hub port 0, channel 0)", arguments[5])
+        self.assertIn("'Test device 2' (hub port 1, channel 0)", arguments[5])
+
+    def test_partial_startup_timeout_remains_channel_specific(self):
+        first = FakePhidget(1, 622666, state="starting")
+        second = FakePhidget(2, 622666, state="attached")
+        self.plugin.activePhidgets = {1: first, 2: second}
+        self.plugin._startupUnavailableBatches[622666] = {
+            first: (7200.0, "starting")}
+
+        self.plugin._flushStartupUnavailableBatch(622666)
+
+        self.plugin.logger.error.assert_called_once()
+        self.assertIn("Phidget remains detached", self.plugin.logger.error.call_args.args[0])
+        self.assertIn("automatic attachment remains active",
+                      self.plugin.logger.error.call_args.args[0])
 
 
 if __name__ == "__main__":

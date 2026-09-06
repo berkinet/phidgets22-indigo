@@ -309,8 +309,14 @@ class PhidgetBase(object):
                     self._error_identity(), self._startup_error_message)
             else:
                 self.indigoDevice.setErrorStateOnServer('Detached')
-                self.logger.error("Phidget remains detached after %.1f seconds (%s): %s",
-                                  detached_for, state, self._identity())
+                coordinator = getattr(
+                    self.indigo_plugin, "phidgetStartupUnavailableExpired", None)
+                if coordinator is not None:
+                    coordinator(self, detached_for, state)
+                else:
+                    self.logger.error(
+                        "Phidget remains detached after %.1f seconds (%s): %s",
+                        detached_for, state, self._identity())
         except Exception:
             self.logger.error("Attach-timeout handler failed: %s\n%s",
                               self._identity(), traceback.format_exc())

@@ -1,5 +1,17 @@
 # Release notes
 
+## 0.3.44 — 2026-09-06
+
+### Changed
+
+- Group simultaneous startup timeouts when every configured channel on the
+  same physical Phidget serial number remains detached.
+- Report one actionable physical-device message with its serial number, server
+  selection, elapsed timeout, affected Indigo devices and ports, and continued
+  automatic-attachment status instead of one context-free error per channel.
+- Retain channel-specific timeout reporting when other configured channels on
+  the same physical Phidget are attached.
+
 ## 0.3.43 — 2026-09-06
 
 ### Changed
