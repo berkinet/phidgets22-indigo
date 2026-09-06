@@ -1,5 +1,12 @@
 # Release notes
 
+## 0.3.43 — 2026-09-06
+
+### Changed
+
+- Rename the LCD initialization mode menu label from "After attachment" to
+  "Select option" beneath the existing initialization section heading.
+
 ## 0.3.42 — 2026-09-06
 
 ### Changed

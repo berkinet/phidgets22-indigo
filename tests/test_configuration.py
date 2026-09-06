@@ -115,7 +115,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.42</string>", plist)
+        self.assertIn("<string>0.3.43</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -602,6 +602,7 @@ class ConfigurationTests(unittest.TestCase):
                          "initializationHeader"}.issubset(lcd_fields))
         mode_field = lcd_device.find(
             "./ConfigUI/Field[@id='lcdInitializationMode']")
+        self.assertEqual(mode_field.find("Label").text, "Select option:")
         self.assertEqual(
             [(option.get("value"), option.text)
              for option in mode_field.iter("Option")],

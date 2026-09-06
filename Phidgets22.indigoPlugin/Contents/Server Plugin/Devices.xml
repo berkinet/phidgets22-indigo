@@ -560,7 +560,7 @@
 			<Field id="lcdContrast" type="textfield" defaultValue="0.5" visibleBindingId="lcdProviderKind" visibleBindingValue="native" alwaysUseInDialogHeightCalc="true"><Label>Initial contrast (0.0–1.0):</Label></Field>
 			<Field id="initializationSeparator" type="separator"/>
 			<Field id="initializationHeader" type="label"><Label>Initialization options after attachment</Label></Field>
-			<Field id="lcdInitializationMode" type="menu" defaultValue="none"><Label>After attachment:</Label><List><Option value="none">None</Option><Option value="actionGroup">Execute action group</Option><Option value="initialText">Write initial text</Option></List><CallbackMethod>lcdInitializationChanged</CallbackMethod></Field>
+			<Field id="lcdInitializationMode" type="menu" defaultValue="none"><Label>Select option:</Label><List><Option value="none">None</Option><Option value="actionGroup">Execute action group</Option><Option value="initialText">Write initial text</Option></List><CallbackMethod>lcdInitializationChanged</CallbackMethod></Field>
 			<Field id="lcdInitialTextLayout" type="textfield" defaultValue="hidden" hidden="true"/>
 			<Field id="lcdRestoreInitialText" type="checkbox" defaultValue="false" hidden="true"/>
 			<Field id="lcdInitialActionGroup" type="menu" defaultValue="0" visibleBindingId="lcdInitializationMode" visibleBindingValue="actionGroup" alwaysUseInDialogHeightCalc="true"><Label>Action group:</Label><List class="self" method="getActionGroupMenu" dynamicReload="true"/></Field>
