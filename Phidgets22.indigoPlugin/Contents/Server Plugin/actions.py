@@ -223,47 +223,48 @@ class ActionsMixin(object):
         return values
 
     def getActionConfigUiValues(self, pluginProps, typeId, deviceId):
+        values = indigo.Dict(pluginProps)
         errors = indigo.Dict()
         if typeId == "lcdStartAnimation":
             line_count = self._lcdActionLineCount(deviceId)
-            mode = pluginProps.get("animationMode", "static")
-            pluginProps["lineCount"] = str(line_count)
-            pluginProps["animationMode"] = mode
-            pluginProps["animationLayout"] = self._lcdDisplayLayout(mode, line_count)
-            graphic_font = int(pluginProps.get("graphicFont", 4))
-            pluginProps["graphicFont"] = str(graphic_font)
-            pluginProps["graphicContentType"] = pluginProps.get(
+            mode = values.get("animationMode", "static")
+            values["lineCount"] = str(line_count)
+            values["animationMode"] = mode
+            values["animationLayout"] = self._lcdDisplayLayout(mode, line_count)
+            graphic_font = int(values.get("graphicFont", 4))
+            values["graphicFont"] = str(graphic_font)
+            values["graphicContentType"] = values.get(
                 "graphicContentType", "text")
-            pluginProps["graphicContentLayout"] = self._graphicContentLayout(
-                line_count, pluginProps["graphicContentType"])
-            pluginProps["graphicLineLayout"] = self._graphicTextLayout(
-                graphic_font, pluginProps["graphicContentType"], line_count)
-            if (line_count == 0 and not pluginProps.get("graphicLine1") and
-                    pluginProps.get("graphicText")):
-                pluginProps["graphicLine1"] = pluginProps["graphicText"]
-            self._updateVirtualTextStatus(pluginProps)
+            values["graphicContentLayout"] = self._graphicContentLayout(
+                line_count, values["graphicContentType"])
+            values["graphicLineLayout"] = self._graphicTextLayout(
+                graphic_font, values["graphicContentType"], line_count)
+            if (line_count == 0 and not values.get("graphicLine1") and
+                    values.get("graphicText")):
+                values["graphicLine1"] = values["graphicText"]
+            self._updateVirtualTextStatus(values)
             for field, default in (
                     ("staticOverflowBehavior", "truncate"),
                     ("overflowMarqueeDirection", "left"),
                     ("overflowMarqueeGap", "3"),
                     ("overflowMarqueeInterval", "0.4")):
-                if field not in pluginProps:
-                    pluginProps[field] = default
-            self._updateStaticOverflowLayout(pluginProps, mode, line_count)
+                if field not in values:
+                    values[field] = default
+            self._updateStaticOverflowLayout(values, mode, line_count)
             try:
                 device = indigo.devices[int(deviceId)]
-                if "backlight" not in pluginProps:
-                    pluginProps["backlight"] = str(device.states.get(
+                if "backlight" not in values:
+                    values["backlight"] = str(device.states.get(
                         "backlight", device.pluginProps.get("lcdBacklight", 1.0)))
-                if "contrast" not in pluginProps:
-                    pluginProps["contrast"] = str(device.states.get(
+                if "contrast" not in values:
+                    values["contrast"] = str(device.states.get(
                         "contrast", device.pluginProps.get("lcdContrast", 0.5)))
             except (AttributeError, IndexError, KeyError, TypeError, ValueError):
-                if "backlight" not in pluginProps:
-                    pluginProps["backlight"] = "1.0"
-                if "contrast" not in pluginProps:
-                    pluginProps["contrast"] = "0.5"
-        return (pluginProps, errors)
+                if "backlight" not in values:
+                    values["backlight"] = "1.0"
+                if "contrast" not in values:
+                    values["contrast"] = "0.5"
+        return (values, errors)
 
     def lcdAnimationConfigChanged(self, valuesDict, typeId, deviceId):
         line_count = self._lcdActionLineCount(deviceId)

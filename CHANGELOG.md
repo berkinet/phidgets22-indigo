@@ -1,5 +1,16 @@
 # Release notes
 
+## 0.3.39 — 2026-09-06
+
+### Fixed
+
+- Treat an LCD channel that disappears during attachment initialization, such
+  as an LCD1100 rebooting during a firmware update, as a transient detach and
+  continue waiting for automatic reattachment without an error traceback.
+- Build LCD action configuration values in a fresh Indigo dictionary so edits
+  to graphic display settings persist on the first save instead of retaining
+  the previous action values until the dialog is saved again.
+
 ## 0.3.38 — 2026-08-30
 
 ### Fixed

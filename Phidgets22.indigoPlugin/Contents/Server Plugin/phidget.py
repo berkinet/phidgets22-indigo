@@ -9,6 +9,8 @@ import traceback
 
 import phidget_util
 from config_util import saved_bool
+from Phidget22.ErrorCode import ErrorCode
+from Phidget22.PhidgetException import PhidgetException
 
 
 class PeripheralUnavailableError(RuntimeError):
@@ -395,6 +397,27 @@ class PhidgetBase(object):
             self.logger.error(
                 "Configured peripheral unavailable: %s: %s",
                 self._identity(), error)
+            return
+        except PhidgetException as error:
+            if error.code == ErrorCode.EPHIDGET_NOTATTACHED:
+                with self._lifecycle_lock:
+                    self._state = "detached"
+                    if self._detached_at is None:
+                        self._detached_at = time.monotonic()
+                self.logger.debug(
+                    "Phidget detached during attachment initialization; "
+                    "awaiting automatic reattach: %s", self._identity())
+                return
+            with self._lifecycle_lock:
+                self._state = "detached"
+                if self._detached_at is None:
+                    self._detached_at = time.monotonic()
+            try:
+                self.indigoDevice.setErrorStateOnServer('Initialization failed')
+            except Exception:
+                pass
+            self.logger.error("Phidget attached but initialization failed: %s\n%s",
+                              self._identity(), traceback.format_exc())
             return
         except Exception:
             with self._lifecycle_lock:

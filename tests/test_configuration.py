@@ -115,7 +115,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.38</string>", plist)
+        self.assertIn("<string>0.3.39</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -1017,6 +1017,28 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(values["backlight"], "0.75")
         self.assertEqual(values["contrast"], "0.35")
         self.assertEqual(errors, {})
+
+        indigo.devices = {42: types.SimpleNamespace(
+            states={"lcdType": "graphic", "screenWidth": 128,
+                    "screenHeight": 64},
+            pluginProps={"lcdScreenSize": "1"})}
+        original = IndigoLikeDict({
+            "graphicContentType": "text", "graphicFont": "4",
+            "graphicLine1": "Old text", "backlight": "1.0",
+            "contrast": "0.5", "animationMode": "static",
+        })
+        opened, errors = instance.getActionConfigUiValues(
+            original, "lcdStartAnimation", 42)
+        opened["graphicLine1"] = "New first-save text"
+        valid, saved = instance.validateActionConfigUi(
+            opened, "lcdStartAnimation", 42)
+
+        self.assertTrue(valid)
+        self.assertIsNot(opened, original)
+        self.assertEqual(saved["graphicLine1"], "New first-save text")
+        self.assertEqual(original["graphicLine1"], "Old text")
+        self.assertNotIn("lineCount", original)
+        indigo.devices = {42: device}
 
         values, errors = instance.getActionConfigUiValues(
             indigo.Dict({"animationMode": "flash"}), "lcdStartAnimation", 42)

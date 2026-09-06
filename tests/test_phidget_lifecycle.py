@@ -6,6 +6,9 @@ import time
 import unittest
 from unittest import mock
 
+from Phidget22.ErrorCode import ErrorCode
+from Phidget22.PhidgetException import PhidgetException
+
 
 SERVER_PLUGIN = pathlib.Path(__file__).parents[1] / "Phidgets22.indigoPlugin" / "Contents" / "Server Plugin"
 sys.path.insert(0, str(SERVER_PLUGIN))
@@ -110,6 +113,13 @@ class TestPhidget(phidget_module.PhidgetBase):
             raise RuntimeError("configuration failed")
 
 
+class DetachingDuringInitializationPhidget(TestPhidget):
+    __test__ = False
+
+    def configureAttachedPhidget(self, ph):
+        raise PhidgetException(ErrorCode.EPHIDGET_NOTATTACHED)
+
+
 class PhidgetLifecycleTests(unittest.TestCase):
     def tearDown(self):
         phidget = getattr(self, "phidget", None)
@@ -124,6 +134,19 @@ class PhidgetLifecycleTests(unittest.TestCase):
         self.assertEqual(self.phidget._state, "detached")
         self.assertEqual(self.phidget.device.errors[-1], "Initialization failed")
         self.assertEqual(self.phidget.plugin.events, [])
+
+    def test_detach_during_initialization_quietly_waits_for_reattach(self):
+        self.phidget = DetachingDuringInitializationPhidget()
+        self.phidget.start()
+
+        self.phidget.onAttachHandler(self.phidget.native)
+
+        self.assertEqual(self.phidget._state, "detached")
+        self.assertEqual(self.phidget.device.errors, [])
+        self.phidget.test_logger.error.assert_not_called()
+        self.phidget.test_logger.debug.assert_any_call(
+            "Phidget detached during attachment initialization; awaiting "
+            "automatic reattach: %s", self.phidget._identity())
 
     def test_expected_missing_peripheral_logs_without_a_traceback(self):
         self.phidget = TestPhidget(peripheral_unavailable=True)
