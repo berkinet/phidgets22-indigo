@@ -1,5 +1,13 @@
 # Release notes
 
+## 0.3.40 — 2026-09-06
+
+### Fixed
+
+- Format attach and detach debug diagnostics for logical adapter-backed LCD
+  channels using their wrapper metadata when Phidget SDK diagnostic methods
+  are unavailable, avoiding harmless `AttributeError` tracebacks in debug logs.
+
 ## 0.3.39 — 2026-09-06
 
 ### Fixed
