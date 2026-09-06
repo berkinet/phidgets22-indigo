@@ -73,8 +73,11 @@ class FakeDevice(object):
 
 
 class FakePlugin(object):
-    def __init__(self, attach_timeout="30"):
-        self.pluginPrefs = {"attachTimeout": attach_timeout}
+    def __init__(self, attach_timeout="30", reminder_interval="3600"):
+        self.pluginPrefs = {
+            "attachTimeout": attach_timeout,
+            "detachedReminderInterval": reminder_interval,
+        }
         self.events = []
 
     def triggerEvent(self, device, event):
@@ -276,12 +279,29 @@ class PhidgetLifecycleTests(unittest.TestCase):
             "open failed.")
         self.assertEqual(self.phidget._state, "starting")
         self.assertFalse(self.phidget.native.closed)
+        self.assertIsNotNone(self.phidget.timer)
 
         self.phidget.onErrorHandler(self.phidget.native, 5, message)
         self.phidget.test_logger.error.assert_called_once()
         self.phidget.onAttachHandler(self.phidget.native)
         self.assertEqual(self.phidget._state, "attached")
         self.assertEqual(self.phidget.device.errors, ["Detached", None])
+
+    def test_unavailable_message_repeats_at_configured_interval(self):
+        self.phidget = TestPhidget()
+        self.phidget.detached_reminder_interval = 900
+        self.phidget.start()
+        generation = self.phidget._timer_generation
+
+        with mock.patch.object(phidget_module.threading, "Timer") as timer_class:
+            timer = timer_class.return_value
+            self.phidget.connectionTimeoutHandler(generation)
+
+        timer_class.assert_called_once_with(
+            900, self.phidget.connectionTimeoutHandler,
+            args=(generation + 1,))
+        self.assertIs(self.phidget.timer, timer)
+        timer.start.assert_called_once_with()
 
     def test_startup_grace_is_at_least_thirty_seconds(self):
         self.phidget = TestPhidget(attach_timeout="5")

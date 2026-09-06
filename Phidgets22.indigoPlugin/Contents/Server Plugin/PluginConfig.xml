@@ -15,6 +15,11 @@
         <Label>Timeout for Phidget attachment (seconds):</Label>
     </Field>
 
+	<Field type="textfield" id="detachedReminderInterval" defaultValue="3600" readonly="false">
+        <Label>Detached-device reminder interval (seconds):</Label>
+        <Description>Repeat unavailable-device messages while attachment remains unsuccessful.</Description>
+    </Field>
+
 	<Field type="checkbox"  id="suppressErrors" defaultValue="False">
 		<Label>Suppress interfaceKit sample overrun and lost packet errors?</Label>
 	</Field>

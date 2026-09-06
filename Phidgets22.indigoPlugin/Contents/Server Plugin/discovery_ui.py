@@ -265,7 +265,19 @@ class DiscoveryUiMixin(object):
             errors["attachTimeout"] = "Enter a whole number greater than zero."
             return False, valuesDict, errors
 
+        try:
+            reminder_interval = int(valuesDict.get(
+                "detachedReminderInterval", "3600"))
+            if reminder_interval <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            errors = indigo.Dict()
+            errors["detachedReminderInterval"] = (
+                "Enter a whole number greater than zero.")
+            return False, valuesDict, errors
+
         valuesDict["attachTimeout"] = str(attach_timeout)
+        valuesDict["detachedReminderInterval"] = str(reminder_interval)
         return True
 
     def getDeviceConfigUiValues(self, pluginProps, typeId, devId):

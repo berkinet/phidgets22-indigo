@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.3.45 — 2026-09-06
+
+### Changed
+
+- Repeat unavailable-device messages while Phidget attachment remains
+  unsuccessful, retaining physical-serial grouping on each reminder.
+- Add a configurable detached-device reminder interval to plugin preferences,
+  defaulting to one hour and requiring a positive whole number of seconds.
+- Stop pending reminders automatically when the device attaches or stops.
+
 ## 0.3.44 — 2026-09-06
 
 ### Changed

@@ -115,7 +115,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.44</string>", plist)
+        self.assertIn("<string>0.3.45</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -645,10 +645,14 @@ class ConfigurationTests(unittest.TestCase):
 
     def test_attach_timeout_accepts_positive_integer(self):
         instance = object.__new__(plugin.Plugin)
-        values = indigo.Dict({"attachTimeout": " 12 "})
+        values = indigo.Dict({
+            "attachTimeout": " 12 ",
+            "detachedReminderInterval": " 900 ",
+        })
 
         self.assertTrue(instance.validatePrefsConfigUi(values))
         self.assertEqual(values["attachTimeout"], "12")
+        self.assertEqual(values["detachedReminderInterval"], "900")
 
     def test_action_group_menu_is_optional_and_sorted(self):
         groups = [types.SimpleNamespace(id=8, name="Zulu"),
@@ -715,6 +719,20 @@ class ConfigurationTests(unittest.TestCase):
             self.assertFalse(valid)
             self.assertIs(returned_values, values)
             self.assertIn("attachTimeout", errors)
+
+    def test_detached_reminder_interval_rejects_invalid_values(self):
+        instance = object.__new__(plugin.Plugin)
+        for value in ("", "1.5", "zero", "0", "-1"):
+            values = indigo.Dict({
+                "attachTimeout": "30",
+                "detachedReminderInterval": value,
+            })
+
+            valid, returned_values, errors = instance.validatePrefsConfigUi(values)
+
+            self.assertFalse(valid)
+            self.assertIs(returned_values, values)
+            self.assertIn("detachedReminderInterval", errors)
 
     def test_lcd_action_validation(self):
         instance = object.__new__(plugin.Plugin)

@@ -62,6 +62,8 @@ class PhidgetBase(object):
             indigo_plugin.pluginPrefs.get('attachTimeout', '30'))
         self.initial_connection_timeout = max(
             self.STARTUP_ERROR_GRACE_SECONDS, configured_timeout)
+        self.detached_reminder_interval = int(
+            indigo_plugin.pluginPrefs.get('detachedReminderInterval', '3600'))
 
         self.timer = None
         self._detach_grace_timer = None
@@ -201,6 +203,22 @@ class PhidgetBase(object):
             self.timer = timer
         timer.start()
 
+    def _schedule_detached_reminder(self, generation):
+        """Repeat an attachment timeout while this channel remains unavailable."""
+        with self._lifecycle_lock:
+            if (generation != self._timer_generation or
+                    self._state not in ("starting", "detached")):
+                return
+            self._timer_generation += 1
+            next_generation = self._timer_generation
+            timer = threading.Timer(
+                self.detached_reminder_interval,
+                self.connectionTimeoutHandler,
+                args=(next_generation,))
+            timer.daemon = True
+            self.timer = timer
+        timer.start()
+
     def _cancel_detach_grace_timer(self):
         with self._lifecycle_lock:
             self._detach_generation += 1
@@ -320,6 +338,8 @@ class PhidgetBase(object):
         except Exception:
             self.logger.error("Attach-timeout handler failed: %s\n%s",
                               self._identity(), traceback.format_exc())
+        finally:
+            self._schedule_detached_reminder(generation)
 
     def onErrorHandler(self, ph, errorCode, errorString):
         try:
