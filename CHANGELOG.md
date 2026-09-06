@@ -1,5 +1,18 @@
 # Release notes
 
+## 0.3.42 — 2026-09-06
+
+### Changed
+
+- Group display startup behavior beneath a dedicated "Initialization options
+  after attachment" section in LCD device configuration.
+- Replace independent initial-text and Action Group controls with one mutually
+  exclusive choice: None, Execute action group, or Write initial text.
+- Show only the fields relevant to the selected initialization mode and the
+  configured graphic or character display geometry.
+- Migrate existing LCD settings automatically, preserving a selected Action
+  Group or the former initial-text behavior without losing saved values.
+
 ## 0.3.41 — 2026-09-06
 
 ### Added

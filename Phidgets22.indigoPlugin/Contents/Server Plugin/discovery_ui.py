@@ -46,6 +46,39 @@ class DiscoveryUiMixin(object):
         return [("0", "None")] + [
             (str(group_id), name) for group_id, name in groups]
 
+    def _applyLCDInitializationMode(self, values):
+        mode = values.get("lcdInitializationMode", "")
+        if mode not in ("none", "actionGroup", "initialText"):
+            try:
+                has_action_group = bool(int(
+                    values.get("lcdInitialActionGroup", 0) or 0))
+            except (TypeError, ValueError):
+                has_action_group = False
+            if has_action_group:
+                mode = "actionGroup"
+            elif saved_bool(values.get("lcdRestoreInitialText", False)):
+                mode = "initialText"
+            else:
+                mode = "none"
+        values["lcdInitializationMode"] = mode
+        values["lcdRestoreInitialText"] = mode == "initialText"
+        try:
+            screen_size = int(values.get("lcdScreenSize", 1) or 1)
+        except (TypeError, ValueError):
+            screen_size = 1
+        rows = {
+            2: 1, 3: 2, 4: 1, 5: 2, 6: 4, 7: 2,
+            8: 4, 9: 2, 10: 1, 11: 2, 12: 4,
+        }.get(screen_size)
+        values["lcdInitialTextLayout"] = (
+            "graphic" if mode == "initialText" and screen_size == 1
+            else "text%d" % rows if mode == "initialText" and rows
+            else "hidden")
+        return values
+
+    def lcdInitializationChanged(self, valuesDict, typeId, devId):
+        return self._applyLCDInitializationMode(valuesDict)
+
     LCD_SCREEN_SIZES = [
         ("1", "Automatic / graphic LCD"),
         ("2", "1 row × 8 characters"), ("3", "2 rows × 8 characters"),
@@ -306,6 +339,7 @@ class DiscoveryUiMixin(object):
                     selection = providers[0]["id"]
             if selection:
                 values = self._applyDisplayProvider(values, selection, devId)
+            values = self._applyLCDInitializationMode(values)
         return (values, indigo.Dict())
 
     def _observedConnectionForDevice(self, devId):
@@ -655,9 +689,13 @@ class DiscoveryUiMixin(object):
 
     def _validateLCDSettings(self, valuesDict, devId, description):
         errors = indigo.Dict()
+        valuesDict = self._applyLCDInitializationMode(valuesDict)
+        initialization_mode = valuesDict["lcdInitializationMode"]
         try:
             action_group_id = int(valuesDict.get("lcdInitialActionGroup", 0) or 0)
-            if action_group_id:
+            if initialization_mode == "actionGroup" and not action_group_id:
+                raise ValueError
+            if initialization_mode == "actionGroup":
                 getattr(indigo, "actionGroups", {})[action_group_id]
             valuesDict["lcdInitialActionGroup"] = str(action_group_id)
         except (IndexError, KeyError, TypeError, ValueError):

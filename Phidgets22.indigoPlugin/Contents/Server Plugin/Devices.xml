@@ -554,18 +554,23 @@
 			<Field id="lcdScreenSize" type="menu" defaultValue="1">
 				<Label>Text LCD screen size:</Label>
 				<List class="self" method="getLCDScreenSizeMenu" dynamicReload="true"/>
+				<CallbackMethod>lcdInitializationChanged</CallbackMethod>
 			</Field>
 			<Field id="lcdBacklight" type="textfield" defaultValue="1.0"><Label>Initial backlight (0.0–1.0):</Label></Field>
 			<Field id="lcdContrast" type="textfield" defaultValue="0.5" visibleBindingId="lcdProviderKind" visibleBindingValue="native" alwaysUseInDialogHeightCalc="true"><Label>Initial contrast (0.0–1.0):</Label></Field>
-			<Field id="lcdRestoreInitialText" type="checkbox" defaultValue="false"><Label>Write the initial text below after every attachment?</Label></Field>
-			<Field id="lcdInitialActionGroup" type="menu" defaultValue="0"><Label>Action group after attachment:</Label><List class="self" method="getActionGroupMenu" dynamicReload="true"/></Field>
-			<Field id="lcdInitialText" type="textfield" visibleBindingId="lcdScreenSize" visibleBindingValue="1" alwaysUseInDialogHeightCalc="true"><Label>Initial graphic text:</Label></Field>
-			<Field id="lcdInitialX" type="textfield" defaultValue="0" visibleBindingId="lcdScreenSize" visibleBindingValue="1" alwaysUseInDialogHeightCalc="true"><Label>Initial X position:</Label></Field>
-			<Field id="lcdInitialY" type="textfield" defaultValue="0" visibleBindingId="lcdScreenSize" visibleBindingValue="1" alwaysUseInDialogHeightCalc="true"><Label>Initial Y position:</Label></Field>
-			<Field id="lcdInitialLine1" type="textfield" visibleBindingId="lcdScreenSize" visibleBindingValue="2,3,4,5,6,7,8,9,10,11,12" alwaysUseInDialogHeightCalc="true"><Label>Initial line 1:</Label></Field>
-			<Field id="lcdInitialLine2" type="textfield" visibleBindingId="lcdScreenSize" visibleBindingValue="3,5,6,7,8,9,11,12" alwaysUseInDialogHeightCalc="true"><Label>Initial line 2:</Label></Field>
-			<Field id="lcdInitialLine3" type="textfield" visibleBindingId="lcdScreenSize" visibleBindingValue="6,8,12" alwaysUseInDialogHeightCalc="true"><Label>Initial line 3:</Label></Field>
-			<Field id="lcdInitialLine4" type="textfield" visibleBindingId="lcdScreenSize" visibleBindingValue="6,8,12" alwaysUseInDialogHeightCalc="true"><Label>Initial line 4:</Label></Field>
+			<Field id="initializationSeparator" type="separator"/>
+			<Field id="initializationHeader" type="label"><Label>Initialization options after attachment</Label></Field>
+			<Field id="lcdInitializationMode" type="menu" defaultValue="none"><Label>After attachment:</Label><List><Option value="none">None</Option><Option value="actionGroup">Execute action group</Option><Option value="initialText">Write initial text</Option></List><CallbackMethod>lcdInitializationChanged</CallbackMethod></Field>
+			<Field id="lcdInitialTextLayout" type="textfield" defaultValue="hidden" hidden="true"/>
+			<Field id="lcdRestoreInitialText" type="checkbox" defaultValue="false" hidden="true"/>
+			<Field id="lcdInitialActionGroup" type="menu" defaultValue="0" visibleBindingId="lcdInitializationMode" visibleBindingValue="actionGroup" alwaysUseInDialogHeightCalc="true"><Label>Action group:</Label><List class="self" method="getActionGroupMenu" dynamicReload="true"/></Field>
+			<Field id="lcdInitialText" type="textfield" visibleBindingId="lcdInitialTextLayout" visibleBindingValue="graphic" alwaysUseInDialogHeightCalc="true"><Label>Initial graphic text:</Label></Field>
+			<Field id="lcdInitialX" type="textfield" defaultValue="0" visibleBindingId="lcdInitialTextLayout" visibleBindingValue="graphic" alwaysUseInDialogHeightCalc="true"><Label>Initial X position:</Label></Field>
+			<Field id="lcdInitialY" type="textfield" defaultValue="0" visibleBindingId="lcdInitialTextLayout" visibleBindingValue="graphic" alwaysUseInDialogHeightCalc="true"><Label>Initial Y position:</Label></Field>
+			<Field id="lcdInitialLine1" type="textfield" visibleBindingId="lcdInitialTextLayout" visibleBindingValue="text1,text2,text4" alwaysUseInDialogHeightCalc="true"><Label>Initial line 1:</Label></Field>
+			<Field id="lcdInitialLine2" type="textfield" visibleBindingId="lcdInitialTextLayout" visibleBindingValue="text2,text4" alwaysUseInDialogHeightCalc="true"><Label>Initial line 2:</Label></Field>
+			<Field id="lcdInitialLine3" type="textfield" visibleBindingId="lcdInitialTextLayout" visibleBindingValue="text4" alwaysUseInDialogHeightCalc="true"><Label>Initial line 3:</Label></Field>
+			<Field id="lcdInitialLine4" type="textfield" visibleBindingId="lcdInitialTextLayout" visibleBindingValue="text4" alwaysUseInDialogHeightCalc="true"><Label>Initial line 4:</Label></Field>
 		</ConfigUI>
 	</Device>
 

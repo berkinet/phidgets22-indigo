@@ -148,6 +148,13 @@ def _humidity_sensor(plugin, device, common):
 
 def _lcd(plugin, device, common):
     props = device.pluginProps
+    initialization_mode = props.get("lcdInitializationMode", "")
+    if initialization_mode not in ("none", "actionGroup", "initialText"):
+        initialization_mode = (
+            "actionGroup" if int(props.get("lcdInitialActionGroup", 0) or 0)
+            else "initialText" if saved_bool(
+                props.get("lcdRestoreInitialText", False))
+            else "none")
     lcd_class = (I2CLCDPhidget
                  if props.get("lcdProviderKind") == "adapter"
                  else NativeLCDPhidget)
@@ -172,13 +179,15 @@ def _lcd(plugin, device, common):
         screenSize=int(props.get("lcdScreenSize", 1)),
         backlight=float(props.get("lcdBacklight", 1.0)),
         contrast=float(props.get("lcdContrast", 0.5)),
-        restoreInitialText=saved_bool(props.get("lcdRestoreInitialText", False)),
+        restoreInitialText=initialization_mode == "initialText",
         initialText=props.get("lcdInitialText", ""),
         initialLines=[props.get("lcdInitialLine%d" % line_number, "")
                       for line_number in range(1, 5)],
         initialX=int(props.get("lcdInitialX", 0)),
         initialY=int(props.get("lcdInitialY", 0)),
-        initialActionGroupId=int(props.get("lcdInitialActionGroup", 0) or 0))
+        initialActionGroupId=(
+            int(props.get("lcdInitialActionGroup", 0) or 0)
+            if initialization_mode == "actionGroup" else 0))
 
 
 def _data_adapter(plugin, device, common):

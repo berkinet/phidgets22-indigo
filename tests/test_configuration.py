@@ -115,7 +115,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.41</string>", plist)
+        self.assertIn("<string>0.3.42</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -597,7 +597,22 @@ class ConfigurationTests(unittest.TestCase):
         lcd_fields = {field.get("id") for field in lcd_device.iter("Field")}
         self.assertTrue({"lcdScreenSize", "lcdBacklight",
                          "lcdContrast", "lcdRestoreInitialText",
-                         "lcdInitialActionGroup"}.issubset(lcd_fields))
+                         "lcdInitializationMode", "lcdInitialTextLayout",
+                         "lcdInitialActionGroup", "initializationSeparator",
+                         "initializationHeader"}.issubset(lcd_fields))
+        mode_field = lcd_device.find(
+            "./ConfigUI/Field[@id='lcdInitializationMode']")
+        self.assertEqual(
+            [(option.get("value"), option.text)
+             for option in mode_field.iter("Option")],
+            [("none", "None"), ("actionGroup", "Execute action group"),
+             ("initialText", "Write initial text")])
+        action_group_field = lcd_device.find(
+            "./ConfigUI/Field[@id='lcdInitialActionGroup']")
+        self.assertEqual(action_group_field.get("visibleBindingId"),
+                         "lcdInitializationMode")
+        self.assertEqual(action_group_field.get("visibleBindingValue"),
+                         "actionGroup")
 
         actions = ElementTree.parse(SERVER_PLUGIN / "Actions.xml").getroot()
         action_ids = {action.get("id") for action in actions.findall("Action")}
@@ -664,6 +679,30 @@ class ConfigurationTests(unittest.TestCase):
                 indigo, "actionGroups", {23: mock.sentinel.group}, create=True):
             errors = instance._validateLCDSettings(values, 0, None)
         self.assertIn("lcdInitialActionGroup", errors)
+
+    def test_lcd_initialization_mode_migrates_and_controls_text_layout(self):
+        instance = object.__new__(plugin.Plugin)
+
+        action_values = indigo.Dict({
+            "lcdInitialActionGroup": "23", "lcdRestoreInitialText": True,
+            "lcdScreenSize": "1",
+        })
+        returned = instance.lcdInitializationChanged(
+            action_values, "lcd", 42)
+        self.assertEqual(returned["lcdInitializationMode"], "actionGroup")
+        self.assertFalse(returned["lcdRestoreInitialText"])
+        self.assertEqual(returned["lcdInitialTextLayout"], "hidden")
+
+        returned["lcdInitializationMode"] = "initialText"
+        returned["lcdScreenSize"] = "8"
+        returned = instance.lcdInitializationChanged(returned, "lcd", 42)
+        self.assertTrue(returned["lcdRestoreInitialText"])
+        self.assertEqual(returned["lcdInitialTextLayout"], "text4")
+
+        returned["lcdInitializationMode"] = "none"
+        returned = instance.lcdInitializationChanged(returned, "lcd", 42)
+        self.assertFalse(returned["lcdRestoreInitialText"])
+        self.assertEqual(returned["lcdInitialTextLayout"], "hidden")
 
     def test_attach_timeout_rejects_invalid_values(self):
         instance = object.__new__(plugin.Plugin)
