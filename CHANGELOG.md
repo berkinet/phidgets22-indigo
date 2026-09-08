@@ -1,5 +1,16 @@
 # Release notes
 
+## 0.3.46 — 2026-09-08
+
+### Fixed
+
+- Retry LCD animations after an isolated Phidget transport timeout instead of
+  stopping immediately, report recovery, and stop only after three consecutive
+  timeouts.
+- Treat an SGP41 transport timeout as transient, retain its one-second polling
+  cadence and gas-index algorithm state, and reserve traceback logging for
+  repeated failures.
+
 ## 0.3.45 — 2026-09-06
 
 ### Changed

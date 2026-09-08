@@ -169,6 +169,30 @@ class SGP41Tests(unittest.TestCase):
         self.assertEqual(callback, wrapper._poll)
         self.assertEqual(args, (wrapper._generation,))
 
+    def test_transport_timeout_retries_quietly_and_reports_recovery(self):
+        wrapper, adapter, device = self.wrapper()
+        adapter.i2cCommandResponse = mock.Mock(side_effect=[
+            PhidgetException(ErrorCode.EPHIDGET_TIMEOUT),
+            b"\x12\x34\x37\x56\x78\x7D\x9A\xBC\xE0",
+            b"\x11\x22\xFF",
+        ])
+
+        with mock.patch.object(i2c_peripheral.threading, "Timer") as timer:
+            wrapper.start()
+            timer.call_args.args[1](*timer.call_args.args[2])
+
+        device.setErrorStateOnServer.assert_any_call(
+            "I2C transport busy; retrying")
+        device.setErrorStateOnServer.assert_called_with(None)
+        wrapper.logger.warning.assert_called_once_with(
+            "SGP41 transport timed out; retrying on the next poll: device='%s'",
+            device.name)
+        wrapper.logger.info.assert_any_call(
+            "SGP41 polling recovered after a transport timeout: device='%s'",
+            device.name)
+        wrapper.logger.error.assert_not_called()
+        self.assertEqual(wrapper._timeout_count, 0)
+
     def test_state_list_is_rebuilt_before_first_state_update(self):
         wrapper, _, device = self.wrapper()
 

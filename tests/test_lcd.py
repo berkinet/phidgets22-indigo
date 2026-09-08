@@ -14,8 +14,10 @@ indigo.List = list
 
 import lcd
 from Phidget22.ChannelSubclass import ChannelSubclass
+from Phidget22.ErrorCode import ErrorCode
 from Phidget22.LCDFont import LCDFont
 from Phidget22.LCDScreenSize import LCDScreenSize
+from Phidget22.PhidgetException import PhidgetException
 
 
 class FakeLCD(object):
@@ -462,6 +464,54 @@ class LCDTests(unittest.TestCase):
         self.assertEqual(
             [call.args[1] for call in logger.warning.call_args_list],
             ["Flash set A", "Flash set B"])
+
+    def test_animation_retries_and_recovers_after_transport_timeout(self):
+        native = FakeLCD(screen_size=LCDScreenSize.SCREEN_SIZE_2x16)
+        logger = mock.Mock()
+        wrapper = make_wrapper(native, logger=logger)
+        wrapper.configureAttachedPhidget(native)
+        wrapper._state = "attached"
+        FakeTimer.instances = []
+        native.clear = mock.Mock(side_effect=[
+            None, PhidgetException(ErrorCode.EPHIDGET_TIMEOUT), None])
+
+        with mock.patch.object(lcd.threading, "Timer", FakeTimer):
+            wrapper.startAnimation("flash", ["One"], ["Two"], interval=0.4)
+            FakeTimer.instances[-1].fire()
+            FakeTimer.instances[-1].fire()
+
+        self.assertEqual(wrapper._animation_mode, "flash")
+        self.assertEqual(FakeTimer.instances[-1].interval, 0.4)
+        logger.warning.assert_called_once_with(
+            "LCD animation transport timed out; retrying: device='%s'",
+            wrapper.indigoDevice.name)
+        logger.info.assert_called_once_with(
+            "LCD animation recovered after a transport timeout: device='%s'",
+            wrapper.indigoDevice.name)
+
+    def test_animation_stops_after_three_consecutive_transport_timeouts(self):
+        native = FakeLCD(screen_size=LCDScreenSize.SCREEN_SIZE_2x16)
+        logger = mock.Mock()
+        wrapper = make_wrapper(native, logger=logger)
+        wrapper.configureAttachedPhidget(native)
+        wrapper._state = "attached"
+        FakeTimer.instances = []
+        native.clear = mock.Mock(side_effect=[
+            None,
+            PhidgetException(ErrorCode.EPHIDGET_TIMEOUT),
+            PhidgetException(ErrorCode.EPHIDGET_TIMEOUT),
+            PhidgetException(ErrorCode.EPHIDGET_TIMEOUT),
+        ])
+
+        with mock.patch.object(lcd.threading, "Timer", FakeTimer):
+            wrapper.startAnimation("flash", ["One"], ["Two"], interval=0.4)
+            FakeTimer.instances[-1].fire()
+            FakeTimer.instances[-1].fire()
+            FakeTimer.instances[-1].fire()
+
+        self.assertEqual(wrapper._animation_mode, "off")
+        logger.warning.assert_called_once()
+        logger.error.assert_called_once()
 
     def test_graphic_lcd_uses_hardware_dimensions(self):
         native = FakeLCD(
