@@ -103,9 +103,10 @@ class ActionsMixin(object):
 
         def apply_display():
             # A display action implies that the panel should be visible. This
-            # exits backlight-based sleep emulation before setting brightness.
+            # exits backlight-based sleep emulation before rendering. Apply the
+            # requested backlight last because the first clear/flush after an
+            # LCD controller attaches can restore its power-on backlight state.
             lcd.setSleeping(False)
-            lcd.setBacklight(backlight)
             lcd.setContrast(contrast)
             if mode == "static":
                 if line_count:
@@ -154,6 +155,7 @@ class ActionsMixin(object):
                     interval=animation_interval,
                     direction=animation_direction,
                     gap=animation_gap)
+            lcd.setBacklight(backlight)
 
         lcd.runDisplayWhenAttached(apply_display)
 

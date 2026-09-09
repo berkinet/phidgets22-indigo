@@ -115,7 +115,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.48</string>", plist)
+        self.assertIn("<string>0.3.49</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -817,6 +817,11 @@ class ConfigurationTests(unittest.TestCase):
         active_lcd.turnOff = mock.Mock()
         active_lcd.runDisplayWhenAttached = mock.Mock(
             side_effect=lambda callback: callback())
+        display_order = []
+        active_lcd.writeText.side_effect = lambda *args: display_order.append(
+            "render")
+        active_lcd.setBacklight.side_effect = lambda *args: display_order.append(
+            "backlight")
         instance.activePhidgets[device.id] = active_lcd
         substitutions = {
             "%%name%%": "Kitchen",
@@ -877,6 +882,7 @@ class ConfigurationTests(unittest.TestCase):
         }), device)
         instance.lcdStopAnimation(types.SimpleNamespace(props={}), device)
 
+        self.assertEqual(display_order[:2], ["render", "backlight"])
         active_lcd.writeText.assert_called_once_with("Kitchen", 2, 3)
         active_lcd.writeGraphicLines.assert_called_once_with(
             ["Large", "Text", "", "", "", "", "", ""], 5)

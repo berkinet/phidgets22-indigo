@@ -1,5 +1,13 @@
 # Release notes
 
+## 0.3.49 — 2026-09-09
+
+### Fixed
+
+- Apply an LCD display Action's requested backlight level after its initial
+  render, preventing the controller's first clear/flush from restoring the
+  power-on backlight state and overriding a requested value of zero.
+
 ## 0.3.48 — 2026-09-09
 
 ### Fixed
