@@ -1,5 +1,21 @@
 # Release notes
 
+## 0.3.48 — 2026-09-09
+
+### Fixed
+
+- Treat Phidget SDK `Unexpected Error` (`0x1c`) responses during LCD animation
+  writes and SGP41 polling as transient transport failures, matching the remote
+  server disconnect that immediately follows them.
+- Retry affected LCD animations and SGP41 polls with concise first-failure and
+  recovery messages instead of emitting Python tracebacks.
+- Keep SGP41 polling retries active after repeated transport failures, and
+  retain the LCD animation's existing three-attempt limit for a persistently
+  failing attached display.
+- Defer an LCD's configured attachment Action Group until its hardware attach
+  callback has fully returned, so a 2004/PCF8574 initialization cannot restore
+  the backlight after the Action has set it to zero.
+
 ## 0.3.47 — 2026-09-09
 
 ### Fixed

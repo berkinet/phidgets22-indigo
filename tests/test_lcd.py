@@ -223,16 +223,39 @@ class LCDTests(unittest.TestCase):
         wrapper._state = "starting"
         execute = mock.Mock()
 
-        with mock.patch.object(
-                lcd.indigo, "actionGroup",
-                types.SimpleNamespace(execute=execute), create=True):
-            wrapper.onAttachHandler(native)
+        timer = mock.Mock()
+        with mock.patch.object(lcd.threading, "Timer", return_value=timer) as factory:
+            with mock.patch.object(
+                    lcd.indigo, "actionGroup",
+                    types.SimpleNamespace(execute=execute), create=True):
+                wrapper.onAttachHandler(native)
+                execute.assert_not_called()
+                factory.assert_called_once_with(
+                    wrapper.INITIAL_ACTION_DELAY_SECONDS,
+                    wrapper._runInitialActionGroup, (wrapper._attach_count,))
+                timer.start.assert_called_once_with()
+                factory.call_args.args[1](*factory.call_args.args[2])
 
         execute.assert_called_once_with(12345)
         self.assertEqual(wrapper._state, "attached")
         logger.info.assert_called_once_with(
             "LCD attachment action group executed: device='%s' groupId=%d",
             wrapper.indigoDevice.name, 12345)
+
+    def test_detach_cancels_deferred_initial_action_group(self):
+        native = FakeLCD()
+        wrapper = make_wrapper(
+            native, screenSize=LCDScreenSize.SCREEN_SIZE_2x16,
+            initialActionGroupId=12345)
+        wrapper.indigo_plugin.triggerEvent = mock.Mock()
+        wrapper._state = "starting"
+        timer = mock.Mock()
+
+        with mock.patch.object(lcd.threading, "Timer", return_value=timer):
+            wrapper.onAttachHandler(native)
+            wrapper.onDetachHandler(native)
+
+        timer.cancel.assert_called_once_with()
 
     def test_detached_display_queue_replays_only_the_latest_request(self):
         native = FakeLCD()
@@ -483,11 +506,32 @@ class LCDTests(unittest.TestCase):
         self.assertEqual(wrapper._animation_mode, "flash")
         self.assertEqual(FakeTimer.instances[-1].interval, 0.4)
         logger.warning.assert_called_once_with(
-            "LCD animation transport timed out; retrying: device='%s'",
-            wrapper.indigoDevice.name)
+            "LCD animation transport error 0x%02x; retrying: device='%s' (%s)",
+            int(ErrorCode.EPHIDGET_TIMEOUT), wrapper.indigoDevice.name,
+            mock.ANY)
         logger.info.assert_called_once_with(
-            "LCD animation recovered after a transport timeout: device='%s'",
+            "LCD animation recovered after a transport error: device='%s'",
             wrapper.indigoDevice.name)
+
+    def test_animation_retries_unexpected_transport_error_without_traceback(self):
+        native = FakeLCD(screen_size=LCDScreenSize.SCREEN_SIZE_2x16)
+        logger = mock.Mock()
+        wrapper = make_wrapper(native, logger=logger)
+        wrapper.configureAttachedPhidget(native)
+        wrapper._state = "attached"
+        FakeTimer.instances = []
+        native.clear = mock.Mock(side_effect=[
+            None, PhidgetException(ErrorCode.EPHIDGET_UNEXPECTED)])
+
+        with mock.patch.object(lcd.threading, "Timer", FakeTimer):
+            wrapper.startAnimation("flash", ["One"], ["Two"], interval=0.4)
+            FakeTimer.instances[-1].fire()
+
+        self.assertEqual(wrapper._animation_mode, "flash")
+        self.assertEqual(FakeTimer.instances[-1].interval, 1.0)
+        logger.warning.assert_called_once()
+        self.assertNotIn("Traceback", logger.warning.call_args.args[0])
+        logger.error.assert_not_called()
 
     def test_animation_stops_after_three_consecutive_transport_timeouts(self):
         native = FakeLCD(screen_size=LCDScreenSize.SCREEN_SIZE_2x16)

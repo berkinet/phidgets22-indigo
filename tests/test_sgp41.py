@@ -169,7 +169,7 @@ class SGP41Tests(unittest.TestCase):
         self.assertEqual(callback, wrapper._poll)
         self.assertEqual(args, (wrapper._generation,))
 
-    def test_transport_timeout_retries_quietly_and_reports_recovery(self):
+    def test_transport_error_retries_quietly_and_reports_recovery(self):
         wrapper, adapter, device = self.wrapper()
         adapter.i2cCommandResponse = mock.Mock(side_effect=[
             PhidgetException(ErrorCode.EPHIDGET_TIMEOUT),
@@ -182,16 +182,32 @@ class SGP41Tests(unittest.TestCase):
             timer.call_args.args[1](*timer.call_args.args[2])
 
         device.setErrorStateOnServer.assert_any_call(
-            "I2C transport busy; retrying")
+            "I2C transport error; retrying")
         device.setErrorStateOnServer.assert_called_with(None)
         wrapper.logger.warning.assert_called_once_with(
-            "SGP41 transport timed out; retrying on the next poll: device='%s'",
-            device.name)
+            "SGP41 transport error 0x%02x; retrying on the next poll: "
+            "device='%s' (%s)", int(ErrorCode.EPHIDGET_TIMEOUT), device.name,
+            mock.ANY)
         wrapper.logger.info.assert_any_call(
-            "SGP41 polling recovered after a transport timeout: device='%s'",
+            "SGP41 polling recovered after a transport error: device='%s'",
             device.name)
         wrapper.logger.error.assert_not_called()
-        self.assertEqual(wrapper._timeout_count, 0)
+        self.assertEqual(wrapper._transport_error_count, 0)
+
+    def test_unexpected_transport_error_retries_without_traceback(self):
+        wrapper, adapter, device = self.wrapper()
+        adapter.i2cCommandResponse = mock.Mock(
+            side_effect=PhidgetException(ErrorCode.EPHIDGET_UNEXPECTED))
+
+        with mock.patch.object(i2c_peripheral.threading, "Timer"):
+            wrapper.start()
+
+        device.setErrorStateOnServer.assert_called_with(
+            "I2C transport error; retrying")
+        wrapper.logger.warning.assert_called_once()
+        self.assertNotIn(
+            "Traceback", wrapper.logger.warning.call_args.args[0])
+        wrapper.logger.error.assert_not_called()
 
     def test_state_list_is_rebuilt_before_first_state_update(self):
         wrapper, _, device = self.wrapper()

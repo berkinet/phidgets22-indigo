@@ -59,7 +59,8 @@ class SGP41Phidget(I2CPeripheralBase):
         self._generation = 0
         self._lock = threading.RLock()
         self._offline_message = None
-        self._timeout_count = 0
+        self._transport_error_count = 0
+        self._transport_error_code = None
 
     @staticmethod
     def crc(data):
@@ -207,11 +208,12 @@ class SGP41Phidget(I2CPeripheralBase):
                 if self._offline_message is not None:
                     self.logger.info("SGP41 recovered: device='%s'", self.indigoDevice.name)
                     self._offline_message = None
-                if self._timeout_count:
+                if self._transport_error_count:
                     self.logger.info(
-                        "SGP41 polling recovered after a transport timeout: device='%s'",
+                        "SGP41 polling recovered after a transport error: device='%s'",
                         self.indigoDevice.name)
-                    self._timeout_count = 0
+                    self._transport_error_count = 0
+                    self._transport_error_code = None
                 self.indigoDevice.setErrorStateOnServer(None)
             except PeripheralUnavailableError as error:
                 message = str(error)
@@ -221,24 +223,29 @@ class SGP41Phidget(I2CPeripheralBase):
                     self._offline_message = message
                 self.indigoDevice.setErrorStateOnServer("No response at 0x59")
             except PhidgetException as error:
-                if (error.code == ErrorCode.EPHIDGET_TIMEOUT and
-                        not self._pollInterruptedByProviderDetach()):
-                    self._timeout_count += 1
-                    if self._timeout_count == 1:
+                if not self._pollInterruptedByProviderDetach():
+                    code = int(error.code)
+                    if code != self._transport_error_code:
+                        self._transport_error_count = 0
+                        self._transport_error_code = code
+                    self._transport_error_count += 1
+                    detail = str(getattr(error, "details", "")).strip()
+                    if not detail:
+                        detail = str(error).strip()
+                    detail = detail.splitlines()[0] if detail else "Phidget transport error"
+                    if self._transport_error_count == 1:
                         self.logger.warning(
-                            "SGP41 transport timed out; retrying on the next poll: "
-                            "device='%s'", self.indigoDevice.name)
-                    elif self._timeout_count == 3:
+                            "SGP41 transport error 0x%02x; retrying on the next "
+                            "poll: device='%s' (%s)", code,
+                            self.indigoDevice.name, detail)
+                    elif self._transport_error_count == 3:
                         self.logger.error(
-                            "SGP41 transport timed out on %d consecutive polls: "
-                            "device='%s'\n%s", self._timeout_count,
-                            self.indigoDevice.name, traceback.format_exc())
+                            "SGP41 transport error 0x%02x on %d consecutive "
+                            "polls; retries remain active: device='%s' (%s)",
+                            code, self._transport_error_count,
+                            self.indigoDevice.name, detail)
                     self.indigoDevice.setErrorStateOnServer(
-                        "I2C transport busy; retrying")
-                elif not self._pollInterruptedByProviderDetach():
-                    self.logger.error("SGP41 poll failed: device='%s'\n%s",
-                                      self.indigoDevice.name, traceback.format_exc())
-                    self.indigoDevice.setErrorStateOnServer("I2C read failed")
+                        "I2C transport error; retrying")
             except Exception:
                 if not self._pollInterruptedByProviderDetach():
                     self.logger.error("SGP41 poll failed: device='%s'\n%s",

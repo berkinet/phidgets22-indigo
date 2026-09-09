@@ -30,6 +30,7 @@ class LCDPhidget(PhidgetBase):
     PROVIDER_FUNCTION = "lcd"
     ANIMATION_TIMEOUT_RETRY_SECONDS = 1.0
     ANIMATION_TIMEOUT_LIMIT = 3
+    INITIAL_ACTION_DELAY_SECONDS = 0.1
 
     @classmethod
     def resolveAdapterProvider(cls, indigo_plugin, adapter_device_id):
@@ -76,8 +77,10 @@ class LCDPhidget(PhidgetBase):
         self._animation_mode = "off"
         self._animation_frame = 0
         self._animation_settings = None
-        self._animation_timeout_count = 0
+        self._animation_transport_error_count = 0
+        self._animation_transport_error_code = None
         self._pending_display_request = None
+        self._initial_action_timer = None
 
     def addPhidgetHandlers(self):
         self.phidget.setOnErrorHandler(self.onErrorHandler)
@@ -175,10 +178,29 @@ class LCDPhidget(PhidgetBase):
         if self._state == "attached":
             self.updateIndigoStatus()
             self._replay_pending_display_request()
-            self._runInitialActionGroup()
+            self._scheduleInitialActionGroup()
 
-    def _runInitialActionGroup(self):
+    def _cancelInitialActionGroup(self):
+        timer, self._initial_action_timer = self._initial_action_timer, None
+        if timer is not None:
+            timer.cancel()
+
+    def _scheduleInitialActionGroup(self):
+        self._cancelInitialActionGroup()
         if not self.initialActionGroupId:
+            return
+        attach_count = self._attach_count
+        timer = threading.Timer(
+            self.INITIAL_ACTION_DELAY_SECONDS,
+            self._runInitialActionGroup, (attach_count,))
+        timer.daemon = True
+        self._initial_action_timer = timer
+        timer.start()
+
+    def _runInitialActionGroup(self, attach_count):
+        self._initial_action_timer = None
+        if (not self.initialActionGroupId or self._state != "attached" or
+                attach_count != self._attach_count):
             return
         try:
             indigo.actionGroup.execute(self.initialActionGroupId)
@@ -193,11 +215,13 @@ class LCDPhidget(PhidgetBase):
 
     def onDetachHandler(self, ph):
         with self._display_lock:
+            self._cancelInitialActionGroup()
             self._cancel_animation_locked()
         super(LCDPhidget, self).onDetachHandler(ph)
 
     def stop(self):
         with self._display_lock:
+            self._cancelInitialActionGroup()
             self._cancel_animation_locked()
             self._pending_display_request = None
         super(LCDPhidget, self).stop()
@@ -408,7 +432,8 @@ class LCDPhidget(PhidgetBase):
             timer.cancel()
         self._animation_mode = "off"
         self._animation_settings = None
-        self._animation_timeout_count = 0
+        self._animation_transport_error_count = 0
+        self._animation_transport_error_code = None
 
     def _schedule_animation_locked(self, generation, interval):
         timer = threading.Timer(interval, self._animation_tick, (generation,))
@@ -572,35 +597,39 @@ class LCDPhidget(PhidgetBase):
             try:
                 self._animation_frame += 1
                 self._render_animation_locked()
-                if self._animation_timeout_count:
+                if self._animation_transport_error_count:
                     self.logger.info(
-                        "LCD animation recovered after a transport timeout: device='%s'",
+                        "LCD animation recovered after a transport error: device='%s'",
                         self.indigoDevice.name)
-                    self._animation_timeout_count = 0
+                    self._animation_transport_error_count = 0
+                    self._animation_transport_error_code = None
                 self._schedule_animation_locked(
                     generation, self._animation_settings["interval"])
             except PhidgetException as error:
-                if error.code != ErrorCode.EPHIDGET_TIMEOUT:
-                    self.logger.error(
-                        "LCD animation stopped after a write error: device='%s'\n%s",
-                        self.indigoDevice.name, traceback.format_exc())
-                    self._cancel_animation_locked()
-                    self.updateIndigoStatus()
-                    return
-                self._animation_timeout_count += 1
-                if self._animation_timeout_count < self.ANIMATION_TIMEOUT_LIMIT:
-                    if self._animation_timeout_count == 1:
+                code = int(error.code)
+                if code != self._animation_transport_error_code:
+                    self._animation_transport_error_count = 0
+                    self._animation_transport_error_code = code
+                self._animation_transport_error_count += 1
+                detail = str(getattr(error, "details", "")).strip()
+                if not detail:
+                    detail = str(error).strip()
+                detail = detail.splitlines()[0] if detail else "Phidget transport error"
+                if (self._animation_transport_error_count <
+                        self.ANIMATION_TIMEOUT_LIMIT):
+                    if self._animation_transport_error_count == 1:
                         self.logger.warning(
-                            "LCD animation transport timed out; retrying: device='%s'",
-                            self.indigoDevice.name)
+                            "LCD animation transport error 0x%02x; retrying: "
+                            "device='%s' (%s)", code,
+                            self.indigoDevice.name, detail)
                     self._schedule_animation_locked(
                         generation, self.ANIMATION_TIMEOUT_RETRY_SECONDS)
                     return
                 self.logger.error(
-                    "LCD animation stopped after %d consecutive transport timeouts: "
-                    "device='%s'\n%s",
-                    self._animation_timeout_count, self.indigoDevice.name,
-                    traceback.format_exc())
+                    "LCD animation stopped after %d consecutive transport "
+                    "errors 0x%02x: device='%s' (%s)",
+                    self._animation_transport_error_count, code,
+                    self.indigoDevice.name, detail)
                 self._cancel_animation_locked()
                 self.updateIndigoStatus()
             except Exception:
@@ -651,7 +680,8 @@ class LCDPhidget(PhidgetBase):
             generation = self._animation_generation
             self._animation_mode = mode
             self._animation_frame = 0
-            self._animation_timeout_count = 0
+            self._animation_transport_error_count = 0
+            self._animation_transport_error_code = None
             self._animation_settings = {
                 "mode": mode,
                 "lines_a": normalized_a,
