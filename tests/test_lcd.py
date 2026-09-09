@@ -223,39 +223,16 @@ class LCDTests(unittest.TestCase):
         wrapper._state = "starting"
         execute = mock.Mock()
 
-        timer = mock.Mock()
-        with mock.patch.object(lcd.threading, "Timer", return_value=timer) as factory:
-            with mock.patch.object(
-                    lcd.indigo, "actionGroup",
-                    types.SimpleNamespace(execute=execute), create=True):
-                wrapper.onAttachHandler(native)
-                execute.assert_not_called()
-                factory.assert_called_once_with(
-                    wrapper.INITIAL_ACTION_DELAY_SECONDS,
-                    wrapper._runInitialActionGroup, (wrapper._attach_count,))
-                timer.start.assert_called_once_with()
-                factory.call_args.args[1](*factory.call_args.args[2])
+        with mock.patch.object(
+                lcd.indigo, "actionGroup",
+                types.SimpleNamespace(execute=execute), create=True):
+            wrapper.onAttachHandler(native)
 
         execute.assert_called_once_with(12345)
         self.assertEqual(wrapper._state, "attached")
         logger.info.assert_called_once_with(
             "LCD attachment action group executed: device='%s' groupId=%d",
             wrapper.indigoDevice.name, 12345)
-
-    def test_detach_cancels_deferred_initial_action_group(self):
-        native = FakeLCD()
-        wrapper = make_wrapper(
-            native, screenSize=LCDScreenSize.SCREEN_SIZE_2x16,
-            initialActionGroupId=12345)
-        wrapper.indigo_plugin.triggerEvent = mock.Mock()
-        wrapper._state = "starting"
-        timer = mock.Mock()
-
-        with mock.patch.object(lcd.threading, "Timer", return_value=timer):
-            wrapper.onAttachHandler(native)
-            wrapper.onDetachHandler(native)
-
-        timer.cancel.assert_called_once_with()
 
     def test_detached_display_queue_replays_only_the_latest_request(self):
         native = FakeLCD()

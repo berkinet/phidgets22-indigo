@@ -30,7 +30,6 @@ class LCDPhidget(PhidgetBase):
     PROVIDER_FUNCTION = "lcd"
     ANIMATION_TIMEOUT_RETRY_SECONDS = 1.0
     ANIMATION_TIMEOUT_LIMIT = 3
-    INITIAL_ACTION_DELAY_SECONDS = 0.1
 
     @classmethod
     def resolveAdapterProvider(cls, indigo_plugin, adapter_device_id):
@@ -80,7 +79,6 @@ class LCDPhidget(PhidgetBase):
         self._animation_transport_error_count = 0
         self._animation_transport_error_code = None
         self._pending_display_request = None
-        self._initial_action_timer = None
 
     def addPhidgetHandlers(self):
         self.phidget.setOnErrorHandler(self.onErrorHandler)
@@ -178,29 +176,10 @@ class LCDPhidget(PhidgetBase):
         if self._state == "attached":
             self.updateIndigoStatus()
             self._replay_pending_display_request()
-            self._scheduleInitialActionGroup()
+            self._runInitialActionGroup()
 
-    def _cancelInitialActionGroup(self):
-        timer, self._initial_action_timer = self._initial_action_timer, None
-        if timer is not None:
-            timer.cancel()
-
-    def _scheduleInitialActionGroup(self):
-        self._cancelInitialActionGroup()
+    def _runInitialActionGroup(self):
         if not self.initialActionGroupId:
-            return
-        attach_count = self._attach_count
-        timer = threading.Timer(
-            self.INITIAL_ACTION_DELAY_SECONDS,
-            self._runInitialActionGroup, (attach_count,))
-        timer.daemon = True
-        self._initial_action_timer = timer
-        timer.start()
-
-    def _runInitialActionGroup(self, attach_count):
-        self._initial_action_timer = None
-        if (not self.initialActionGroupId or self._state != "attached" or
-                attach_count != self._attach_count):
             return
         try:
             indigo.actionGroup.execute(self.initialActionGroupId)
@@ -215,13 +194,11 @@ class LCDPhidget(PhidgetBase):
 
     def onDetachHandler(self, ph):
         with self._display_lock:
-            self._cancelInitialActionGroup()
             self._cancel_animation_locked()
         super(LCDPhidget, self).onDetachHandler(ph)
 
     def stop(self):
         with self._display_lock:
-            self._cancelInitialActionGroup()
             self._cancel_animation_locked()
             self._pending_display_request = None
         super(LCDPhidget, self).stop()

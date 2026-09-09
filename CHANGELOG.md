@@ -1,5 +1,17 @@
 # Release notes
 
+## 0.3.50 — 2026-09-09
+
+### Changed
+
+- Remove the speculative attachment Action Group delay and post-render
+  backlight reapplication added while investigating a reported LCD 2004
+  startup issue. The display was configured with an initial backlight of 1.0
+  and no attachment Action Group, so neither workaround addressed a plugin
+  defect.
+- Preserve the independently verified retry handling for Phidget SDK
+  `Unexpected Error` (`0x1c`) transport failures.
+
 ## 0.3.49 — 2026-09-09
 
 ### Fixed
