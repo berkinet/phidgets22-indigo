@@ -1,5 +1,13 @@
 # Release notes
 
+## 0.3.51 — 2026-09-09
+
+### Changed
+
+- Complete the LCD workaround cleanup by restoring the original Action
+  backlight-before-render ordering. Version 0.3.50 removed the speculative
+  attachment delay but inadvertently omitted this second source-file change.
+
 ## 0.3.50 — 2026-09-09
 
 ### Changed
