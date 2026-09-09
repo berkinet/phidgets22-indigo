@@ -322,9 +322,15 @@ class PhidgetBase(object):
                 with self._lifecycle_lock:
                     self._startup_contention_expired = True
                 self.indigoDevice.setErrorStateOnServer('Detached')
-                self.logger.error(
-                    "%s on %s",
-                    self._error_identity(), self._startup_error_message)
+                coordinator = getattr(
+                    self.indigo_plugin, "phidgetStartupOpenFailureExpired", None)
+                if coordinator is not None:
+                    coordinator(
+                        self, detached_for, self._startup_error_message)
+                else:
+                    self.logger.error(
+                        "%s on %s",
+                        self._error_identity(), self._startup_error_message)
             else:
                 self.indigoDevice.setErrorStateOnServer('Detached')
                 coordinator = getattr(

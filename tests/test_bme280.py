@@ -195,6 +195,32 @@ class BME280Tests(unittest.TestCase):
         wrapper.logger.error.assert_not_called()
         device.setErrorStateOnServer.assert_not_called()
 
+    def test_transport_error_retries_without_traceback_and_reports_recovery(self):
+        wrapper, adapter, device = self.wrapper(0x60)
+        wrapper.logger = mock.Mock()
+        wrapper._state = "attached"
+        wrapper._generation = 1
+        wrapper.chipId = 0x60
+        wrapper.chipModel = "BME280"
+        wrapper.calibration = dict(self.CALIBRATION)
+        good_sample = b"\x65\x5A\xC0\x7E\xED\x00\x80\x00"
+        wrapper._read = mock.Mock(side_effect=[
+            PhidgetException(ErrorCode.EPHIDGET_UNEXPECTED), good_sample])
+
+        with mock.patch.object(i2c_peripheral.threading, "Timer"):
+            wrapper._poll(1)
+            wrapper._poll(1)
+
+        device.setErrorStateOnServer.assert_any_call(
+            "I2C transport error; retrying")
+        device.setErrorStateOnServer.assert_called_with(None)
+        wrapper.logger.warning.assert_called_once()
+        self.assertNotIn("Traceback", wrapper.logger.warning.call_args.args[0])
+        wrapper.logger.info.assert_called_once_with(
+            "BME280/BMP280 polling recovered after a transport error: device='%s'",
+            device.name)
+        wrapper.logger.error.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

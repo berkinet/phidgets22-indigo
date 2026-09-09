@@ -1,5 +1,19 @@
 # Release notes
 
+## 0.3.47 — 2026-09-09
+
+### Fixed
+
+- Handle BME280/BMP280 Phidget transport failures as retryable device errors,
+  with concise first-failure and persistent-failure messages instead of raw
+  Python tracebacks, plus a recovery confirmation after the next good poll.
+- Group simultaneous remote open failures by server and physical Phidget,
+  retaining channel details in one actionable message.
+- Suppress duplicate open-failure groups until the configured detached-device
+  reminder interval while leaving automatic attachment active.
+- Preserve the existing one-line summaries and recovery messages for complete
+  Phidget server outages.
+
 ## 0.3.46 — 2026-09-08
 
 ### Fixed

@@ -45,6 +45,7 @@ class FakePhidget(object):
         self._detached_at = time.monotonic() - 3
         self._startup_contention_message = None
         self._startup_error_message = None
+        self.detached_reminder_interval = 3600
 
     def serverKey(self):
         return "Test-Server-B._phidget22server._tcp.local"
@@ -69,6 +70,8 @@ class ServerOutageTests(unittest.TestCase):
         self.plugin._recoveryBatches = {}
         self.plugin._startupContentionBatches = {}
         self.plugin._startupUnavailableBatches = {}
+        self.plugin._startupOpenFailureBatches = {}
+        self.plugin._startupOpenFailureLastLogged = {}
         self.plugin._batchTimers = {}
         self.plugin._serverOutages = {}
         self.server_key = "Test-Server-B._phidget22server._tcp.local"
@@ -158,6 +161,41 @@ class ServerOutageTests(unittest.TestCase):
         self.assertIn("Phidget remains detached", self.plugin.logger.error.call_args.args[0])
         self.assertIn("automatic attachment remains active",
                       self.plugin.logger.error.call_args.args[0])
+
+    def test_startup_open_failures_are_grouped_by_server_and_physical_device(self):
+        first = FakePhidget(1, 623318, state="starting", channel=0, hub_port=0)
+        second = FakePhidget(2, 623318, state="starting", channel=0, hub_port=1)
+        first._startup_error_message = "Network device open failed."
+        second._startup_error_message = "Network device open failed."
+        self.plugin.activePhidgets = {1: first, 2: second}
+        physical_key = (self.server_key, 623318)
+        self.plugin._startupOpenFailureBatches[physical_key] = {
+            first: (30.0, first._startup_error_message),
+            second: (30.1, second._startup_error_message),
+        }
+
+        with mock.patch.object(plugin_module.time, "monotonic", return_value=100.0):
+            self.plugin._flushStartupOpenFailureBatch(physical_key)
+
+        self.plugin.logger.error.assert_called_once()
+        arguments = self.plugin.logger.error.call_args.args
+        self.assertIn("Phidget open failed", arguments[0])
+        self.assertEqual(arguments[1:5], (30.1, "Test-Server-B", 623318, 2))
+        self.assertIn("'Test device 1' (hub port 0, channel 0)", arguments[5])
+        self.assertIn("'Test device 2' (hub port 1, channel 0)", arguments[5])
+
+    def test_identical_open_failure_is_suppressed_until_reminder_interval(self):
+        phidget = self.plugin.activePhidgets[1]
+        phidget._startup_error_message = "Network device open failed."
+        physical_key = (self.server_key, phidget.channelInfo.serialNumber)
+        self.plugin._startupOpenFailureLastLogged[physical_key] = 100.0
+        self.plugin._startupOpenFailureBatches[physical_key] = {
+            phidget: (31.0, phidget._startup_error_message)}
+
+        with mock.patch.object(plugin_module.time, "monotonic", return_value=101.0):
+            self.plugin._flushStartupOpenFailureBatch(physical_key)
+
+        self.plugin.logger.error.assert_not_called()
 
 
 if __name__ == "__main__":

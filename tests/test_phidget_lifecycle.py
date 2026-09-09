@@ -287,6 +287,23 @@ class PhidgetLifecycleTests(unittest.TestCase):
         self.assertEqual(self.phidget._state, "attached")
         self.assertEqual(self.phidget.device.errors, ["Detached", None])
 
+    def test_startup_open_error_uses_plugin_batch_coordinator(self):
+        self.phidget = TestPhidget()
+        self.phidget.plugin.phidgetStartupOpenFailureExpired = mock.Mock()
+        self.phidget.start()
+        generation = self.phidget._timer_generation
+        message = (
+            "Network device: <TMP1100> on Server: <CM-Vin-sbc4> "
+            "open failed. Error details from server: Device not attached")
+        self.phidget.onErrorHandler(self.phidget.native, 5, message)
+
+        self.phidget.connectionTimeoutHandler(generation)
+
+        self.phidget.plugin.phidgetStartupOpenFailureExpired.assert_called_once_with(
+            self.phidget, mock.ANY,
+            "Network device: <TMP1100> on Server: <CM-Vin-sbc4> open failed.")
+        self.phidget.test_logger.error.assert_not_called()
+
     def test_unavailable_message_repeats_at_configured_interval(self):
         self.phidget = TestPhidget()
         self.phidget.detached_reminder_interval = 900

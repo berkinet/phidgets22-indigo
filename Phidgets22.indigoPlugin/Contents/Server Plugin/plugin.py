@@ -47,6 +47,8 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         self._recoveryBatches = {}
         self._startupContentionBatches = {}
         self._startupUnavailableBatches = {}
+        self._startupOpenFailureBatches = {}
+        self._startupOpenFailureLastLogged = {}
         self._batchTimers = {}
         self._serverOutages = {}
 
@@ -153,6 +155,54 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             "startup-unavailable", serial_number,
             self._flushStartupUnavailableBatch)
 
+    def phidgetStartupOpenFailureExpired(self, phidget, detached_for, message):
+        """Batch repeated SDK open failures by remote server and hardware."""
+        physical_key = (
+            phidget.serverKey(), phidget.channelInfo.serialNumber)
+        with self._outageLock:
+            self._startupOpenFailureBatches.setdefault(
+                physical_key, {})[phidget] = (detached_for, str(message))
+        self._scheduleBatch(
+            "startup-open-failure", physical_key,
+            self._flushStartupOpenFailureBatch)
+
+    def _flushStartupOpenFailureBatch(self, physical_key):
+        with self._outageLock:
+            self._batchTimers.pop(
+                ("startup-open-failure", physical_key), None)
+            pending = self._startupOpenFailureBatches.pop(physical_key, {})
+        affected = {
+            phidget: details for phidget, details in pending.items()
+            if (phidget._state in ("starting", "detached") and
+                phidget._startup_error_message)
+        }
+        if not affected:
+            return
+        now = time.monotonic()
+        reminder_interval = min(
+            phidget.detached_reminder_interval for phidget in affected)
+        with self._outageLock:
+            last_logged = self._startupOpenFailureLastLogged.get(physical_key)
+            if (last_logged is not None and
+                    now - last_logged < reminder_interval):
+                return
+            self._startupOpenFailureLastLogged[physical_key] = now
+        first = next(iter(affected))
+        names = ", ".join(sorted(
+            "'%s' (hub port %s, channel %s)" % (
+                phidget.indigoDevice.name, phidget.channelInfo.hubPort,
+                phidget.channelInfo.channel)
+            for phidget in affected))
+        longest = max(details[0] for details in affected.values())
+        messages = sorted(set(details[1] for details in affected.values()))
+        self.logger.error(
+            "Phidget open failed after %.1f seconds on server '%s', physical "
+            "serial %s; %d configured channels remain unavailable: %s. %s "
+            "Automatic attachment remains active.",
+            longest, first.serverDisplayName(),
+            first.channelInfo.serialNumber, len(affected), names,
+            "; ".join(messages))
+
     def _flushStartupUnavailableBatch(self, serial_number):
         with self._outageLock:
             self._batchTimers.pop(
@@ -249,6 +299,21 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
 
     def phidgetAttachCompleted(self, phidget, detached_for, attach_count,
                                detach_announced):
+        server_key_method = getattr(phidget, "serverKey", None)
+        channel_info = getattr(phidget, "channelInfo", None)
+        if (server_key_method is not None and channel_info is not None and
+                hasattr(channel_info, "serialNumber")):
+            physical_key = (server_key_method(), channel_info.serialNumber)
+            physical_channels = [
+                configured for configured in list(self.activePhidgets.values())
+                if (getattr(configured, "serverKey", lambda: None)(),
+                    getattr(getattr(configured, "channelInfo", None),
+                            "serialNumber", None)) == physical_key]
+            if physical_channels and all(
+                    configured._state == "attached"
+                    for configured in physical_channels):
+                with self._outageLock:
+                    self._startupOpenFailureLastLogged.pop(physical_key, None)
         supports = getattr(phidget, "supportsFunction", None)
         if supports is not None:
             adapter_id = phidget.indigoDevice.id
@@ -437,6 +502,8 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             self._recoveryBatches.clear()
             self._startupContentionBatches.clear()
             self._startupUnavailableBatches.clear()
+            self._startupOpenFailureBatches.clear()
+            self._startupOpenFailureLastLogged.clear()
             self._serverOutages.clear()
         for timer in timers:
             timer.cancel()
