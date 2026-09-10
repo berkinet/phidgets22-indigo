@@ -31,6 +31,41 @@ class DeviceWrapperTests(unittest.TestCase):
 
         self.assertEqual(wrapper.getDeviceDisplayStateId(), "onOffState")
 
+    def test_digital_input_option_logs_each_raw_callback_before_update(self):
+        wrapper = object.__new__(digitalinput.DigitalInputPhidget)
+        wrapper.logRawStateChanges = True
+        wrapper._rawStateChangeSequence = 0
+        wrapper.indigoDevice = mock.Mock(name="indigo_device")
+        wrapper.indigoDevice.name = "GiBiDi Lock 1"
+        wrapper.indigoDevice.id = 42
+        wrapper.channelInfo = mock.Mock(
+            serialNumber=12345, hubPort=-1, channel=7)
+        wrapper.updateIndigoStatus = mock.Mock()
+
+        with mock.patch.object(digitalinput.Log, "log") as log:
+            wrapper.onStateChangeHandler(object(), True)
+            wrapper.onStateChangeHandler(object(), False)
+
+        self.assertEqual(wrapper._rawStateChangeSequence, 2)
+        self.assertEqual(log.call_count, 2)
+        self.assertIn("sequence=1 state=True", log.call_args_list[0].args[1])
+        self.assertIn("sequence=2 state=False", log.call_args_list[1].args[1])
+        self.assertEqual(
+            wrapper.updateIndigoStatus.call_args_list,
+            [mock.call(True), mock.call(False)])
+
+    def test_digital_input_option_disabled_skips_raw_callback_log(self):
+        wrapper = object.__new__(digitalinput.DigitalInputPhidget)
+        wrapper.logRawStateChanges = False
+        wrapper._rawStateChangeSequence = 0
+        wrapper.updateIndigoStatus = mock.Mock()
+
+        with mock.patch.object(digitalinput.Log, "log") as log:
+            wrapper.onStateChangeHandler(object(), True)
+
+        log.assert_not_called()
+        wrapper.updateIndigoStatus.assert_called_once_with(True)
+
     def test_frequency_counter_registers_frequency_and_count_handlers(self):
         wrapper = object.__new__(frequencycounter.FrequencyCounterPhidget)
         wrapper.phidget = FakeFrequencyCounter()

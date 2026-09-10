@@ -1,5 +1,16 @@
 # Release notes
 
+## 0.3.53 — 2026-09-10
+
+### Added
+
+- Add an independently configurable diagnostic option to each Digital Input
+  device that records every raw Phidget state-change callback in the low-level
+  Phidgets API log before Indigo state processing, including the Indigo device,
+  physical channel, callback sequence number, and state.
+- Warn in Indigo's Event Log at plugin startup whenever low-level Phidgets API
+  logging is enabled, including its configured level and destination path.
+
 ## 0.3.52 — 2026-09-10
 
 ### Fixed

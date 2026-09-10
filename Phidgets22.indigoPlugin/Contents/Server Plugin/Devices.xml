@@ -169,6 +169,11 @@
 			</Field>
 			<Field id="observedConnection" type="textfield"><Label>Phidgets path:</Label></Field>
 
+			<Field id="logRawStateChanges" type="checkbox" defaultValue="False">
+				<Label>Log every raw state-change callback to the Phidgets API log?</Label>
+				<Description>Requires low-level Phidgets API logging at Info or Verbose in Plugin Config. Intended for temporary diagnostics.</Description>
+			</Field>
+
 			<Field id="customIcons" type="checkbox" defaultValue="False">
 				<Label>Define Device display on/off icons?</Label>
 			</Field>

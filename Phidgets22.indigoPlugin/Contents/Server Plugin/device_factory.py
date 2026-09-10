@@ -110,7 +110,9 @@ def _digital_input(plugin, device, common):
         **common["base"],
         isAlarm=saved_bool(props.get("isAlarm", False)),
         onStateIcon=str(props.get("onStateIcon", "SensorOn")),
-        offStateIcon=str(props.get("offStateIcon", "SensorOff")))
+        offStateIcon=str(props.get("offStateIcon", "SensorOff")),
+        logRawStateChanges=saved_bool(
+            props.get("logRawStateChanges", False)))
 
 
 def _temperature_sensor(plugin, device, common):

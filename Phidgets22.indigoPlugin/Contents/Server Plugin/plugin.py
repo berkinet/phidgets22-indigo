@@ -12,12 +12,14 @@ from contextlib import nullcontext
 import indigo
 
 from Phidget22.Devices.Log import Log
+from Phidget22.LogLevel import LogLevel
 from Phidget22.Net import Net, PhidgetServerType
 from Phidget22.Phidget import Phidget
 from Phidget22.PhidgetException import PhidgetException
 
 from PhidgetInfo import PhidgetInfo
 from actions import ActionsMixin
+from config_util import saved_bool
 from device_factory import create_phidget
 from discovery import DiscoveryInventory
 from discovery_ui import DiscoveryUiMixin
@@ -53,10 +55,23 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         self._serverOutages = {}
 
     def startup(self):
-        if self.pluginPrefs.get("phidgetApiLogging", False):
+        if saved_bool(self.pluginPrefs.get("phidgetApiLogging", False)):
             self.phidgetApiLogLevel = int(self.pluginPrefs["phidgetApiLogLevel"])
             self.phidgetApiLogfile = self.pluginPrefs["phidgetApiLogfile"]
             Log.enable(self.phidgetApiLogLevel, self.phidgetApiLogfile)
+            level_names = {
+                LogLevel.PHIDGET_LOG_CRITICAL: "Critical",
+                LogLevel.PHIDGET_LOG_ERROR: "Error",
+                LogLevel.PHIDGET_LOG_WARNING: "Warning",
+                LogLevel.PHIDGET_LOG_DEBUG: "Debug",
+                LogLevel.PHIDGET_LOG_INFO: "Info",
+                LogLevel.PHIDGET_LOG_VERBOSE: "Verbose",
+            }
+            self.logger.warning(
+                "Low-level Phidgets API logging is enabled at %s (%s); "
+                "SDK messages are being written to %s",
+                level_names.get(self.phidgetApiLogLevel, "unknown"),
+                self.phidgetApiLogLevel, self.phidgetApiLogfile)
         else:
             Log.disable()
             self.phidgetApiLogLevel = 0
