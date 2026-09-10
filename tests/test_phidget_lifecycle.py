@@ -367,6 +367,23 @@ class PhidgetLifecycleTests(unittest.TestCase):
 
         self.phidget.test_logger.error.assert_called_once()
 
+    def test_runtime_remote_reopen_error_is_left_to_attachment_monitoring(self):
+        self.phidget = TestPhidget()
+        self.phidget.start()
+        self.phidget.onAttachHandler(self.phidget.native)
+        message = (
+            "Network device: <TMP1100> on Server: <CM-Vin-sbc4> "
+            "open failed. Error details from server: Device not attached")
+
+        self.phidget.onErrorHandler(self.phidget.native, 5, message)
+
+        self.phidget.test_logger.error.assert_not_called()
+        self.phidget.test_logger.debug.assert_any_call(
+            "Transient remote reopen error deferred to attachment "
+            "monitoring: %s on %s",
+            self.phidget._error_identity(),
+            "Network device: <TMP1100> on Server: <CM-Vin-sbc4> open failed.")
+
     def test_start_failure_cancels_timer_and_closes_handle(self):
         self.phidget = TestPhidget(fail_open=True)
         with self.assertRaises(RuntimeError):

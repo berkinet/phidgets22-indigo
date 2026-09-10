@@ -1,5 +1,14 @@
 # Release notes
 
+## 0.3.52 — 2026-09-10
+
+### Fixed
+
+- Treat remote SDK `open failed` callbacks after a prior attachment as
+  provisional reconnection noise. Brief recoveries remain quiet, while the
+  existing detach grace and reminder path reports sustained outages once with
+  plugin-authored, actionable diagnostics instead of repeated channel errors.
+
 ## 0.3.51 — 2026-09-09
 
 ### Changed

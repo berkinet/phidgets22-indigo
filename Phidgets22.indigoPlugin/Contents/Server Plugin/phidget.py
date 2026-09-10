@@ -104,6 +104,14 @@ class PhidgetBase(object):
         message = str(error_string).strip()
         return message.split(" Error details from server:", 1)[0].strip()
 
+    def _is_transient_remote_reopen_error(self, error_string):
+        """Recognize SDK noise while an open remote handle is reattaching."""
+        message = str(error_string).lower()
+        return (bool(self.channelInfo.netInfo.isRemote) and
+                self._attach_count > 0 and
+                "open failed" in message and
+                "device is in use" not in message)
+
     def serverKey(self):
         return (self.runtimeServerUniqueName or self.runtimeServerName or
                 self.channelInfo.netInfo.serverName or "local")
@@ -366,6 +374,13 @@ class PhidgetBase(object):
                 self.logger.debug(
                     "Deferring startup error for up to %d seconds: %s",
                     self.initial_connection_timeout, self._identity())
+                return
+            if self._is_transient_remote_reopen_error(errorString):
+                self.logger.debug(
+                    "Transient remote reopen error deferred to attachment "
+                    "monitoring: %s on %s",
+                    self._error_identity(),
+                    self._concise_error_message(errorString))
                 return
             deviceSuppressErrors = saved_bool(
                 self.indigoDevice.pluginProps.get("suppressErrors", False))
