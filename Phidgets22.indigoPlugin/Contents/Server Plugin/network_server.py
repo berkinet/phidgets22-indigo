@@ -6,6 +6,8 @@ import datetime
 import threading
 import time
 
+import indigo
+
 from Phidget22.Net import Net
 from Phidget22.PhidgetServerType import PhidgetServerType
 
@@ -80,6 +82,8 @@ class NetworkServerDevice(object):
             self.indigoDevice.setErrorStateOnServer(None)
         except Exception:
             pass
+        self.indigoDevice.updateStateImageOnServer(
+            indigo.kStateImageSel.SensorOn)
         if not was_attached:
             self.indigo_plugin.triggerEvent(self, "deviceAttached")
             log = self.logger.debug if first_attachment else self.logger.info
@@ -125,6 +129,8 @@ class NetworkServerDevice(object):
             self.indigoDevice.setErrorStateOnServer("Detached")
         except Exception:
             pass
+        self.indigoDevice.updateStateImageOnServer(
+            indigo.kStateImageSel.Error)
         self.indigo_plugin.triggerEvent(self, "deviceDetached")
         self.logger.warning(
             "Phidget network server '%s' unavailable; awaiting rediscovery",

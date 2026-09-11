@@ -161,6 +161,8 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                 monitor.indigoDevice.setErrorStateOnServer("Detached")
             except Exception:
                 pass
+            monitor.indigoDevice.updateStateImageOnServer(
+                indigo.kStateImageSel.Error)
 
     def unregisterNetworkServerDevice(self, monitor):
         with self._networkServerLock:

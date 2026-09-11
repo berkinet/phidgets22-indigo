@@ -9,6 +9,16 @@ from unittest import mock
 SERVER_PLUGIN = pathlib.Path(__file__).parents[1] / "Phidgets22.indigoPlugin" / "Contents" / "Server Plugin"
 sys.path.insert(0, str(SERVER_PLUGIN))
 
+if "indigo" not in sys.modules:
+    sys.modules["indigo"] = types.ModuleType("indigo")
+if not hasattr(sys.modules["indigo"], "Dict"):
+    sys.modules["indigo"].Dict = dict
+if not hasattr(sys.modules["indigo"], "devices"):
+    sys.modules["indigo"].devices = []
+if not hasattr(sys.modules["indigo"], "kStateImageSel"):
+    sys.modules["indigo"].kStateImageSel = types.SimpleNamespace(
+        SensorOn="green", Error="red")
+
 from Phidget22.Net import Net
 from Phidget22.PhidgetServer import PhidgetServer
 from Phidget22.PhidgetServerType import PhidgetServerType
@@ -24,6 +34,7 @@ class FakeIndigoDevice(object):
         self.error = None
         self.state_list_ready = False
         self.update_before_state_list = False
+        self.image = None
 
     def stateListOrDisplayStateIdChanged(self):
         self.state_list_ready = True
@@ -35,6 +46,9 @@ class FakeIndigoDevice(object):
 
     def setErrorStateOnServer(self, value):
         self.error = value
+
+    def updateStateImageOnServer(self, value):
+        self.image = value
 
 
 class FakePlugin(object):
@@ -96,6 +110,7 @@ class NetworkServerDeviceTests(unittest.TestCase):
         self.assertEqual(self.plugin.events, ["deviceAttached"])
         self.assertIsNone(self.device.error)
         self.assertFalse(self.device.update_before_state_list)
+        self.assertEqual(self.device.image, "green")
 
     def test_persistent_removal_detaches_after_grace_and_reconnects(self):
         self.monitor.serverAvailable(server())
@@ -106,6 +121,7 @@ class NetworkServerDeviceTests(unittest.TestCase):
         self.assertFalse(self.device.states["onOffState"])
         self.assertEqual(self.device.states["availability"], "detached")
         self.assertEqual(self.device.error, "Detached")
+        self.assertEqual(self.device.image, "red")
         self.assertEqual(
             self.plugin.events, ["deviceAttached", "deviceDetached"])
 

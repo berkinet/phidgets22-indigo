@@ -1,5 +1,13 @@
 # Release notes
 
+## 0.3.56 — 2026-09-11
+
+### Changed
+
+- Display Network Server devices with a green sensor-status icon while
+  available and a red error-status icon while unavailable, instead of the
+  generic on/off power icon.
+
 ## 0.3.55 — 2026-09-11
 
 ### Changed
