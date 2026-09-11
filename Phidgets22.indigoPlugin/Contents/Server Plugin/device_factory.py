@@ -18,6 +18,7 @@ from dataadapter import DataAdapterPhidget
 from adapter_gpio import AdapterGPIOInputPhidget, AdapterGPIOOutputPhidget
 from bme280 import BME280Phidget
 from sgp41 import SGP41Phidget
+from network_server import NetworkServerDevice
 from config_util import saved_bool
 
 
@@ -259,6 +260,13 @@ def _sgp41(plugin, device, common):
         displayState=props.get("sgpDisplayState", "vocIndex"))
 
 
+def _network_server(plugin, device, common):
+    return NetworkServerDevice(
+        indigo_plugin=plugin, indigoDevice=device,
+        serverName=device.pluginProps.get("networkServerName", ""),
+        logger=plugin.logger)
+
+
 _BUILDERS = {
     "voltageInput": _voltage_input,
     "voltageRatioInput": _voltage_ratio_input,
@@ -273,6 +281,7 @@ _BUILDERS = {
     "adapterGPIOOutput": _adapter_gpio_output,
     "bme280": _bme280,
     "sgp41": _sgp41,
+    "networkServer": _network_server,
 }
 
 

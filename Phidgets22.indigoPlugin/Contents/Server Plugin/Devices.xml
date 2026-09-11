@@ -1,5 +1,22 @@
 <?xml version="1.0"?>
 <Devices>
+	<Device id="networkServer" type="custom">
+		<Name>Phidget Network Server</Name>
+		<ConfigUI>
+			<Field id="networkServerSelection" type="menu" defaultValue="manual">
+				<Label>Phidget server:</Label>
+				<List class="self" method="getNetworkServerMenu" dynamicReload="true"/>
+			</Field>
+			<Field id="networkServerManualName" type="textfield" visibleBindingId="networkServerSelection" visibleBindingValue="manual" alwaysUseInDialogHeightCalc="true">
+				<Label>Server name:</Label>
+			</Field>
+			<Field id="networkServerName" type="textfield" hidden="true"/>
+			<Field id="address" type="textfield" hidden="true"/>
+			<Field id="observedConnection" type="textfield" hidden="true"/>
+			<Field id="serverInformation" type="label"><Label>This is a read-only monitoring device. It remains in Indigo when the server is offline and provides no server-control actions.</Label></Field>
+		</ConfigUI>
+	</Device>
+
 	<Device id="voltageInput" type="custom">
 		<Name>Voltage Input</Name>
 		<ConfigUI>

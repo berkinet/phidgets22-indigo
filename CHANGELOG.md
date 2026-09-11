@@ -1,5 +1,20 @@
 # Release notes
 
+## 0.3.54 — 2026-09-11
+
+### Added
+
+- Add a read-only **Phidget Network Server** Indigo device that monitors a
+  selected server independently of its attached Phidget channels.
+- Publish availability, advertised and service names, server type, network
+  address, host, port, authentication requirement, flags, attachment times,
+  last outage duration, and reconnect count as Indigo states.
+- Allow existing Phidget attached and detached triggers to target Network
+  Server devices, with a two-second grace period for transient discovery loss.
+- Populate configuration from discovered servers while retaining offline
+  servers referenced by existing Indigo Phidget devices, plus manual entry for
+  a server that is already offline.
+
 ## 0.3.53 — 2026-09-10
 
 ### Added

@@ -285,6 +285,13 @@ class DiscoveryUiMixin(object):
         values = indigo.Dict(pluginProps)
         values["configurationMigrated"] = False
         values["observedConnection"] = self._observedConnectionForDevice(devId)
+        if typeId == "networkServer":
+            saved_name = str(values.get("networkServerName", "")).strip()
+            if saved_name:
+                values["networkServerSelection"] = saved_name
+            elif not values.get("networkServerSelection"):
+                values["networkServerSelection"] = "manual"
+            return (values, indigo.Dict())
         defaults = {
             "discoveredServer": "manual",
             "discoveredDevice": "selectServer",
@@ -463,6 +470,8 @@ class DiscoveryUiMixin(object):
 
     def validateDeviceConfigUi(self, valuesDict, typeId, devId):
         valuesDict["observedConnection"] = self._observedConnectionForDevice(devId)
+        if typeId == "networkServer":
+            return self._validateNetworkServerConfig(valuesDict, devId)
         validators = {
             "sgp41": self._validateSGP41Config,
             "bme280": self._validateBME280Config,
@@ -475,6 +484,32 @@ class DiscoveryUiMixin(object):
         if typeId in ("adapterGPIOInput", "adapterGPIOOutput"):
             return self._validateAdapterGPIOConfig(valuesDict, typeId, devId)
         return self._validateChannelConfig(valuesDict, typeId, devId)
+
+    def _validateNetworkServerConfig(self, valuesDict, devId):
+        errors = indigo.Dict()
+        selection = str(valuesDict.get("networkServerSelection", "")).strip()
+        manual = str(valuesDict.get("networkServerManualName", "")).strip()
+        name = manual if selection == "manual" else selection
+        if not name:
+            errors["networkServerSelection"] = (
+                "Select a discovered server or enter its server name.")
+            errors["showAlertText"] = (
+                "Select the Phidget Network Server to monitor.")
+            return (False, valuesDict, errors)
+        for device in indigo.devices:
+            if (getattr(device, "pluginId", None) == self.pluginId and
+                    getattr(device, "deviceTypeId", None) == "networkServer" and
+                    getattr(device, "id", None) != devId and
+                    str(getattr(device, "pluginProps", {}).get(
+                        "networkServerName", "")).strip() == name):
+                errors["networkServerSelection"] = (
+                    "That server already has a Network Server device.")
+                errors["showAlertText"] = (
+                    "Choose a server that is not already being monitored.")
+                return (False, valuesDict, errors)
+        valuesDict["networkServerName"] = name
+        valuesDict["address"] = "server-%s" % name
+        return (True, valuesDict)
 
     def _validateSGP41Config(self, valuesDict, devId):
         errors = indigo.Dict()
@@ -981,6 +1016,25 @@ class DiscoveryUiMixin(object):
             return [("manual", "Discovery unavailable — use manual settings below")]
         return [("manual", "Select a server")] + \
             self.discoveryInventory.server_choices(typeId)
+
+    def getNetworkServerMenu(self, filter="", valuesDict=None,
+                             typeId="", targetId=0):
+        names = set()
+        with self._networkServerLock:
+            online = set(self._discoveredServers)
+            names.update(online)
+        for device in indigo.devices:
+            if getattr(device, "pluginId", None) != self.pluginId:
+                continue
+            props = getattr(device, "pluginProps", {})
+            name = (props.get("networkServerName") or
+                    props.get("serverName"))
+            if name:
+                names.add(str(name))
+        result = [(name, "%s%s" % (
+            name, "" if name in online else " (offline)"))
+                  for name in sorted(names, key=str.lower)]
+        return result + [("manual", "Other server name…")]
 
     def getDiscoveredChannelMenu(self, filter="", valuesDict=None,
                                  typeId="", targetId=0):

@@ -30,6 +30,19 @@ whose devices you want Indigo to discover.
 The **Phidgets path** shows the observed route to an existing device after it
 has connected.
 
+## Monitor a Phidget Network Server
+
+Create a **Phidget Network Server** device and select a discovered server. If
+the server is currently offline, select **Other server name** and enter its
+saved server name. This device is read-only: it does not reboot, configure, or
+otherwise control the server.
+
+The Indigo device remains present while the server is offline. Its states
+report attachment, advertised name, service and server types, address, host,
+port, authentication requirement, flags, last attachment and detachment times,
+last outage duration, and reconnect count. The standard Phidget attached and
+detached triggers can target the server device.
+
 ## Use an LCD
 
 Create an **LCD** device and select its discovered LCD channel. For a 1204

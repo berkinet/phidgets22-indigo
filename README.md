@@ -42,6 +42,7 @@ permanent plugin identity, release procedure, and Store submission checklist.
 ## Status
 
 The following Phidget classes are currently supported:
+* Phidget Network Server (read-only availability and connection metadata)
 * DigitalInput
 * DigitalOutput
 * FrequencyCounter

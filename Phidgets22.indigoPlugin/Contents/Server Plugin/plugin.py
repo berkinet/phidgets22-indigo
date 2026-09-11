@@ -44,6 +44,9 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
 
         self.discoveryInventory = None
         self.networkMonitor = None
+        self._networkServerLock = threading.RLock()
+        self._discoveredServers = {}
+        self._networkServerDevices = set()
         self._outageLock = threading.RLock()
         self._detachBatches = {}
         self._recoveryBatches = {}
@@ -87,16 +90,16 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         self.logger.debug("Using %s" % library_version)
         start_version_check(library_version, self.logger)
 
-        Net.enableServerDiscovery(PhidgetServerType.PHIDGETSERVER_DEVICEREMOTE)
         try:
             self.networkMonitor = Net()
             self.networkMonitor.setOnServerAddedHandler(self._serverAdded)
             self.networkMonitor.setOnServerRemovedHandler(self._serverRemoved)
-        except Exception:
+            Net.enableServerDiscovery(
+                PhidgetServerType.PHIDGETSERVER_DEVICEREMOTE)
+        except Exception as error:
             self.networkMonitor = None
             self.logger.warning(
-                "Unable to monitor Phidget network servers:\n%s",
-                traceback.format_exc())
+                "Unable to start Phidget network server discovery: %s", error)
 
         try:
             self.discoveryInventory = DiscoveryInventory(logger=self.logger)
@@ -108,10 +111,60 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                 traceback.format_exc())
 
     def _serverAdded(self, net, server, kv):
+        name = str(getattr(server, "name", "") or "").strip()
+        if not name:
+            return
+        with self._networkServerLock:
+            self._discoveredServers[name] = server
+            monitors = [monitor for monitor in self._networkServerDevices
+                        if monitor.serverName == name]
         self.logger.debug("Phidget network server available: %s", server)
+        for monitor in monitors:
+            try:
+                monitor.serverAvailable(server)
+            except Exception as error:
+                self.logger.error(
+                    "Unable to update Phidget network server device='%s': %s",
+                    monitor.indigoDevice.name, error)
 
     def _serverRemoved(self, net, server):
+        name = str(getattr(server, "name", "") or "").strip()
+        if not name:
+            return
+        with self._networkServerLock:
+            self._discoveredServers.pop(name, None)
+            monitors = [monitor for monitor in self._networkServerDevices
+                        if monitor.serverName == name]
         self.logger.debug("Phidget network server unavailable: %s", server)
+        for monitor in monitors:
+            try:
+                monitor.serverUnavailable()
+            except Exception as error:
+                self.logger.error(
+                    "Unable to update Phidget network server device='%s': %s",
+                    monitor.indigoDevice.name, error)
+
+    def registerNetworkServerDevice(self, monitor):
+        with self._networkServerLock:
+            self._networkServerDevices.add(monitor)
+            server = self._discoveredServers.get(monitor.serverName)
+        if server is not None:
+            monitor.serverAvailable(server)
+        else:
+            monitor._update_states({
+                "onOffState": False,
+                "availability": "detached",
+                "serverName": monitor.serverName,
+                "reconnectCount": 0,
+            })
+            try:
+                monitor.indigoDevice.setErrorStateOnServer("Detached")
+            except Exception:
+                pass
+
+    def unregisterNetworkServerDevice(self, monitor):
+        with self._networkServerLock:
+            self._networkServerDevices.discard(monitor)
 
     def _channelsForServer(self, server_key):
         return [phidget for phidget in list(self.activePhidgets.values())
@@ -415,6 +468,8 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             states = self.activePhidgets[device.id].getDeviceStateList()
         else:
             states = indigo.List()
+        if device.deviceTypeId == "networkServer":
+            return states
         for state_id, label in (
                 ("connectionType", "Connection type"),
                 ("serverName", "Server name"),

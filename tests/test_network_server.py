@@ -1,0 +1,129 @@
+import logging
+import pathlib
+import sys
+import types
+import unittest
+from unittest import mock
+
+
+SERVER_PLUGIN = pathlib.Path(__file__).parents[1] / "Phidgets22.indigoPlugin" / "Contents" / "Server Plugin"
+sys.path.insert(0, str(SERVER_PLUGIN))
+
+from Phidget22.Net import Net
+from Phidget22.PhidgetServer import PhidgetServer
+from Phidget22.PhidgetServerType import PhidgetServerType
+from network_server import NetworkServerDevice
+
+
+class FakeIndigoDevice(object):
+    def __init__(self):
+        self.id = 17
+        self.name = "CM-Spare server"
+        self.states = {}
+        self.error = None
+
+    def updateStateOnServer(self, key, value):
+        self.states[key] = value
+
+    def setErrorStateOnServer(self, value):
+        self.error = value
+
+
+class FakePlugin(object):
+    def __init__(self):
+        self.events = []
+        self.registered = set()
+
+    def registerNetworkServerDevice(self, monitor):
+        self.registered.add(monitor)
+
+    def unregisterNetworkServerDevice(self, monitor):
+        self.registered.discard(monitor)
+
+    def triggerEvent(self, monitor, event):
+        self.events.append(event)
+
+    def getDeviceStateDictForBoolOnOffType(self, *args):
+        return args
+
+    def getDeviceStateDictForNumberType(self, *args):
+        return args
+
+    def getDeviceStateDictForStringType(self, *args):
+        return args
+
+
+def server():
+    return PhidgetServer(
+        name="CM-Spare", stype="_phidget22server._tcp",
+        type=PhidgetServerType.PHIDGETSERVER_DEVICEREMOTE,
+        flags=Net.AUTHREQUIRED, addr="192.0.2.15",
+        host="CM-Spare.local", port=5661)
+
+
+class NetworkServerDeviceTests(unittest.TestCase):
+    def setUp(self):
+        self.plugin = FakePlugin()
+        self.device = FakeIndigoDevice()
+        self.logger = mock.Mock(spec=logging.Logger)
+        self.monitor = NetworkServerDevice(
+            self.plugin, self.device, "CM-Spare", self.logger)
+        self.monitor.start()
+
+    def tearDown(self):
+        self.monitor.stop()
+
+    def test_discovery_publishes_read_only_server_metadata_and_attach(self):
+        self.monitor.serverAvailable(server())
+
+        self.assertTrue(self.device.states["onOffState"])
+        self.assertEqual(self.device.states["availability"], "attached")
+        self.assertEqual(self.device.states["serverName"], "CM-Spare")
+        self.assertEqual(self.device.states["serviceType"], "_phidget22server._tcp")
+        self.assertEqual(self.device.states["address"], "192.0.2.15")
+        self.assertEqual(self.device.states["host"], "CM-Spare.local")
+        self.assertEqual(self.device.states["port"], 5661)
+        self.assertTrue(self.device.states["authenticationRequired"])
+        self.assertEqual(self.device.states["flags"], Net.AUTHREQUIRED)
+        self.assertEqual(self.plugin.events, ["deviceAttached"])
+        self.assertIsNone(self.device.error)
+
+    def test_persistent_removal_detaches_after_grace_and_reconnects(self):
+        self.monitor.serverAvailable(server())
+        self.monitor.serverUnavailable()
+        generation = self.monitor._detach_generation
+        self.monitor._confirmUnavailable(generation)
+
+        self.assertFalse(self.device.states["onOffState"])
+        self.assertEqual(self.device.states["availability"], "detached")
+        self.assertEqual(self.device.error, "Detached")
+        self.assertEqual(
+            self.plugin.events, ["deviceAttached", "deviceDetached"])
+
+        self.monitor.serverAvailable(server())
+        self.assertEqual(self.device.states["reconnectCount"], 1)
+        self.assertEqual(
+            self.plugin.events,
+            ["deviceAttached", "deviceDetached", "deviceAttached"])
+
+    def test_rediscovery_cancels_transient_removal(self):
+        self.monitor.serverAvailable(server())
+        self.monitor.serverUnavailable()
+        stale_generation = self.monitor._detach_generation
+        self.monitor.serverAvailable(server())
+        self.monitor._confirmUnavailable(stale_generation)
+
+        self.assertTrue(self.device.states["onOffState"])
+        self.assertEqual(self.plugin.events, ["deviceAttached"])
+
+    def test_state_list_includes_monitoring_fields(self):
+        state_ids = [definition[0] for definition in self.monitor.getDeviceStateList()]
+        self.assertEqual(state_ids, [
+            "onOffState", "availability", "serverName", "serviceType",
+            "serverType", "address", "host", "port",
+            "authenticationRequired", "flags", "lastAttached",
+            "lastDetached", "lastOutageSeconds", "reconnectCount"])
+
+
+if __name__ == "__main__":
+    unittest.main()
