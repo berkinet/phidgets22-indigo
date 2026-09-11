@@ -8,6 +8,12 @@
   permanently detached monitor. New monitors must select a discovered server
   or an offline server retained by an existing Indigo Phidget configuration.
 
+### Fixed
+
+- Build a new Network Server device's dynamic state list before applying an
+  already-discovered server, preventing Indigo from rejecting the initial
+  state updates as undefined.
+
 ## 0.3.54 — 2026-09-11
 
 ### Added

@@ -22,8 +22,15 @@ class FakeIndigoDevice(object):
         self.name = "CM-Spare server"
         self.states = {}
         self.error = None
+        self.state_list_ready = False
+        self.update_before_state_list = False
+
+    def stateListOrDisplayStateIdChanged(self):
+        self.state_list_ready = True
 
     def updateStateOnServer(self, key, value):
+        if not self.state_list_ready:
+            self.update_before_state_list = True
         self.states[key] = value
 
     def setErrorStateOnServer(self, value):
@@ -88,6 +95,7 @@ class NetworkServerDeviceTests(unittest.TestCase):
         self.assertEqual(self.device.states["flags"], Net.AUTHREQUIRED)
         self.assertEqual(self.plugin.events, ["deviceAttached"])
         self.assertIsNone(self.device.error)
+        self.assertFalse(self.device.update_before_state_list)
 
     def test_persistent_removal_detaches_after_grace_and_reconnects(self):
         self.monitor.serverAvailable(server())

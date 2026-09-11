@@ -33,6 +33,10 @@ class NetworkServerDevice(object):
     def start(self):
         with self._lock:
             self._state = "detached"
+        # A server already present in the discovery cache is applied
+        # synchronously during registration. Ensure Indigo knows the dynamic
+        # states before that first update is attempted.
+        self.indigoDevice.stateListOrDisplayStateIdChanged()
         self.indigo_plugin.registerNetworkServerDevice(self)
 
     def stop(self):
