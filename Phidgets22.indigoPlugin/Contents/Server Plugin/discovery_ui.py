@@ -290,7 +290,7 @@ class DiscoveryUiMixin(object):
             if saved_name:
                 values["networkServerSelection"] = saved_name
             elif not values.get("networkServerSelection"):
-                values["networkServerSelection"] = "manual"
+                values["networkServerSelection"] = ""
             return (values, indigo.Dict())
         defaults = {
             "discoveredServer": "manual",
@@ -488,11 +488,10 @@ class DiscoveryUiMixin(object):
     def _validateNetworkServerConfig(self, valuesDict, devId):
         errors = indigo.Dict()
         selection = str(valuesDict.get("networkServerSelection", "")).strip()
-        manual = str(valuesDict.get("networkServerManualName", "")).strip()
-        name = manual if selection == "manual" else selection
+        name = selection
         if not name:
             errors["networkServerSelection"] = (
-                "Select a discovered server or enter its server name.")
+                "Select a discovered or previously configured server.")
             errors["showAlertText"] = (
                 "Select the Phidget Network Server to monitor.")
             return (False, valuesDict, errors)
@@ -1034,7 +1033,7 @@ class DiscoveryUiMixin(object):
         result = [(name, "%s%s" % (
             name, "" if name in online else " (offline)"))
                   for name in sorted(names, key=str.lower)]
-        return result + [("manual", "Other server name…")]
+        return result or [("", "No known Phidget servers")]
 
     def getDiscoveredChannelMenu(self, filter="", valuesDict=None,
                                  typeId="", targetId=0):

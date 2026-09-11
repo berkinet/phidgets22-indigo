@@ -13,6 +13,7 @@ from Phidget22.Net import Net
 from Phidget22.PhidgetServer import PhidgetServer
 from Phidget22.PhidgetServerType import PhidgetServerType
 from network_server import NetworkServerDevice
+import discovery_ui
 
 
 class FakeIndigoDevice(object):
@@ -123,6 +124,29 @@ class NetworkServerDeviceTests(unittest.TestCase):
             "serverType", "address", "host", "port",
             "authenticationRequired", "flags", "lastAttached",
             "lastDetached", "lastOutageSeconds", "reconnectCount"])
+
+
+class NetworkServerConfigurationTests(unittest.TestCase):
+    def test_empty_server_selection_is_rejected(self):
+        coordinator = object.__new__(discovery_ui.DiscoveryUiMixin)
+        coordinator.pluginId = "com.yikes.eric.phidgets-indigo"
+        with mock.patch.object(discovery_ui.indigo, "devices", []):
+            valid, _, errors = coordinator._validateNetworkServerConfig(
+                {"networkServerSelection": ""}, 0)
+
+        self.assertFalse(valid)
+        self.assertIn("networkServerSelection", errors)
+
+    def test_menu_has_no_manual_server_entry(self):
+        coordinator = object.__new__(discovery_ui.DiscoveryUiMixin)
+        coordinator.pluginId = "com.yikes.eric.phidgets-indigo"
+        coordinator._networkServerLock = __import__("threading").RLock()
+        coordinator._discoveredServers = {"CM-Spare": object()}
+        with mock.patch.object(discovery_ui.indigo, "devices", []):
+            menu = coordinator.getNetworkServerMenu()
+
+        self.assertEqual(menu, [("CM-Spare", "CM-Spare")])
+        self.assertNotIn("manual", [value for value, _ in menu])
 
 
 if __name__ == "__main__":

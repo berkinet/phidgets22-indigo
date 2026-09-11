@@ -3,12 +3,9 @@
 	<Device id="networkServer" type="custom">
 		<Name>Phidget Network Server</Name>
 		<ConfigUI>
-			<Field id="networkServerSelection" type="menu" defaultValue="manual">
+			<Field id="networkServerSelection" type="menu" defaultValue="">
 				<Label>Phidget server:</Label>
 				<List class="self" method="getNetworkServerMenu" dynamicReload="true"/>
-			</Field>
-			<Field id="networkServerManualName" type="textfield" visibleBindingId="networkServerSelection" visibleBindingValue="manual" alwaysUseInDialogHeightCalc="true">
-				<Label>Server name:</Label>
 			</Field>
 			<Field id="networkServerName" type="textfield" hidden="true"/>
 			<Field id="address" type="textfield" hidden="true"/>

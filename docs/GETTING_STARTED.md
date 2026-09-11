@@ -32,10 +32,10 @@ has connected.
 
 ## Monitor a Phidget Network Server
 
-Create a **Phidget Network Server** device and select a discovered server. If
-the server is currently offline, select **Other server name** and enter its
-saved server name. This device is read-only: it does not reboot, configure, or
-otherwise control the server.
+Create a **Phidget Network Server** device and select a discovered or previously
+configured server. Offline servers remain selectable when another Indigo
+Phidget device already references them. This device is read-only: it does not
+reboot, configure, or otherwise control the server.
 
 The Indigo device remains present while the server is offline. Its states
 report attachment, advertised name, service and server types, address, host,

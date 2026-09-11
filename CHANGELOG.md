@@ -1,5 +1,13 @@
 # Release notes
 
+## Unreleased
+
+### Changed
+
+- Remove manual Network Server name entry so a typo cannot silently create a
+  permanently detached monitor. New monitors must select a discovered server
+  or an offline server retained by an existing Indigo Phidget configuration.
+
 ## 0.3.54 — 2026-09-11
 
 ### Added
