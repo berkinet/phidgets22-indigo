@@ -99,7 +99,7 @@ class NetworkServerDeviceTests(unittest.TestCase):
         self.monitor.serverAvailable(server())
 
         self.assertTrue(self.device.states["onOffState"])
-        self.assertEqual(self.device.states["availability"], "attached")
+        self.assertEqual(self.device.states["availability"], "Online")
         self.assertEqual(self.device.states["serverName"], "CM-Spare")
         self.assertEqual(self.device.states["serviceType"], "_phidget22server._tcp")
         self.assertEqual(self.device.states["address"], "192.0.2.15")
@@ -119,7 +119,7 @@ class NetworkServerDeviceTests(unittest.TestCase):
         self.monitor._confirmUnavailable(generation)
 
         self.assertFalse(self.device.states["onOffState"])
-        self.assertEqual(self.device.states["availability"], "detached")
+        self.assertEqual(self.device.states["availability"], "Offline")
         self.assertEqual(self.device.error, "Detached")
         self.assertEqual(self.device.image, "red")
         self.assertEqual(
@@ -148,6 +148,7 @@ class NetworkServerDeviceTests(unittest.TestCase):
             "serverType", "address", "host", "port",
             "authenticationRequired", "flags", "lastAttached",
             "lastDetached", "lastOutageSeconds", "reconnectCount"])
+        self.assertEqual(self.monitor.getDeviceDisplayStateId(), "availability")
 
 
 class NetworkServerConfigurationTests(unittest.TestCase):

@@ -1,5 +1,13 @@
 # Release notes
 
+## 0.3.57 — 2026-09-11
+
+### Changed
+
+- Show **Online** or **Offline** as a Network Server device's primary Indigo
+  state text instead of the functional boolean values **on** and **off**.
+  The boolean `onOffState` remains available for automations.
+
 ## 0.3.56 — 2026-09-11
 
 ### Changed

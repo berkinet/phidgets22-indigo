@@ -64,7 +64,7 @@ class NetworkServerDevice(object):
 
         values = {
             "onOffState": True,
-            "availability": "attached",
+            "availability": "Online",
             "serverName": server.name or self.serverName,
             "serviceType": server.stype or "",
             "serverType": PhidgetServerType.getName(server.type),
@@ -121,7 +121,7 @@ class NetworkServerDevice(object):
             self._detached_at = time.monotonic()
         self._update_states({
             "onOffState": False,
-            "availability": "detached",
+            "availability": "Offline",
             "lastDetached": _timestamp(),
             "lastOutageSeconds": 0.0,
         })
@@ -172,4 +172,4 @@ class NetworkServerDevice(object):
         return states
 
     def getDeviceDisplayStateId(self):
-        return "onOffState"
+        return "availability"

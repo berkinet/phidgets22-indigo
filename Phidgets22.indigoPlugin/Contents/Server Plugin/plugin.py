@@ -153,7 +153,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         else:
             monitor._update_states({
                 "onOffState": False,
-                "availability": "detached",
+                "availability": "Offline",
                 "serverName": monitor.serverName,
                 "reconnectCount": 0,
             })
