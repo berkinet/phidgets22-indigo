@@ -54,7 +54,7 @@ class VoltageRatioInputPhidget(PhidgetBase):
 
 
     def setOnVoltageRatioChangeHandler(self, ph, voltageRatio):
-        self.indigoDevice.updateStateOnServer("voltageRatio", value=voltageRatio, decimalPlaces=self.decimalPlaces)
+        self.updateStateOnServer("voltageRatio", value=voltageRatio, decimalPlaces=self.decimalPlaces)
         if (self.sensorType == VoltageRatioSensorType.SENSOR_TYPE_VOLTAGERATIO and
                 self.customState and self.formula is not None):
             try:
@@ -63,7 +63,7 @@ class VoltageRatioInputPhidget(PhidgetBase):
                 arguments = {"value": customValue}
                 if self.customOutputType == "number":
                     arguments["decimalPlaces"] = self.decimalPlaces
-                self.indigoDevice.updateStateOnServer(
+                self.updateStateOnServer(
                     self.customState, **arguments)
             except (ArithmeticError, TypeError, ValueError) as error:
                 self.logger.error(
@@ -72,9 +72,9 @@ class VoltageRatioInputPhidget(PhidgetBase):
                     self.customFormula, voltageRatio, error)
 
     def onSensorChangeHandler(self, ph, sensorValue, sensorUnit):
-        self.indigoDevice.updateStateOnServer(self.sensorStateName , value=sensorValue, decimalPlaces=self.decimalPlaces)
+        self.updateStateOnServer(self.sensorStateName , value=sensorValue, decimalPlaces=self.decimalPlaces)
         if self.sensorStateName == "tempC":
-            self.indigoDevice.updateStateOnServer("tempF", value=(9.0/5.0 * sensorValue + 32), decimalPlaces=self.decimalPlaces)
+            self.updateStateOnServer("tempF", value=(9.0/5.0 * sensorValue + 32), decimalPlaces=self.decimalPlaces)
             self.indigoDevice.updateStateImageOnServer(indigo.kStateImageSel.TemperatureSensorOn)
 
         if self.sensorStateName == "percent":

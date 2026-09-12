@@ -84,7 +84,7 @@ class AdapterGPIOOutputPhidget(DigitalOutputPhidget):
 
     def updateIndigoStatus(self):
         state = bool(self.phidget.getState())
-        self.indigoDevice.updateStateOnServer(
+        self.updateStateOnServer(
             "onOffState", value=state, uiValue="on" if state else "off")
 
     def actionControlDevice(self, action):

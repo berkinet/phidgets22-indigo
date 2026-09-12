@@ -9,6 +9,8 @@ import time
 
 import indigo
 
+from phidget import update_indigo_state
+
 from Phidget22.Net import Net
 from Phidget22.PhidgetServerType import PhidgetServerType
 
@@ -303,7 +305,7 @@ class NetworkServerDevice(object):
 
     def _update_states(self, values):
         for key, value in values.items():
-            self.indigoDevice.updateStateOnServer(key, value=value)
+            update_indigo_state(self, key, value)
 
     def getDeviceStateList(self):
         states = []

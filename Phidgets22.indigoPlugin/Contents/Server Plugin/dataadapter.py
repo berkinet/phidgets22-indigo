@@ -51,7 +51,7 @@ class DataAdapterPhidget(PhidgetBase):
                 ("dataAdapterFrequency", int(ph.getFrequency())),
                 ("maxSendPacketLength", int(ph.getMaxSendPacketLength())),
                 ("maxReceivePacketLength", int(ph.getMaxReceivePacketLength()))):
-            self.indigoDevice.updateStateOnServer(key, value=value)
+            self.updateStateOnServer(key, value=value)
 
     @classmethod
     def supportsFunction(cls, function_id):

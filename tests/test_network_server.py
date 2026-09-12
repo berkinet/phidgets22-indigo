@@ -39,7 +39,7 @@ class FakeIndigoDevice(object):
     def stateListOrDisplayStateIdChanged(self):
         self.state_list_ready = True
 
-    def updateStateOnServer(self, key, value):
+    def updateStateOnServer(self, key, value, **kwargs):
         if not self.state_list_ready:
             self.update_before_state_list = True
         self.states[key] = value

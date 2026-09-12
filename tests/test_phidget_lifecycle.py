@@ -68,7 +68,7 @@ class FakeDevice(object):
     def setErrorStateOnServer(self, value):
         self.errors.append(value)
 
-    def updateStateOnServer(self, key, value):
+    def updateStateOnServer(self, key, value, **kwargs):
         self.states[key] = value
 
 

@@ -93,9 +93,9 @@ class DeviceWrapperTests(unittest.TestCase):
                          if call.args[0] == "count"]
         self.assertEqual(
             count_updates,
-            [mock.call("count", value=100),
-             mock.call("count", value=102),
-             mock.call("count", value=105)])
+            [mock.call("count", value=100, triggerEvents=False),
+             mock.call("count", value=102, triggerEvents=True),
+             mock.call("count", value=105, triggerEvents=True)])
 
     def test_digital_output_refreshes_state_after_successful_attach(self):
         wrapper = object.__new__(digitaloutput.DigitalOutputPhidget)
@@ -125,6 +125,16 @@ class DeviceWrapperTests(unittest.TestCase):
 
         wrapper.updateIndigoStatus.assert_not_called()
 
+    def test_digital_output_does_not_read_status_after_failed_async_write(self):
+        wrapper = object.__new__(digitaloutput.DigitalOutputPhidget)
+        wrapper.logger = mock.Mock()
+        wrapper.updateIndigoStatus = mock.Mock()
+
+        wrapper.asyncSetResult(None, 52, "Device not Attached")
+
+        wrapper.logger.error.assert_called_once()
+        wrapper.updateIndigoStatus.assert_not_called()
+
     def test_adapter_gpio_input_configures_pullup_and_inverts_switch_state(self):
         wrapper = object.__new__(adapter_gpio.AdapterGPIOInputPhidget)
         wrapper.inputMode = "pullup"
@@ -149,7 +159,7 @@ class DeviceWrapperTests(unittest.TestCase):
         wrapper.updateIndigoStatus()
 
         wrapper.indigoDevice.updateStateOnServer.assert_called_once_with(
-            "onOffState", value=True, uiValue="on")
+            "onOffState", value=True, uiValue="on", triggerEvents=False)
 
 
 if __name__ == "__main__":

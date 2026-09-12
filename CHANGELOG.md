@@ -1,5 +1,18 @@
 # Release notes
 
+## 0.3.65 — 2026-09-12
+
+### Fixed
+
+- Publish each device state silently the first time it is received after
+  plugin startup, establishing the live hardware baseline without firing
+  Indigo Device State Changed triggers during routine plugin restarts.
+- Restore normal trigger processing for every subsequent update of that state,
+  preserving genuine operational changes after initialization.
+- Do not read Digital Output status after an asynchronous write has already
+  failed, eliminating the redundant detached-device traceback while retaining
+  the original failure report.
+
 ## 0.3.64 — 2026-09-12
 
 ### Fixed

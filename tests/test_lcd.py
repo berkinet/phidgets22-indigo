@@ -664,7 +664,7 @@ class LCDTests(unittest.TestCase):
         self.assertEqual(native.flush_count, 1)
         self.assertEqual(native.backlight, native.getMinBacklight())
         wrapper.indigoDevice.updateStateOnServer.assert_any_call(
-            "backlight", value=native.getMinBacklight())
+            "backlight", value=native.getMinBacklight(), triggerEvents=False)
 
     def test_write_rejects_coordinates_outside_screen(self):
         native = FakeLCD(screen_size=LCDScreenSize.SCREEN_SIZE_2x16)
@@ -695,7 +695,7 @@ class LCDTests(unittest.TestCase):
         self.assertEqual(native.backlight, native.getMinBacklight())
         self.assertTrue(wrapper._emulatedSleeping)
         wrapper.indigoDevice.updateStateOnServer.assert_any_call(
-            "sleeping", value=True)
+            "sleeping", value=True, triggerEvents=False)
 
         wrapper.setBacklight(0.6)
         wrapper.setSleeping(False)
@@ -703,7 +703,7 @@ class LCDTests(unittest.TestCase):
         self.assertEqual(native.backlight, 0.6)
         self.assertFalse(wrapper._emulatedSleeping)
         wrapper.indigoDevice.updateStateOnServer.assert_any_call(
-            "sleeping", value=False)
+            "sleeping", value=False, triggerEvents=True)
 
 
 if __name__ == "__main__":

@@ -220,7 +220,8 @@ class SGP41Tests(unittest.TestCase):
         first_update_index = next(
             index for index, call in enumerate(device.mock_calls)
             if call == mock.call.updateStateOnServer(
-                "connectionPath", value="Mac→I2C Adapter→SGP41 0x59"))
+                "connectionPath", value="Mac→I2C Adapter→SGP41 0x59",
+                triggerEvents=False))
         self.assertLess(refresh_index, first_update_index)
 
     def test_first_poll_publishes_warming_indices_and_compensation(self):
@@ -229,14 +230,17 @@ class SGP41Tests(unittest.TestCase):
         with mock.patch.object(i2c_peripheral.threading, "Timer"):
             wrapper.start()
 
-        device.updateStateOnServer.assert_any_call("vocIndex", value=0)
-        device.updateStateOnServer.assert_any_call("noxIndex", value=0)
         device.updateStateOnServer.assert_any_call(
-            "indexStatus", value="warming up", uiValue="warming up (1 s)")
+            "vocIndex", value=0, triggerEvents=False)
         device.updateStateOnServer.assert_any_call(
-            "compensationHumidity", value=50.0)
+            "noxIndex", value=0, triggerEvents=False)
         device.updateStateOnServer.assert_any_call(
-            "compensationTemperature", value=25.0)
+            "indexStatus", value="warming up", uiValue="warming up (1 s)",
+            triggerEvents=False)
+        device.updateStateOnServer.assert_any_call(
+            "compensationHumidity", value=50.0, triggerEvents=False)
+        device.updateStateOnServer.assert_any_call(
+            "compensationTemperature", value=25.0, triggerEvents=False)
 
 
 if __name__ == "__main__":

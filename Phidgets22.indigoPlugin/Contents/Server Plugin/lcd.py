@@ -776,7 +776,7 @@ class LCDPhidget(PhidgetBase):
         }
         for state_id, value in values.items():
             if value is not None:
-                self.indigoDevice.updateStateOnServer(state_id, value=value)
+                self.updateStateOnServer(state_id, value=value)
 
     def getDeviceStateList(self):
         states = indigo.List()

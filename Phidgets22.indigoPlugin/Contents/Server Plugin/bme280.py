@@ -165,14 +165,14 @@ class BME280Phidget(I2CPeripheralBase):
                 self._publishMetadata()
                 temperature, pressure, humidity = self._compensate(
                     self._read(0xF7, 8))
-                self.indigoDevice.updateStateOnServer(
+                self.updateStateOnServer(
                     "temperature", value=temperature,
                     decimalPlaces=self.decimalPlaces)
-                self.indigoDevice.updateStateOnServer(
+                self.updateStateOnServer(
                     "pressure", value=pressure,
                     decimalPlaces=self.decimalPlaces)
                 if humidity is not None:
-                    self.indigoDevice.updateStateOnServer(
+                    self.updateStateOnServer(
                         "humidity", value=humidity,
                         decimalPlaces=self.decimalPlaces)
                 if self._offline_message is not None:

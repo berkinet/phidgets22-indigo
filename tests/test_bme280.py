@@ -120,11 +120,12 @@ class BME280Tests(unittest.TestCase):
             "i2cAddress", "temperature", "pressure", "humidity"])
         device.updateStateOnServer.assert_any_call(
             "connectionPath",
-            value="CM-Library Mac→I2C Adapter→BME280 0x76")
+            value="CM-Library Mac→I2C Adapter→BME280 0x76",
+            triggerEvents=False)
         device.updateStateOnServer.assert_any_call(
-            "sensorModel", value="BME280")
+            "sensorModel", value="BME280", triggerEvents=False)
         device.updateStateOnServer.assert_any_call(
-            "i2cAddress", value="0x76")
+            "i2cAddress", value="0x76", triggerEvents=False)
 
     def test_state_list_omits_humidity_for_bmp(self):
         wrapper, _, _ = self.wrapper(0x58)

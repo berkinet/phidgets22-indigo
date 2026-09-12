@@ -32,7 +32,7 @@ class HumiditySensorPhidget(PhidgetBase):
             self.phidget.setHumidityChangeTrigger(newHumidityChangeTrigger)
 
     def onHumidityChangeHandler(self, ph, humidity):
-        self.indigoDevice.updateStateOnServer("humidity", value=humidity, decimalPlaces=self.decimalPlaces)
+        self.updateStateOnServer("humidity", value=humidity, decimalPlaces=self.decimalPlaces)
         self.indigoDevice.updateStateImageOnServer(indigo.kStateImageSel.HumiditySensorOn)
 
     def getDeviceStateList(self):

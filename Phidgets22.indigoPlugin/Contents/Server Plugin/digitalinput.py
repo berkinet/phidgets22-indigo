@@ -34,9 +34,9 @@ class DigitalInputPhidget(PhidgetBase):
             setState = 'off'
             stateImage =  getattr(indigo.kStateImageSel, str(self.offStateIcon))
 
-        self.indigoDevice.updateStateOnServer("onOffState", value=setState)
+        self.updateStateOnServer("onOffState", value=setState)
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self.indigoDevice.updateStateOnServer(key="lastUpdate", value=now)
+        self.updateStateOnServer(key="lastUpdate", value=now)
         self.indigoDevice.updateStateImageOnServer(stateImage)
 
     def onStateChangeHandler(self, ph, state):

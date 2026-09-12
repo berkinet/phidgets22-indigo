@@ -75,6 +75,10 @@ Automatic collection is daily by default and can be disabled or changed to 6
 hours, 12 hours, or weekly in the plugin configuration. Use **Collect Phidget
 versions now** in the plugin menu for an immediate asynchronous check.
 
+When the plugin starts, the first live value received for each state establishes
+its baseline without firing Indigo Device State Changed triggers. Later state
+updates retain normal trigger behavior.
+
 ## SGP41 gas indices
 
 The SGP41 device samples once per second and publishes both raw sensor signals

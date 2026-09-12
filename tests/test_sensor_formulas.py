@@ -46,7 +46,8 @@ class SensorFormulaTests(unittest.TestCase):
 
         self.assertEqual(
             wrapper.indigoDevice.updateStateOnServer.call_args_list[-1],
-            mock.call("converted", value=6.0, decimalPlaces=-1))
+            mock.call("converted", value=6.0, decimalPlaces=-1,
+                      triggerEvents=False))
 
     def test_voltage_ratio_input_uses_shared_restricted_formula(self):
         arguments = self.wrapper_arguments()
@@ -61,7 +62,8 @@ class SensorFormulaTests(unittest.TestCase):
 
         self.assertEqual(
             wrapper.indigoDevice.updateStateOnServer.call_args_list[-1],
-            mock.call("converted", value=1.5, decimalPlaces=-1))
+            mock.call("converted", value=1.5, decimalPlaces=-1,
+                      triggerEvents=False))
 
     def test_sensor_formula_rejects_code_execution_during_construction(self):
         arguments = self.wrapper_arguments()
@@ -87,7 +89,7 @@ class SensorFormulaTests(unittest.TestCase):
 
         self.assertEqual(
             wrapper.indigoDevice.updateStateOnServer.call_args_list[-1],
-            mock.call("converted", value=True))
+            mock.call("converted", value=True, triggerEvents=False))
         wrapper.indigo_plugin.getDeviceStateDictForNumberType = mock.Mock(
             return_value="raw")
         wrapper.indigo_plugin.getDeviceStateDictForBoolOnOffType = mock.Mock(
@@ -108,7 +110,7 @@ class SensorFormulaTests(unittest.TestCase):
 
         self.assertEqual(
             wrapper.indigoDevice.updateStateOnServer.call_args_list[-1],
-            mock.call("converted", value="On"))
+            mock.call("converted", value="On", triggerEvents=False))
         wrapper.indigo_plugin.getDeviceStateDictForNumberType = mock.Mock(
             return_value="raw")
         wrapper.indigo_plugin.getDeviceStateDictForStringType = mock.Mock(

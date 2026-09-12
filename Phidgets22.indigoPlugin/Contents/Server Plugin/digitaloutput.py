@@ -16,8 +16,8 @@ class DigitalOutputPhidget(PhidgetBase):
         try:
             brightnessLevel = int(100 * self.phidget.getDutyCycle())
             onOffState = bool(self.phidget.getState())
-            self.indigoDevice.updateStateOnServer("brightnessLevel", value=brightnessLevel, uiValue="%d" % brightnessLevel)
-            self.indigoDevice.updateStateOnServer("onOffState", value=onOffState, uiValue="on" if onOffState else "off")
+            self.updateStateOnServer("brightnessLevel", value=brightnessLevel, uiValue="%d" % brightnessLevel)
+            self.updateStateOnServer("onOffState", value=onOffState, uiValue="on" if onOffState else "off")
         except Exception as e:
             self.logger.error('%s: %s' % (self.indigoDevice.name, traceback.format_exc()))
 
@@ -61,4 +61,5 @@ class DigitalOutputPhidget(PhidgetBase):
     def asyncSetResult(self, ch, res, details):
         if res != ErrorCode.EPHIDGET_OK:
             self.logger.error("Async failure: %i : %s" % (res, details))
+            return
         self.updateIndigoStatus()

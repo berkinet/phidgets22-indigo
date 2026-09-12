@@ -59,7 +59,7 @@ class VoltageInputPhidget(PhidgetBase):
 
 
     def onVoltageChangeHandler(self, ph, voltage):
-        self.indigoDevice.updateStateOnServer("voltage_in", value=voltage, decimalPlaces=self.decimalPlaces)
+        self.updateStateOnServer("voltage_in", value=voltage, decimalPlaces=self.decimalPlaces)
         if (self.sensorType == VoltageSensorType.SENSOR_TYPE_VOLTAGE and
                 self.customState and self.formula is not None):
             try:
@@ -68,7 +68,7 @@ class VoltageInputPhidget(PhidgetBase):
                 arguments = {"value": customValue}
                 if self.customOutputType == "number":
                     arguments["decimalPlaces"] = self.decimalPlaces
-                self.indigoDevice.updateStateOnServer(
+                self.updateStateOnServer(
                     self.customState, **arguments)
             except (ArithmeticError, TypeError, ValueError) as error:
                 self.logger.error(
@@ -77,9 +77,9 @@ class VoltageInputPhidget(PhidgetBase):
                     self.customFormula, voltage, error)
 
     def onSensorChangeHandler(self, ph, sensorValue, sensorUnit):
-        self.indigoDevice.updateStateOnServer(self.sensorStateName , value=sensorValue, decimalPlaces=self.decimalPlaces)
+        self.updateStateOnServer(self.sensorStateName , value=sensorValue, decimalPlaces=self.decimalPlaces)
         if self.sensorStateName == "tempC":
-            self.indigoDevice.updateStateOnServer("tempF", value=(9.0/5.0 * sensorValue + 32), decimalPlaces=self.decimalPlaces)
+            self.updateStateOnServer("tempF", value=(9.0/5.0 * sensorValue + 32), decimalPlaces=self.decimalPlaces)
 
         if self.sensorStateName == "lux":
             self.indigoDevice.updateStateImageOnServer(indigo.kStateImageSel.EnergyMeterOn)

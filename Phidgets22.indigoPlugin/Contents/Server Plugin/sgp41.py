@@ -182,27 +182,27 @@ class SGP41Phidget(I2CPeripheralBase):
                 nox_index = self._nox_algorithm.process(
                     nox if nox is not None else 0)
                 self._algorithm_sample_count += 1
-                self.indigoDevice.updateStateOnServer("rawVoc", value=voc)
-                self.indigoDevice.updateStateOnServer(
+                self.updateStateOnServer("rawVoc", value=voc)
+                self.updateStateOnServer(
                     "vocIndex", value=voc_index)
-                self.indigoDevice.updateStateOnServer(
+                self.updateStateOnServer(
                     "noxIndex", value=nox_index)
-                self.indigoDevice.updateStateOnServer(
+                self.updateStateOnServer(
                     "conditioning", value=nox is None,
                     uiValue=("conditioning (%d/10)" % self._conditioning_count
                              if nox is None else "ready"))
                 if nox is not None:
-                    self.indigoDevice.updateStateOnServer("rawNox", value=nox)
-                self.indigoDevice.updateStateOnServer(
+                    self.updateStateOnServer("rawNox", value=nox)
+                self.updateStateOnServer(
                     "indexStatus",
                     value=("ready" if voc_index or nox_index else "warming up"),
                     uiValue=("ready" if voc_index or nox_index else
                              "warming up (%d s)" % self._algorithm_sample_count))
-                self.indigoDevice.updateStateOnServer(
+                self.updateStateOnServer(
                     "compensationHumidity", value=self._actual_humidity)
-                self.indigoDevice.updateStateOnServer(
+                self.updateStateOnServer(
                     "compensationTemperature", value=self._actual_temperature)
-                self.indigoDevice.updateStateOnServer(
+                self.updateStateOnServer(
                     "compensationStatus",
                     value=("fallback" if self._compensation_issue else "configured"))
                 if self._offline_message is not None:

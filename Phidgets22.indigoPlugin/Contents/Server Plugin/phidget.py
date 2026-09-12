@@ -13,6 +13,18 @@ from Phidget22.ErrorCode import ErrorCode
 from Phidget22.PhidgetException import PhidgetException
 
 
+def update_indigo_state(owner, key, value, **kwargs):
+    """Publish a state while treating its first value as a silent baseline."""
+    initialized = getattr(owner, "_initializedIndigoStates", None)
+    if initialized is None:
+        initialized = set()
+        owner._initializedIndigoStates = initialized
+    if "triggerEvents" not in kwargs:
+        kwargs["triggerEvents"] = key in initialized
+    owner.indigoDevice.updateStateOnServer(key, value=value, **kwargs)
+    initialized.add(key)
+
+
 class PeripheralUnavailableError(RuntimeError):
     """Expected failure when configured external hardware does not respond."""
 
@@ -85,6 +97,9 @@ class PhidgetBase(object):
         self.runtimeDeviceName = None
         self.runtimeDeviceSKU = None
         self.runtimeChannelName = None
+
+    def updateStateOnServer(self, key, value, **kwargs):
+        update_indigo_state(self, key, value, **kwargs)
 
     def _identity(self):
         net_info = self.channelInfo.netInfo
@@ -186,7 +201,7 @@ class PhidgetBase(object):
         }
         for key, value in states.items():
             try:
-                self.indigoDevice.updateStateOnServer(key, value=value)
+                self.updateStateOnServer(key, value=value)
             except Exception:
                 self.logger.debug("Unable to update connection state %s for %s:\n%s",
                                   key, self._identity(), traceback.format_exc())

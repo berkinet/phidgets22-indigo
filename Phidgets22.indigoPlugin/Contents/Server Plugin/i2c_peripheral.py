@@ -4,8 +4,13 @@
 
 import threading
 
+from phidget import update_indigo_state
+
 
 class I2CPeripheralBase(object):
+    def updateStateOnServer(self, key, value, **kwargs):
+        update_indigo_state(self, key, value, **kwargs)
+
     def _resolveAdapter(self):
         adapter = self.indigo_plugin.activePhidgets.get(self.adapterDeviceId)
         if adapter is None or not adapter.supportsFunction(self.PROVIDER_FUNCTION):
@@ -21,7 +26,7 @@ class I2CPeripheralBase(object):
         def publish(state_id, value):
             value = str(value or "")
             if str(device_states.get(state_id, "") or "") != value:
-                self.indigoDevice.updateStateOnServer(state_id, value=value)
+                self.updateStateOnServer(state_id, value=value)
 
         for state_id in ("connectionType", "serverName", "serverUniqueName",
                          "serverHost", "serverPeer", "connection"):
