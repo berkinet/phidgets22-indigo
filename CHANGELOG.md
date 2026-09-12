@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.3.64 — 2026-09-12
+
+### Fixed
+
+- Establish the initial Phidget and Network Server attachment after plugin
+  startup as a silent baseline instead of firing configured **Phidget device
+  attached** triggers.
+- Continue firing attachment triggers after a genuine, previously announced
+  detach so recovery automations retain their intended behavior.
+
 ## 0.3.63 — 2026-09-12
 
 ### Fixed

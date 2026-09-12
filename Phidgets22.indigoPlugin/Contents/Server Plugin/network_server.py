@@ -113,7 +113,8 @@ class NetworkServerDevice(object):
         self.indigoDevice.updateStateImageOnServer(
             indigo.kStateImageSel.SensorOn)
         if not was_attached:
-            self.indigo_plugin.triggerEvent(self, "deviceAttached")
+            if not first_attachment:
+                self.indigo_plugin.triggerEvent(self, "deviceAttached")
             log = (self.logger.debug if first_attachment and
                    not unavailable_announced else self.logger.info)
             log("Phidget network server '%s' %s%s", self.serverName,

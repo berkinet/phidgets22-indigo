@@ -189,7 +189,7 @@ class PhidgetLifecycleTests(unittest.TestCase):
 
         self.assertEqual(self.phidget._state, "attached")
         self.assertEqual(self.phidget.device.errors, [None])
-        self.assertEqual(self.phidget.plugin.events, ["deviceAttached"])
+        self.assertEqual(self.phidget.plugin.events, [])
         self.assertEqual(self.phidget._attach_count, 2)
 
     def test_persistent_detach_sets_error_and_emits_events_after_grace(self):
@@ -203,12 +203,12 @@ class PhidgetLifecycleTests(unittest.TestCase):
 
         self.assertEqual(self.phidget.device.errors, [None, "Detached"])
         self.assertEqual(self.phidget.plugin.events,
-                         ["deviceAttached", "deviceDetached"])
+                         ["deviceDetached"])
 
         self.phidget.onAttachHandler(self.phidget.native)
         self.assertEqual(self.phidget.device.errors, [None, "Detached", None])
         self.assertEqual(self.phidget.plugin.events,
-                         ["deviceAttached", "deviceDetached", "deviceAttached"])
+                         ["deviceDetached", "deviceAttached"])
 
     def test_stale_detach_grace_cannot_publish_after_reattach(self):
         self.phidget = TestPhidget()
@@ -221,7 +221,7 @@ class PhidgetLifecycleTests(unittest.TestCase):
         self.phidget.detachGraceHandler(stale_generation)
 
         self.assertEqual(self.phidget.device.errors, [None])
-        self.assertEqual(self.phidget.plugin.events, ["deviceAttached"])
+        self.assertEqual(self.phidget.plugin.events, [])
 
     def test_cancelled_timeout_cannot_overwrite_successful_attach(self):
         self.phidget = TestPhidget()

@@ -115,7 +115,7 @@ class NetworkServerDeviceTests(unittest.TestCase):
         self.assertEqual(self.device.states["port"], 5661)
         self.assertTrue(self.device.states["authenticationRequired"])
         self.assertEqual(self.device.states["flags"], Net.AUTHREQUIRED)
-        self.assertEqual(self.plugin.events, ["deviceAttached"])
+        self.assertEqual(self.plugin.events, [])
         self.assertIsNone(self.device.error)
         self.assertFalse(self.device.update_before_state_list)
         self.assertEqual(self.device.image, "green")
@@ -131,13 +131,13 @@ class NetworkServerDeviceTests(unittest.TestCase):
         self.assertEqual(self.device.error, "Offline")
         self.assertEqual(self.device.image, "red")
         self.assertEqual(
-            self.plugin.events, ["deviceAttached", "deviceDetached"])
+            self.plugin.events, ["deviceDetached"])
 
         self.monitor.serverAvailable(server())
         self.assertEqual(self.device.states["reconnectCount"], 1)
         self.assertEqual(
             self.plugin.events,
-            ["deviceAttached", "deviceDetached", "deviceAttached"])
+            ["deviceDetached", "deviceAttached"])
 
     def test_rediscovery_cancels_transient_removal(self):
         self.monitor.serverAvailable(server())
@@ -147,7 +147,7 @@ class NetworkServerDeviceTests(unittest.TestCase):
         self.monitor._confirmUnavailable(stale_generation)
 
         self.assertTrue(self.device.states["onOffState"])
-        self.assertEqual(self.plugin.events, ["deviceAttached"])
+        self.assertEqual(self.plugin.events, [])
 
     @mock.patch("network_server.socket.create_connection")
     def test_two_failed_reachability_checks_detect_hard_loss(self, connect):
@@ -164,7 +164,7 @@ class NetworkServerDeviceTests(unittest.TestCase):
         self.monitor._confirmUnavailable(self.monitor._detach_generation)
         self.assertEqual(self.device.states["availability"], "Offline")
         self.assertEqual(
-            self.plugin.events, ["deviceAttached", "deviceDetached"])
+            self.plugin.events, ["deviceDetached"])
 
     @mock.patch("network_server.socket.create_connection")
     def test_successful_reachability_check_resets_failure_count(self, connect):
@@ -202,7 +202,7 @@ class NetworkServerDeviceTests(unittest.TestCase):
         self.assertEqual(self.device.error, None)
         self.assertEqual(
             self.plugin.events,
-            ["deviceAttached", "deviceDetached", "deviceAttached"])
+            ["deviceDetached", "deviceAttached"])
 
     def test_sustained_outage_escalates_and_schedules_reminder(self):
         with mock.patch.object(

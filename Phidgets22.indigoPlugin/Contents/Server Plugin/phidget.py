@@ -509,7 +509,7 @@ class PhidgetBase(object):
                 log("Phidget %s in %.1f seconds (attach #%d): %s",
                     "reattached" if attach_count > 1 else "attached",
                     detached_for, attach_count, self._identity())
-            if attach_count == 1 or attachment_announced:
+            if attachment_announced:
                 self.indigo_plugin.triggerEvent(self, "deviceAttached")
             try:
                 phidget_util.logPhidgetEvent(ph, self.logger.debug, "Attached '" + self.indigoDevice.name + "'")
