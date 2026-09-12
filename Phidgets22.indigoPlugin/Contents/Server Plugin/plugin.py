@@ -379,6 +379,9 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
 
     def phidgetAttachCompleted(self, phidget, detached_for, attach_count,
                                detach_announced):
+        collector = getattr(self, "versionCollector", None)
+        if collector is not None:
+            collector.request_collection(ATTACH_DELAY_SECONDS)
         server_key_method = getattr(phidget, "serverKey", None)
         channel_info = getattr(phidget, "channelInfo", None)
         if (server_key_method is not None and channel_info is not None and
@@ -516,9 +519,6 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                 self.activePhidgets[device.id] = new_phidget
             new_phidget.start()
             device.stateListOrDisplayStateIdChanged()
-            collector = getattr(self, "versionCollector", None)
-            if collector is not None:
-                collector.request_collection(ATTACH_DELAY_SECONDS)
         except PeripheralUnavailableError as error:
             with getattr(self, "_activePhidgetsLock", nullcontext()):
                 self.activePhidgets.pop(device.id, None)

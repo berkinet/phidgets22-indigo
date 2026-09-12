@@ -184,7 +184,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.66</string>", plist)
+        self.assertIn("<string>0.3.67</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -852,6 +852,7 @@ class ConfigurationTests(unittest.TestCase):
         }
         instance.logger = logging.getLogger("test.configuration.lcd")
         instance.activePhidgets = {}
+        instance.versionCollector = mock.Mock()
 
         device = mock.Mock()
         device.id = 91
@@ -883,6 +884,7 @@ class ConfigurationTests(unittest.TestCase):
 
         wrapper.start.assert_called_once_with()
         device.stateListOrDisplayStateIdChanged.assert_called_once_with()
+        instance.versionCollector.request_collection.assert_not_called()
         self.assertIs(instance.activePhidgets[device.id], wrapper)
         factory.assert_called_once()
         self.assertEqual(factory.call_args.kwargs["screenSize"], 1)
@@ -1099,6 +1101,7 @@ class ConfigurationTests(unittest.TestCase):
         instance.logger = mock.Mock()
         instance.activePhidgets = {42: mock.sentinel.adapter}
         instance.deviceStartComm = mock.Mock()
+        instance.versionCollector = mock.Mock()
         lcd_device = types.SimpleNamespace(
             id=99, enabled=True, pluginId=instance.pluginId,
             deviceTypeId="lcd", pluginProps={"lcdAdapterDeviceId": "42"})
@@ -1113,6 +1116,8 @@ class ConfigurationTests(unittest.TestCase):
             detach_announced=False)
 
         instance.deviceStartComm.assert_called_once_with(lcd_device)
+        instance.versionCollector.request_collection.assert_called_once_with(
+            plugin.ATTACH_DELAY_SECONDS)
 
     def test_adapter_detach_immediately_stops_dependent_polling(self):
         instance = object.__new__(plugin.Plugin)

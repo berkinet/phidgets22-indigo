@@ -1,5 +1,14 @@
 # Release notes
 
+## 0.3.67 — 2026-09-12
+
+### Fixed
+
+- Schedule the post-startup version pass after a channel completes attachment,
+  rather than shortly after asynchronous attachment merely begins.
+- Prevent working VINT and other channels from retaining a transient
+  `Device is not attached` version-check result after startup.
+
 ## 0.3.66 — 2026-09-12
 
 ### Fixed
