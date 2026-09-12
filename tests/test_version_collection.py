@@ -129,6 +129,11 @@ class VersionCollectionTests(unittest.TestCase):
         catalog = version_collection.FirmwareCatalog.loaded(
             version_collection.CATALOG_PATH)
 
+        # Serial 312564 is an early 1017 running firmware 100.  The supplied
+        # Admin catalog starts at hardware revision 1017_2, so it must not be
+        # offered that revision's firmware.
+        self.assertEqual(catalog.versions("1017_1"), set())
+        self.assertEqual(catalog.versions("1017_2"), {210, 211, 212})
         self.assertEqual(catalog.versions("1018_2"), set())
         self.assertEqual(catalog.versions("1018_3"), {1000, 1001})
         self.assertIn(105, catalog.versions("HUM1000", 0x014))
