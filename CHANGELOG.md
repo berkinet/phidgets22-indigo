@@ -1,5 +1,17 @@
 # Release notes
 
+## 0.3.58 — 2026-09-12
+
+### Fixed
+
+- Escalate a Network Server disappearance from its initial warning to a
+  plugin-authored error when it remains unavailable through the configured
+  attachment timeout.
+- Repeat the sustained-outage error at the configured detached-device reminder
+  interval, including for a monitored server already absent at plugin startup.
+- Cancel pending errors on rediscovery and report one recovery message with the
+  complete outage duration.
+
 ## 0.3.57 — 2026-09-11
 
 ### Changed

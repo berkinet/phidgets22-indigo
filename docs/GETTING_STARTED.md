@@ -43,6 +43,12 @@ port, authentication requirement, flags, last attachment and detachment times,
 last outage duration, and reconnect count. The standard Phidget attached and
 detached triggers can target the server device.
 
+After a two-second discovery-loss grace period, the plugin reports one warning
+and fires the detached trigger. If the server remains unavailable through the
+configured attachment timeout, the plugin escalates the condition to an error
+and repeats it at the configured detached-device reminder interval. Recovery
+produces one informational message with the total outage duration.
+
 ## Use an LCD
 
 Create an **LCD** device and select its discovered LCD channel. For a 1204

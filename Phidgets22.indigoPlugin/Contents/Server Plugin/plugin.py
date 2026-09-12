@@ -151,18 +151,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         if server is not None:
             monitor.serverAvailable(server)
         else:
-            monitor._update_states({
-                "onOffState": False,
-                "availability": "Offline",
-                "serverName": monitor.serverName,
-                "reconnectCount": 0,
-            })
-            try:
-                monitor.indigoDevice.setErrorStateOnServer("Detached")
-            except Exception:
-                pass
-            monitor.indigoDevice.updateStateImageOnServer(
-                indigo.kStateImageSel.Error)
+            monitor.serverInitiallyUnavailable()
 
     def unregisterNetworkServerDevice(self, monitor):
         with self._networkServerLock:

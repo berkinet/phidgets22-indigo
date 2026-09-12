@@ -55,6 +55,10 @@ class FakePlugin(object):
     def __init__(self):
         self.events = []
         self.registered = set()
+        self.pluginPrefs = {
+            "attachTimeout": "30",
+            "detachedReminderInterval": "3600",
+        }
 
     def registerNetworkServerDevice(self, monitor):
         self.registered.add(monitor)
@@ -140,6 +144,33 @@ class NetworkServerDeviceTests(unittest.TestCase):
 
         self.assertTrue(self.device.states["onOffState"])
         self.assertEqual(self.plugin.events, ["deviceAttached"])
+
+    def test_sustained_outage_escalates_and_schedules_reminder(self):
+        with mock.patch.object(
+                __import__("network_server").time, "monotonic",
+                side_effect=[100.0, 145.0]):
+            self.monitor.serverAvailable(server())
+            self.monitor.serverUnavailable()
+            self.monitor._confirmUnavailable(self.monitor._detach_generation)
+            generation = self.monitor._unavailable_generation
+            self.monitor._unavailableReminder(generation)
+
+        arguments = self.logger.error.call_args.args
+        self.assertIn("remains unavailable after %.1f seconds", arguments[0])
+        self.assertEqual(arguments[1:], ("CM-Spare", 45.0))
+        self.assertTrue(self.monitor._unavailable_announced)
+        self.assertIsNotNone(self.monitor._unavailable_timer)
+
+    def test_recovery_after_escalation_is_reported(self):
+        self.monitor.serverAvailable(server())
+        self.monitor.serverUnavailable()
+        self.monitor._confirmUnavailable(self.monitor._detach_generation)
+        self.monitor._unavailable_announced = True
+
+        self.monitor.serverAvailable(server())
+
+        self.logger.info.assert_called_once()
+        self.assertEqual(self.logger.info.call_args.args[2], "recovered")
 
     def test_state_list_includes_monitoring_fields(self):
         state_ids = [definition[0] for definition in self.monitor.getDeviceStateList()]

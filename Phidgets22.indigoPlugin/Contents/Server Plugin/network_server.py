@@ -27,10 +27,19 @@ class NetworkServerDevice(object):
         self._state = "stopped"
         self._lock = threading.RLock()
         self._detached_at = None
+        self._pending_detached_at = None
         self._ever_attached = False
         self._reconnect_count = 0
         self._detach_timer = None
         self._detach_generation = 0
+        self._unavailable_timer = None
+        self._unavailable_generation = 0
+        self._unavailable_announced = False
+        self._initial_unavailable_timeout = max(
+            30, int(indigo_plugin.pluginPrefs.get("attachTimeout", "30")))
+        self._reminder_interval = max(
+            1, int(indigo_plugin.pluginPrefs.get(
+                "detachedReminderInterval", "3600")))
 
     def start(self):
         with self._lock:
@@ -43,12 +52,14 @@ class NetworkServerDevice(object):
 
     def stop(self):
         self._cancel_detach_timer()
+        self._cancel_unavailable_timer()
         self.indigo_plugin.unregisterNetworkServerDevice(self)
         with self._lock:
             self._state = "stopped"
 
     def serverAvailable(self, server):
         self._cancel_detach_timer()
+        self._cancel_unavailable_timer()
         with self._lock:
             was_attached = self._state == "attached"
             outage_seconds = 0.0
@@ -58,9 +69,12 @@ class NetworkServerDevice(object):
                 self._reconnect_count += 1
             self._state = "attached"
             self._detached_at = None
+            self._pending_detached_at = None
             first_attachment = not self._ever_attached
             self._ever_attached = True
             reconnect_count = self._reconnect_count
+            unavailable_announced = self._unavailable_announced
+            self._unavailable_announced = False
 
         values = {
             "onOffState": True,
@@ -86,15 +100,39 @@ class NetworkServerDevice(object):
             indigo.kStateImageSel.SensorOn)
         if not was_attached:
             self.indigo_plugin.triggerEvent(self, "deviceAttached")
-            log = self.logger.debug if first_attachment else self.logger.info
+            log = (self.logger.debug if first_attachment and
+                   not unavailable_announced else self.logger.info)
             log("Phidget network server '%s' %s%s", self.serverName,
-                "available" if first_attachment else "recovered",
-                "" if first_attachment else " after %.1f seconds" % outage_seconds)
+                "available" if first_attachment and not unavailable_announced
+                else "recovered",
+                "" if first_attachment and not unavailable_announced
+                else " after %.1f seconds" % outage_seconds)
+
+    def serverInitiallyUnavailable(self):
+        """Begin monitoring a configured server absent during plugin startup."""
+        with self._lock:
+            self._state = "detached"
+            self._detached_at = time.monotonic()
+            self._unavailable_announced = False
+        self._update_states({
+            "onOffState": False,
+            "availability": "Offline",
+            "serverName": self.serverName,
+            "reconnectCount": 0,
+        })
+        try:
+            self.indigoDevice.setErrorStateOnServer("Detached")
+        except Exception:
+            pass
+        self.indigoDevice.updateStateImageOnServer(
+            indigo.kStateImageSel.Error)
+        self._schedule_unavailable_timer(self._initial_unavailable_timeout)
 
     def serverUnavailable(self):
         with self._lock:
             if self._state != "attached":
                 return
+            self._pending_detached_at = time.monotonic()
             self._detach_generation += 1
             generation = self._detach_generation
             timer = threading.Timer(
@@ -118,7 +156,8 @@ class NetworkServerDevice(object):
                 return
             self._detach_timer = None
             self._state = "detached"
-            self._detached_at = time.monotonic()
+            self._detached_at = self._pending_detached_at or time.monotonic()
+            self._pending_detached_at = None
         self._update_states({
             "onOffState": False,
             "availability": "Offline",
@@ -135,6 +174,42 @@ class NetworkServerDevice(object):
         self.logger.warning(
             "Phidget network server '%s' unavailable; awaiting rediscovery",
             self.serverName)
+        self._schedule_unavailable_timer(self._initial_unavailable_timeout)
+
+    def _cancel_unavailable_timer(self):
+        with self._lock:
+            self._unavailable_generation += 1
+            timer = self._unavailable_timer
+            self._unavailable_timer = None
+        if timer is not None:
+            timer.cancel()
+
+    def _schedule_unavailable_timer(self, delay):
+        self._cancel_unavailable_timer()
+        with self._lock:
+            if self._state != "detached":
+                return
+            generation = self._unavailable_generation
+            timer = threading.Timer(
+                delay, self._unavailableReminder, args=(generation,))
+            timer.daemon = True
+            self._unavailable_timer = timer
+        timer.start()
+
+    def _unavailableReminder(self, generation):
+        with self._lock:
+            if (generation != self._unavailable_generation or
+                    self._state != "detached"):
+                return
+            self._unavailable_timer = None
+            unavailable_for = max(
+                0.0, time.monotonic() - self._detached_at)
+            self._unavailable_announced = True
+        self.logger.error(
+            "Phidget network server '%s' remains unavailable after %.1f "
+            "seconds; awaiting rediscovery",
+            self.serverName, unavailable_for)
+        self._schedule_unavailable_timer(self._reminder_interval)
 
     def _update_states(self, values):
         for key, value in values.items():
