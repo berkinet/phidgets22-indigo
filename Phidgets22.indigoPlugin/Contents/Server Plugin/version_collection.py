@@ -133,6 +133,19 @@ class VersionCollector(object):
         device = wrapper.indigoDevice
         phidget = getattr(wrapper, "phidget", None)
         getter = getattr(phidget, "getDeviceVersion", None)
+        if bool(getattr(
+                getattr(wrapper, "channelInfo", None),
+                "isHubPortDevice", False)):
+            _publish(device, {
+                "hasFirmware": False,
+                "firmwareVersion": "",
+                "firmwareUpgradeable": False,
+                "firmwareUpgradeabilityStatus": "Not applicable",
+                "firmwareVersionStatus": "No firmware",
+                "lastVersionCheck": checked_at,
+                "versionCheckError": "",
+            }, self.logger)
+            return
         if getter is None:
             _publish(device, {
                 "hasFirmware": False,

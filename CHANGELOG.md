@@ -1,5 +1,14 @@
 # Release notes
 
+## 0.3.68 — 2026-09-12
+
+### Fixed
+
+- Classify hub-port-mode channels as having no independent firmware instead
+  of attributing their parent hub's firmware and upgrade capability to them.
+- Continue reporting firmware for channels belonging to actual standalone USB
+  and VINT devices, including multi-channel InterfaceKits.
+
 ## 0.3.67 — 2026-09-12
 
 ### Fixed

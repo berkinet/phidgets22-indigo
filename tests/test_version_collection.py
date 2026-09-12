@@ -58,7 +58,7 @@ class UnknownUpgradeabilityPhidget(NativePhidget):
 
 
 def wrapper(device=None, phidget=None, state="attached", remote=True,
-            server="Server A"):
+            server="Server A", hub_port_device=False):
     return types.SimpleNamespace(
         indigoDevice=device or FakeDevice(),
         phidget=phidget if phidget is not None else NativePhidget(),
@@ -66,8 +66,10 @@ def wrapper(device=None, phidget=None, state="attached", remote=True,
         runtimeServerName=server,
         runtimeServerUniqueName="",
         runtimeServerHostname="",
-        channelInfo=types.SimpleNamespace(netInfo=types.SimpleNamespace(
-            isRemote=remote, serverName=server)))
+        channelInfo=types.SimpleNamespace(
+            isHubPortDevice=hub_port_device,
+            netInfo=types.SimpleNamespace(
+                isRemote=remote, serverName=server)))
 
 
 class FakePlugin(object):
@@ -127,6 +129,24 @@ class VersionCollectionTests(unittest.TestCase):
         self.assertEqual(device.states["firmwareUpgradeabilityStatus"],
                          "Not supported")
         self.assertEqual(device.states["firmwareVersionStatus"], "No firmware")
+
+    def test_hub_port_mode_does_not_claim_parent_hub_firmware(self):
+        device = FakeDevice(device_type="voltageInput")
+        phidget = mock.Mock()
+        phidget.getDeviceVersion.return_value = 110
+        self.plugin.activePhidgets[device.id] = wrapper(
+            device=device, phidget=phidget, hub_port_device=True)
+
+        self.collector.collect()
+
+        phidget.getDeviceVersion.assert_not_called()
+        self.assertFalse(device.states["hasFirmware"])
+        self.assertEqual(device.states["firmwareVersion"], "")
+        self.assertFalse(device.states["firmwareUpgradeable"])
+        self.assertEqual(device.states["firmwareUpgradeabilityStatus"],
+                         "Not applicable")
+        self.assertEqual(device.states["firmwareVersionStatus"], "No firmware")
+        self.assertEqual(device.states["versionCheckError"], "")
 
     def test_upgradeability_failure_does_not_discard_firmware_version(self):
         device = FakeDevice()
