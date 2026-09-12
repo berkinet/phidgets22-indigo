@@ -159,6 +159,21 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         with self._networkServerLock:
             self._networkServerDevices.discard(monitor)
 
+    def networkServerHasChannels(self, server_name):
+        """Return whether Manager discovery currently sees this server."""
+        inventory = self.discoveryInventory
+        if inventory is None:
+            return False
+        expected = str(server_name or "").strip()
+        for channel in inventory.snapshot():
+            if expected in (
+                    str(channel.get("serverName") or "").strip(),
+                    str(channel.get("serverUniqueName") or "").strip(),
+                    str(channel.get("serverHostname") or "").strip(),
+                    str(channel.get("serverPeerName") or "").strip()):
+                return True
+        return False
+
     def _channelsForServer(self, server_key):
         return [phidget for phidget in list(self.activePhidgets.values())
                 if phidget.channelInfo.netInfo.isRemote and

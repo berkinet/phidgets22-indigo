@@ -1,5 +1,16 @@
 # Release notes
 
+## 0.3.61 — 2026-09-12
+
+### Fixed
+
+- Show **Offline**, rather than **Detached**, as a Network Server device's
+  Indigo error-state text.
+- Continue monitoring a server after fallback loss detection and restore it
+  only when its endpoint is reachable and Phidgets Manager discovery sees its
+  channels again. This permits HUB5000 reconnection without relying on a new
+  server-added callback while rejecting a listening but undiscoverable server.
+
 ## 0.3.60 — 2026-09-12
 
 ### Fixed

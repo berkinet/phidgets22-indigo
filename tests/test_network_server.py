@@ -59,6 +59,7 @@ class FakePlugin(object):
             "attachTimeout": "30",
             "detachedReminderInterval": "3600",
         }
+        self.channels_seen = False
 
     def registerNetworkServerDevice(self, monitor):
         self.registered.add(monitor)
@@ -68,6 +69,9 @@ class FakePlugin(object):
 
     def triggerEvent(self, monitor, event):
         self.events.append(event)
+
+    def networkServerHasChannels(self, server_name):
+        return self.channels_seen
 
     def getDeviceStateDictForBoolOnOffType(self, *args):
         return args
@@ -124,7 +128,7 @@ class NetworkServerDeviceTests(unittest.TestCase):
 
         self.assertFalse(self.device.states["onOffState"])
         self.assertEqual(self.device.states["availability"], "Offline")
-        self.assertEqual(self.device.error, "Detached")
+        self.assertEqual(self.device.error, "Offline")
         self.assertEqual(self.device.image, "red")
         self.assertEqual(
             self.plugin.events, ["deviceAttached", "deviceDetached"])
@@ -176,6 +180,29 @@ class NetworkServerDeviceTests(unittest.TestCase):
         connection.close.assert_called_once_with()
         self.assertEqual(self.monitor._liveness_failures, 0)
         self.assertEqual(self.device.states["availability"], "Online")
+
+    @mock.patch("network_server.socket.create_connection")
+    def test_recovery_requires_reachable_server_and_discovered_channel(
+            self, connect):
+        connection = mock.Mock()
+        connect.return_value = connection
+        self.monitor.serverAvailable(server())
+        self.monitor.serverUnavailable()
+        self.monitor._confirmUnavailable(self.monitor._detach_generation)
+
+        with mock.patch.object(self.monitor, "_schedule_liveness_check"):
+            generation = self.monitor._liveness_generation
+            self.monitor._check_liveness(generation)
+            self.assertEqual(self.device.states["availability"], "Offline")
+
+            self.plugin.channels_seen = True
+            self.monitor._check_liveness(generation)
+
+        self.assertEqual(self.device.states["availability"], "Online")
+        self.assertEqual(self.device.error, None)
+        self.assertEqual(
+            self.plugin.events,
+            ["deviceAttached", "deviceDetached", "deviceAttached"])
 
     def test_sustained_outage_escalates_and_schedules_reminder(self):
         with mock.patch.object(

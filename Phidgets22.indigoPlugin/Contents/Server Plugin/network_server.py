@@ -37,6 +37,7 @@ class NetworkServerDevice(object):
         self._unavailable_generation = 0
         self._unavailable_announced = False
         self._server_endpoint = None
+        self._server_record = None
         self._liveness_timer = None
         self._liveness_generation = 0
         self._liveness_failures = 0
@@ -86,6 +87,7 @@ class NetworkServerDevice(object):
             address = str(server.addr or server.host or "").strip()
             port = int(server.port or 0)
             self._server_endpoint = (address, port) if address and port else None
+            self._server_record = server
             self._liveness_failures = 0
 
         values = {
@@ -134,7 +136,7 @@ class NetworkServerDevice(object):
             "reconnectCount": 0,
         })
         try:
-            self.indigoDevice.setErrorStateOnServer("Detached")
+            self.indigoDevice.setErrorStateOnServer("Offline")
         except Exception:
             pass
         self.indigoDevice.updateStateImageOnServer(
@@ -165,7 +167,7 @@ class NetworkServerDevice(object):
     def _schedule_liveness_check(self):
         self._cancel_liveness_timer()
         with self._lock:
-            if self._state != "attached" or self._server_endpoint is None:
+            if self._state not in ("attached", "detached") or self._server_endpoint is None:
                 return
             generation = self._liveness_generation
             timer = threading.Timer(
@@ -179,11 +181,12 @@ class NetworkServerDevice(object):
         """Detect a hard network loss when SDK removal discovery goes stale."""
         with self._lock:
             if (generation != self._liveness_generation or
-                    self._state != "attached" or
+                    self._state not in ("attached", "detached") or
                     self._server_endpoint is None):
                 return
             self._liveness_timer = None
             endpoint = self._server_endpoint
+            state = self._state
 
         reachable = False
         try:
@@ -197,13 +200,24 @@ class NetworkServerDevice(object):
 
         with self._lock:
             if (generation != self._liveness_generation or
-                    self._state != "attached"):
+                    self._state not in ("attached", "detached")):
                 return
+            state = self._state
             if reachable:
                 self._liveness_failures = 0
             else:
                 self._liveness_failures += 1
             failures = self._liveness_failures
+
+        if state == "detached":
+            channels_seen = getattr(
+                self.indigo_plugin, "networkServerHasChannels",
+                lambda server_name: False)(self.serverName)
+            if reachable and channels_seen and self._server_record is not None:
+                self.serverAvailable(self._server_record)
+                return
+            self._schedule_liveness_check()
+            return
 
         if failures >= self._liveness_failure_limit:
             self.logger.debug(
@@ -239,7 +253,7 @@ class NetworkServerDevice(object):
             "lastOutageSeconds": 0.0,
         })
         try:
-            self.indigoDevice.setErrorStateOnServer("Detached")
+            self.indigoDevice.setErrorStateOnServer("Offline")
         except Exception:
             pass
         self.indigoDevice.updateStateImageOnServer(
@@ -249,6 +263,7 @@ class NetworkServerDevice(object):
             "Phidget network server '%s' unavailable; awaiting rediscovery",
             self.serverName)
         self._schedule_unavailable_timer(self._initial_unavailable_timeout)
+        self._schedule_liveness_check()
 
     def _cancel_unavailable_timer(self):
         with self._lock:
