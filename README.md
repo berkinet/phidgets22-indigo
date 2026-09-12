@@ -62,6 +62,19 @@ The following Phidget classes are currently supported:
 
 Only network phidgets are supported. To use local attached phidgets, enable the [network server](https://www.phidgets.com/docs/Phidget_Network_Server).
 
+## Version reporting
+
+The plugin collects version information without changing servers or device
+firmware. Native Phidget devices report whether they have firmware, the
+installed firmware version, and whether the SDK identifies them as supporting
+firmware upgrades. Logical I2C peripherals without firmware report **No
+firmware**. Network Server devices report the server protocol version when an
+attached plugin device on that server is available for the read.
+
+Automatic collection is daily by default and can be disabled or changed to 6
+hours, 12 hours, or weekly in the plugin configuration. Use **Collect Phidget
+versions now** in the plugin menu for an immediate asynchronous check.
+
 ## SGP41 gas indices
 
 The SGP41 device samples once per second and publishes both raw sensor signals
@@ -122,6 +135,7 @@ configuration and discovery callbacks.
 
 - [Baseline architecture and assessment](docs/BASELINE_ASSESSMENT.md)
 - [Read-only discovery inventory](docs/DISCOVERY_INVENTORY.md)
+- [Read-only version collection](docs/VERSION_COLLECTION.md)
 - [Preparatory cleanup audit](docs/CLEANUP_AUDIT.md)
 - [Phidget class support roadmap](docs/PHIDGET_CLASS_ROADMAP.md)
 - [Indigo Plugin Store publication](docs/INDIGO_PLUGIN_STORE.md)

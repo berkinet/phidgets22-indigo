@@ -4,4 +4,8 @@
 		<Name>Print Phidgets network diagram to log</Name>
 		<CallbackMethod>printPhidgetsNetworkDiagram</CallbackMethod>
 	</MenuItem>
+	<MenuItem id="collectVersionsNow">
+		<Name>Collect Phidget versions now</Name>
+		<CallbackMethod>collectVersionsNow</CallbackMethod>
+	</MenuItem>
 </MenuItems>

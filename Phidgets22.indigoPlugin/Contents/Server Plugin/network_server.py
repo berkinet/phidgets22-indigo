@@ -321,6 +321,10 @@ class NetworkServerDevice(object):
             ("string", "lastDetached", "Last detached"),
             ("number", "lastOutageSeconds", "Last outage (seconds)"),
             ("number", "reconnectCount", "Reconnect count"),
+            ("string", "serverVersion", "Server protocol version"),
+            ("string", "serverVersionStatus", "Version collection status"),
+            ("string", "lastVersionCheck", "Last version check"),
+            ("string", "versionCheckError", "Version check error"),
         )
         for state_type, state_id, label in definitions:
             if state_type == "bool":

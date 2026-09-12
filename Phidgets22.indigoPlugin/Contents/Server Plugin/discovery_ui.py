@@ -256,6 +256,15 @@ class DiscoveryUiMixin(object):
             valuesDict, valuesDict.get("lcdDisplayProvider", ""), devId)
 
     def validatePrefsConfigUi(self, valuesDict):
+        valid_version_intervals = {"0", "21600", "43200", "86400", "604800"}
+        version_interval = str(valuesDict.get(
+            "versionCollectionInterval", "86400"))
+        if version_interval not in valid_version_intervals:
+            errors = indigo.Dict()
+            errors["versionCollectionInterval"] = (
+                "Select one of the available version collection frequencies.")
+            return False, valuesDict, errors
+
         try:
             attach_timeout = int(valuesDict.get("attachTimeout", "5"))
             if attach_timeout <= 0:
@@ -278,6 +287,7 @@ class DiscoveryUiMixin(object):
 
         valuesDict["attachTimeout"] = str(attach_timeout)
         valuesDict["detachedReminderInterval"] = str(reminder_interval)
+        valuesDict["versionCollectionInterval"] = version_interval
         return True
 
     def getDeviceConfigUiValues(self, pluginProps, typeId, devId):

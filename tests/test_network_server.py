@@ -237,7 +237,9 @@ class NetworkServerDeviceTests(unittest.TestCase):
             "onOffState", "availability", "serverName", "serviceType",
             "serverType", "address", "host", "port",
             "authenticationRequired", "flags", "lastAttached",
-            "lastDetached", "lastOutageSeconds", "reconnectCount"])
+            "lastDetached", "lastOutageSeconds", "reconnectCount",
+            "serverVersion", "serverVersionStatus", "lastVersionCheck",
+            "versionCheckError"])
         self.assertEqual(self.monitor.getDeviceDisplayStateId(), "availability")
 
 

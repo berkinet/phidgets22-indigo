@@ -24,6 +24,7 @@ from device_factory import create_phidget
 from discovery import DiscoveryInventory
 from discovery_ui import DiscoveryUiMixin
 from version_check import start_version_check
+from version_collection import ATTACH_DELAY_SECONDS, VersionCollector
 from phidget import PeripheralUnavailableError
 
 
@@ -58,6 +59,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         self._startupOpenFailureLastLogged = {}
         self._batchTimers = {}
         self._serverOutages = {}
+        self.versionCollector = VersionCollector(self, self.logger)
 
     def startup(self):
         if saved_bool(self.pluginPrefs.get("phidgetApiLogging", False)):
@@ -111,6 +113,8 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             self.logger.warning(
                 "Unable to start Phidget discovery inventory:\n%s",
                 traceback.format_exc())
+
+        self.versionCollector.start()
 
     def _serverAdded(self, net, server, kv):
         name = str(getattr(server, "name", "") or "").strip()
@@ -485,8 +489,18 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                 ("serverHost", "Server host"),
                 ("serverPeer", "Server peer"),
                 ("connection", "Connection"),
-                ("connectionPath", "Connection path")):
+                ("connectionPath", "Connection path"),
+                ("firmwareVersion", "Firmware version"),
+                ("firmwareVersionStatus", "Firmware version status"),
+                ("firmwareUpgradeabilityStatus", "Firmware upgradeability"),
+                ("lastVersionCheck", "Last version check"),
+                ("versionCheckError", "Version check error")):
             states.append(self.getDeviceStateDictForStringType(
+                state_id, label, state_id))
+        for state_id, label in (
+                ("hasFirmware", "Has firmware"),
+                ("firmwareUpgradeable", "Firmware upgradeable")):
+            states.append(self.getDeviceStateDictForBoolOnOffType(
                 state_id, label, state_id))
         return states
 
@@ -502,6 +516,9 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                 self.activePhidgets[device.id] = new_phidget
             new_phidget.start()
             device.stateListOrDisplayStateIdChanged()
+            collector = getattr(self, "versionCollector", None)
+            if collector is not None:
+                collector.request_collection(ATTACH_DELAY_SECONDS)
         except PeripheralUnavailableError as error:
             with getattr(self, "_activePhidgetsLock", nullcontext()):
                 self.activePhidgets.pop(device.id, None)
@@ -648,6 +665,9 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                 device.name, device.id, traceback.format_exc())
 
     def shutdown(self):
+        collector = getattr(self, "versionCollector", None)
+        if collector is not None:
+            collector.stop()
         with self._triggerLock:
             trigger_timers = [item[0]
                               for item in self._triggerTimers.values()]
@@ -723,6 +743,10 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             self.logger.warning(
                 "Unable to finalize Phidget library:\n%s",
                 traceback.format_exc())
+
+    def collectVersionsNow(self):
+        self.logger.info("Starting requested read-only Phidget version collection")
+        self.versionCollector.request_collection()
 
     def __del__(self):
         indigo.PluginBase.__del__(self)

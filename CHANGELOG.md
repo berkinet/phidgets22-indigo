@@ -1,5 +1,21 @@
 # Release notes
 
+## 0.3.62 — 2026-09-12
+
+### Added
+
+- Collect installed firmware versions and firmware-upgrade capability as
+  independent read-only states on enabled Phidget devices.
+- Collect the Network Server protocol version through an already-attached
+  remote Phidget channel and report when no such channel is available.
+- Add a configurable disabled, 6-hour, 12-hour, daily, or weekly collection
+  interval, with daily collection as the default.
+- Add a **Collect Phidget versions now** plugin menu command.
+- Refresh state lists for existing plugin-owned Indigo devices at startup so
+  the new states are added without recreating devices.
+- Document the read-only version-collection scope, state ownership, lifecycle,
+  and data sources.
+
 ## 0.3.61 — 2026-09-12
 
 ### Fixed

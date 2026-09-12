@@ -20,6 +20,18 @@
         <Description>Repeat unavailable-device messages while attachment remains unsuccessful.</Description>
     </Field>
 
+	<Field id="versionCollectionInterval" type="menu" defaultValue="86400">
+		<Label>Version collection frequency:</Label>
+		<List>
+			<Option value="0">Disabled</Option>
+			<Option value="21600">Every 6 hours</Option>
+			<Option value="43200">Every 12 hours</Option>
+			<Option value="86400">Daily</Option>
+			<Option value="604800">Weekly</Option>
+		</List>
+		<Description>Read-only collection of Network Server and device firmware versions.</Description>
+	</Field>
+
 	<Field type="checkbox"  id="suppressErrors" defaultValue="False">
 		<Label>Suppress interfaceKit sample overrun and lost packet errors?</Label>
 	</Field>

@@ -184,7 +184,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.61</string>", plist)
+        self.assertIn("<string>0.3.62</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -802,6 +802,20 @@ class ConfigurationTests(unittest.TestCase):
             self.assertFalse(valid)
             self.assertIs(returned_values, values)
             self.assertIn("detachedReminderInterval", errors)
+
+    def test_version_collection_interval_rejects_unknown_values(self):
+        instance = object.__new__(plugin.Plugin)
+        values = indigo.Dict({
+            "attachTimeout": "30",
+            "detachedReminderInterval": "3600",
+            "versionCollectionInterval": "12345",
+        })
+
+        valid, returned_values, errors = instance.validatePrefsConfigUi(values)
+
+        self.assertFalse(valid)
+        self.assertIs(returned_values, values)
+        self.assertIn("versionCollectionInterval", errors)
 
     def test_lcd_action_validation(self):
         instance = object.__new__(plugin.Plugin)
