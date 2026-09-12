@@ -3,6 +3,7 @@
 """Indigo representation of a discovered Phidget Network Server."""
 
 import datetime
+import socket
 import threading
 import time
 
@@ -35,6 +36,12 @@ class NetworkServerDevice(object):
         self._unavailable_timer = None
         self._unavailable_generation = 0
         self._unavailable_announced = False
+        self._server_endpoint = None
+        self._liveness_timer = None
+        self._liveness_generation = 0
+        self._liveness_failures = 0
+        self._liveness_interval = 5.0
+        self._liveness_failure_limit = 2
         self._initial_unavailable_timeout = max(
             30, int(indigo_plugin.pluginPrefs.get("attachTimeout", "30")))
         self._reminder_interval = max(
@@ -53,6 +60,7 @@ class NetworkServerDevice(object):
     def stop(self):
         self._cancel_detach_timer()
         self._cancel_unavailable_timer()
+        self._cancel_liveness_timer()
         self.indigo_plugin.unregisterNetworkServerDevice(self)
         with self._lock:
             self._state = "stopped"
@@ -75,6 +83,10 @@ class NetworkServerDevice(object):
             reconnect_count = self._reconnect_count
             unavailable_announced = self._unavailable_announced
             self._unavailable_announced = False
+            address = str(server.addr or server.host or "").strip()
+            port = int(server.port or 0)
+            self._server_endpoint = (address, port) if address and port else None
+            self._liveness_failures = 0
 
         values = {
             "onOffState": True,
@@ -107,6 +119,7 @@ class NetworkServerDevice(object):
                 else "recovered",
                 "" if first_attachment and not unavailable_announced
                 else " after %.1f seconds" % outage_seconds)
+        self._schedule_liveness_check()
 
     def serverInitiallyUnavailable(self):
         """Begin monitoring a configured server absent during plugin startup."""
@@ -141,6 +154,65 @@ class NetworkServerDevice(object):
             self._detach_timer = timer
         timer.start()
 
+    def _cancel_liveness_timer(self):
+        with self._lock:
+            self._liveness_generation += 1
+            timer = self._liveness_timer
+            self._liveness_timer = None
+        if timer is not None:
+            timer.cancel()
+
+    def _schedule_liveness_check(self):
+        self._cancel_liveness_timer()
+        with self._lock:
+            if self._state != "attached" or self._server_endpoint is None:
+                return
+            generation = self._liveness_generation
+            timer = threading.Timer(
+                self._liveness_interval, self._check_liveness,
+                args=(generation,))
+            timer.daemon = True
+            self._liveness_timer = timer
+        timer.start()
+
+    def _check_liveness(self, generation):
+        """Detect a hard network loss when SDK removal discovery goes stale."""
+        with self._lock:
+            if (generation != self._liveness_generation or
+                    self._state != "attached" or
+                    self._server_endpoint is None):
+                return
+            self._liveness_timer = None
+            endpoint = self._server_endpoint
+
+        reachable = False
+        try:
+            connection = socket.create_connection(endpoint, timeout=2.0)
+            connection.close()
+            reachable = True
+        except Exception as error:
+            self.logger.debug(
+                "Phidget network server '%s' reachability check failed: %s",
+                self.serverName, error)
+
+        with self._lock:
+            if (generation != self._liveness_generation or
+                    self._state != "attached"):
+                return
+            if reachable:
+                self._liveness_failures = 0
+            else:
+                self._liveness_failures += 1
+            failures = self._liveness_failures
+
+        if failures >= self._liveness_failure_limit:
+            self.logger.debug(
+                "Phidget network server '%s' failed %d consecutive "
+                "reachability checks", self.serverName, failures)
+            self.serverUnavailable()
+            return
+        self._schedule_liveness_check()
+
     def _cancel_detach_timer(self):
         with self._lock:
             self._detach_generation += 1
@@ -158,6 +230,8 @@ class NetworkServerDevice(object):
             self._state = "detached"
             self._detached_at = self._pending_detached_at or time.monotonic()
             self._pending_detached_at = None
+            self._liveness_failures = 0
+        self._cancel_liveness_timer()
         self._update_states({
             "onOffState": False,
             "availability": "Offline",

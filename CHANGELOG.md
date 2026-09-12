@@ -1,5 +1,17 @@
 # Release notes
 
+## 0.3.60 — 2026-09-12
+
+### Fixed
+
+- Detect an abruptly disconnected HUB5000 or other network server even when
+  Phidgets channel monitoring sees the physical device disappear but the
+  separate server-discovery API retains a stale entry and never delivers its
+  server-removed callback.
+- Require two consecutive failed reachability checks before declaring the
+  server offline, preserving the existing detach grace period and trigger
+  behavior while filtering brief network interruptions.
+
 ## 0.3.59 — 2026-09-12
 
 ### Added

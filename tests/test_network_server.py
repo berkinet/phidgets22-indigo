@@ -145,6 +145,38 @@ class NetworkServerDeviceTests(unittest.TestCase):
         self.assertTrue(self.device.states["onOffState"])
         self.assertEqual(self.plugin.events, ["deviceAttached"])
 
+    @mock.patch("network_server.socket.create_connection")
+    def test_two_failed_reachability_checks_detect_hard_loss(self, connect):
+        connect.side_effect = OSError("network unreachable")
+        self.monitor.serverAvailable(server())
+        generation = self.monitor._liveness_generation
+
+        with mock.patch.object(self.monitor, "_schedule_liveness_check"):
+            self.monitor._check_liveness(generation)
+            self.monitor._check_liveness(generation)
+
+        self.assertEqual(self.monitor._liveness_failures, 2)
+        self.assertIsNotNone(self.monitor._detach_timer)
+        self.monitor._confirmUnavailable(self.monitor._detach_generation)
+        self.assertEqual(self.device.states["availability"], "Offline")
+        self.assertEqual(
+            self.plugin.events, ["deviceAttached", "deviceDetached"])
+
+    @mock.patch("network_server.socket.create_connection")
+    def test_successful_reachability_check_resets_failure_count(self, connect):
+        connection = mock.Mock()
+        connect.return_value = connection
+        self.monitor.serverAvailable(server())
+        self.monitor._liveness_failures = 1
+        generation = self.monitor._liveness_generation
+
+        with mock.patch.object(self.monitor, "_schedule_liveness_check"):
+            self.monitor._check_liveness(generation)
+
+        connection.close.assert_called_once_with()
+        self.assertEqual(self.monitor._liveness_failures, 0)
+        self.assertEqual(self.device.states["availability"], "Online")
+
     def test_sustained_outage_escalates_and_schedules_reminder(self):
         with mock.patch.object(
                 __import__("network_server").time, "monotonic",
