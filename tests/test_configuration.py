@@ -2,6 +2,7 @@ import pathlib
 import inspect
 import logging
 import sys
+import threading
 import types
 import unittest
 import xml.etree.ElementTree as ElementTree
@@ -60,6 +61,74 @@ import plugin
 
 
 class ConfigurationTests(unittest.TestCase):
+    def test_detach_trigger_delay_is_cancellable_on_reattach(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.trigger_dict = {}
+        instance._triggerLock = threading.RLock()
+        instance._triggerTimers = {}
+        wrapper = types.SimpleNamespace(
+            _state="detached",
+            indigoDevice=types.SimpleNamespace(id=42))
+        instance.activePhidgets = {42: wrapper}
+        indigo.trigger = types.SimpleNamespace(execute=mock.Mock())
+        created = []
+
+        class FakeTimer(object):
+            def __init__(self, delay, callback, args):
+                self.delay = delay
+                self.callback = callback
+                self.args = args
+                self.daemon = False
+                self.started = False
+                self.cancelled = False
+                created.append(self)
+
+            def start(self):
+                self.started = True
+
+            def cancel(self):
+                self.cancelled = True
+
+        trigger = types.SimpleNamespace(
+            id=7, pluginTypeId="deviceDetached",
+            pluginProps={"indigoDevice": "42", "detachDelay": "60"})
+        with mock.patch.object(plugin.threading, "Timer", FakeTimer):
+            instance.triggerStartProcessing(trigger)
+            instance.triggerEvent(wrapper, "deviceDetached")
+            self.assertTrue(created[-1].started)
+            self.assertEqual(created[-1].delay, 60.0)
+            indigo.trigger.execute.assert_not_called()
+
+            wrapper._state = "attached"
+            instance.triggerEvent(wrapper, "deviceAttached")
+            self.assertTrue(created[-1].cancelled)
+            created[-1].callback(*created[-1].args)
+            indigo.trigger.execute.assert_not_called()
+
+            wrapper._state = "detached"
+            instance.triggerEvent(wrapper, "deviceDetached")
+            created[-1].callback(*created[-1].args)
+            indigo.trigger.execute.assert_called_once_with(7)
+
+    def test_detach_trigger_delay_validation(self):
+        instance = object.__new__(plugin.Plugin)
+        valid, values = instance.validateEventConfigUi(
+            {"detachDelay": "45.5"}, "deviceDetached", 0)
+        self.assertTrue(valid)
+        self.assertEqual(values["detachDelay"], "45.5")
+
+        valid, _, errors = instance.validateEventConfigUi(
+            {"detachDelay": "tomorrow"}, "deviceDetached", 0)
+        self.assertFalse(valid)
+        self.assertIn("detachDelay", errors)
+
+    def test_detach_event_declares_cancellable_delay(self):
+        events = ElementTree.parse(SERVER_PLUGIN / "Events.xml").getroot()
+        detached = events.find("./Event[@id='deviceDetached']")
+        field = detached.find("./ConfigUI/Field[@id='detachDelay']")
+        self.assertIsNotNone(field)
+        self.assertEqual(field.get("defaultValue"), "0")
+
     def test_device_validation_uses_focused_dispatch_handlers(self):
         coordinator = inspect.getsource(
             discovery_ui.DiscoveryUiMixin.validateDeviceConfigUi)
@@ -115,7 +184,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.58</string>", plist)
+        self.assertIn("<string>0.3.59</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):

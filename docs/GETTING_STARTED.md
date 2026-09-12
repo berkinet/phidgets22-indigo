@@ -49,6 +49,12 @@ configured attachment timeout, the plugin escalates the condition to an error
 and repeats it at the configured detached-device reminder interval. Recovery
 produces one informational message with the total outage duration.
 
+The **Phidget device detached** trigger has an optional **Must remain detached**
+delay. Device status changes immediately, but the plugin executes that trigger
+only if the device remains detached for the configured number of seconds. A
+reattachment before expiry cancels the pending trigger. Different triggers can
+therefore use different persistence periods; zero retains immediate execution.
+
 ## Use an LCD
 
 Create an **LCD** device and select its discovered LCD channel. For a 1204

@@ -41,6 +41,8 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         self.phidgetInfo = PhidgetInfo()
         self.logger.setLevel(logging.DEBUG)
         self.trigger_dict = {}
+        self._triggerLock = threading.RLock()
+        self._triggerTimers = {}
 
         self.discoveryInventory = None
         self.networkMonitor = None
@@ -512,20 +514,95 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
 
     def triggerStartProcessing(self, trigger):
         phidget_device_id = int(trigger.pluginProps["indigoDevice"])
-        self.trigger_dict[trigger.id] = {
-            "devid": phidget_device_id,
-            "event": trigger.pluginTypeId,
-        }
+        try:
+            delay = float(trigger.pluginProps.get("detachDelay", 0) or 0)
+        except (TypeError, ValueError):
+            delay = 0.0
+        with self._triggerLock:
+            pending = self._triggerTimers.pop(trigger.id, None)
+            self.trigger_dict[trigger.id] = {
+                "devid": phidget_device_id,
+                "event": trigger.pluginTypeId,
+                "delay": max(0.0, delay),
+            }
+        if pending is not None:
+            pending[0].cancel()
 
     def triggerStopProcessing(self, trigger):
-        if trigger.id in self.trigger_dict:
-            del self.trigger_dict[trigger.id]
+        with self._triggerLock:
+            self.trigger_dict.pop(trigger.id, None)
+            pending = self._triggerTimers.pop(trigger.id, None)
+        if pending is not None:
+            pending[0].cancel()
+
+    def validateEventConfigUi(self, valuesDict, typeId, eventId):
+        if typeId != "deviceDetached":
+            return (True, valuesDict)
+        try:
+            delay = float(valuesDict.get("detachDelay", "0") or 0)
+            if delay < 0 or delay > 86400:
+                raise ValueError
+        except (TypeError, ValueError):
+            errors = indigo.Dict()
+            errors["detachDelay"] = (
+                "Enter a delay from 0 through 86400 seconds.")
+            return (False, valuesDict, errors)
+        valuesDict["detachDelay"] = "%g" % delay
+        return (True, valuesDict)
+
+    def _cancelDelayedDetachForDevice(self, device_id):
+        with self._triggerLock:
+            trigger_ids = [
+                trigger_id for trigger_id, details in self.trigger_dict.items()
+                if details["devid"] == device_id]
+            timers = [self._triggerTimers.pop(trigger_id)[0]
+                      for trigger_id in trigger_ids
+                      if trigger_id in self._triggerTimers]
+        for timer in timers:
+            timer.cancel()
+
+    def _scheduleDelayedDetach(self, trigger_id, device_id, delay):
+        token = object()
+        timer = threading.Timer(
+            delay, self._executeDelayedDetach,
+            args=(trigger_id, device_id, token))
+        timer.daemon = True
+        with self._triggerLock:
+            old = self._triggerTimers.pop(trigger_id, None)
+            self._triggerTimers[trigger_id] = (timer, token)
+        if old is not None:
+            old[0].cancel()
+        timer.start()
+
+    def _executeDelayedDetach(self, trigger_id, device_id, token):
+        with self._triggerLock:
+            pending = self._triggerTimers.get(trigger_id)
+            details = self.trigger_dict.get(trigger_id)
+            if (pending is None or pending[1] is not token or
+                    details is None or details["devid"] != device_id or
+                    details["event"] != "deviceDetached"):
+                return
+            self._triggerTimers.pop(trigger_id, None)
+        phidget = self.activePhidgets.get(device_id)
+        if phidget is None or getattr(phidget, "_state", None) != "detached":
+            return
+        indigo.trigger.execute(trigger_id)
 
     def triggerEvent(self, device, event):
-        for trigger_id, trigger in self.trigger_dict.items():
+        device_id = device.indigoDevice.id
+        if event == "deviceAttached":
+            self._cancelDelayedDetachForDevice(device_id)
+        with self._triggerLock:
+            triggers = list(self.trigger_dict.items())
+        for trigger_id, trigger in triggers:
             if (trigger["devid"] == device.indigoDevice.id and
                     trigger["event"] == event):
-                indigo.trigger.execute(trigger_id)
+                delay = trigger.get("delay", 0.0)
+                if event == "deviceDetached" and delay > 0:
+                    self._scheduleDelayedDetach(
+                        trigger_id, device_id, delay)
+                else:
+                    indigo.trigger.execute(trigger_id)
 
     def deviceStopComm(self, device):
         phidget = self.activePhidgets.get(device.id)
@@ -556,6 +633,12 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                 device.name, device.id, traceback.format_exc())
 
     def shutdown(self):
+        with self._triggerLock:
+            trigger_timers = [item[0]
+                              for item in self._triggerTimers.values()]
+            self._triggerTimers.clear()
+        for timer in trigger_timers:
+            timer.cancel()
         with self._outageLock:
             timers = list(self._batchTimers.values())
             self._batchTimers.clear()

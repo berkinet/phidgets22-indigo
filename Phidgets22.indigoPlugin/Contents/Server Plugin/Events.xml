@@ -9,6 +9,10 @@
               <Label>Phidget Device</Label>
                 <List class="self" method="getAttachCapableList"/>
             </Field>
+            <Field id="detachDelay" type="textfield" defaultValue="0">
+              <Label>Must remain detached (seconds):</Label>
+              <Description>Delays this trigger and cancels it if the device reattaches first. Use 0 for immediate execution.</Description>
+            </Field>
           </ConfigUI>
     </Event>
     <Event id="deviceAttached" deviceFilter="self">

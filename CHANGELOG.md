@@ -1,5 +1,16 @@
 # Release notes
 
+## 0.3.59 — 2026-09-12
+
+### Added
+
+- Add a per-trigger **Must remain detached** delay to the existing Phidget
+  detached event. Device state still changes immediately, while trigger
+  execution is deferred and automatically cancelled if the selected device
+  reattaches before the delay expires.
+- Permit independent delays from 0 through 86400 seconds on different detach
+  triggers, preserving immediate execution as the default.
+
 ## 0.3.58 — 2026-09-12
 
 ### Fixed
