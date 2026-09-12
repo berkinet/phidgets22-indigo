@@ -65,11 +65,13 @@ Only network phidgets are supported. To use local attached phidgets, enable the 
 ## Version reporting
 
 The plugin collects version information without changing servers or device
-firmware. Native Phidget devices report whether they have firmware, the
-installed firmware version, and whether the SDK identifies them as supporting
-firmware upgrades. Logical I2C peripherals without firmware report **No
-firmware**. Network Server devices report the server protocol version when an
-attached plugin device on that server is available for the read.
+firmware. Native Phidget devices report the installed and latest compatible
+firmware versions, whether the supplied `phidget22admin` catalog supports the
+exact hardware, and whether a newer firmware version is available. Potentially
+breaking major updates are identified separately. Logical peripherals and hub
+port modes without independent firmware report **No firmware**. Network Server
+devices report the server protocol version when an attached plugin device on
+that server is available for the read.
 
 Automatic collection is daily by default and can be disabled or changed to 6
 hours, 12 hours, or weekly in the plugin configuration. Use **Collect Phidget

@@ -496,13 +496,18 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                 ("firmwareVersion", "Firmware version"),
                 ("firmwareVersionStatus", "Firmware version status"),
                 ("firmwareUpgradeabilityStatus", "Firmware upgradeability"),
+                ("latestFirmwareVersion", "Latest compatible firmware"),
+                ("firmwareUpdateStatus", "Firmware update status"),
+                ("firmwareCatalogVersion", "Firmware catalog version"),
                 ("lastVersionCheck", "Last version check"),
                 ("versionCheckError", "Version check error")):
             states.append(self.getDeviceStateDictForStringType(
                 state_id, label, state_id))
         for state_id, label in (
                 ("hasFirmware", "Has firmware"),
-                ("firmwareUpgradeable", "Firmware upgradeable")):
+                ("firmwareUpgradeable", "Firmware upgrade supported"),
+                ("firmwareUpdateAvailable", "Firmware update available"),
+                ("firmwareMajorUpdateAvailable", "Major firmware update available")):
             states.append(self.getDeviceStateDictForBoolOnOffType(
                 state_id, label, state_id))
         return states

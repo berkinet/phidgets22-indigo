@@ -1,5 +1,21 @@
 # Release notes
 
+## 0.3.69 — 2026-09-12
+
+### Added
+
+- Bundle a filename-only catalog derived from `phidget22admin` 1.26.20260828
+  and match it by exact firmware-upgrade identifier and VINT ID.
+- Report the latest compatible firmware, whether an update is available, and
+  whether that update crosses a potentially breaking hundred-series boundary.
+
+### Changed
+
+- Define firmware upgrade support by the presence of compatible firmware in
+  the supplied catalog, rather than merely by an SDK upgrade identifier.
+- Correctly report a revision-2 InterfaceKit at firmware 904 as having no
+  compatible update when the catalog contains only revision-3 firmware.
+
 ## 0.3.68 — 2026-09-12
 
 ### Fixed

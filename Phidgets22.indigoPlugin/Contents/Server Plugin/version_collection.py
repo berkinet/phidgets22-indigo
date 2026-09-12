@@ -3,6 +3,8 @@
 """Asynchronous, read-only collection of server and device versions."""
 
 import datetime
+import os
+import re
 import threading
 import traceback
 
@@ -10,6 +12,12 @@ import traceback
 DEFAULT_INTERVAL_SECONDS = 86400
 INITIAL_DELAY_SECONDS = 10
 ATTACH_DELAY_SECONDS = 2
+FIRMWARE_CATALOG_VERSION = "1.26.20260828"
+CATALOG_PATH = os.path.join(os.path.dirname(__file__), "firmware_catalog.txt")
+
+_USB_FIRMWARE = re.compile(r"^(.+)v(\d+)\.bin\.rc4$")
+_VINT_FIRMWARE = re.compile(
+    r"^([^_]+)(?:_[^_]+)?_0x([0-9a-fA-F]+)_v(\d+)\.bin\.obf$")
 
 
 def _timestamp():
@@ -28,11 +36,42 @@ def _publish(device, values, logger):
                 getattr(device, "id", "unknown"), traceback.format_exc())
 
 
+class FirmwareCatalog(object):
+    """Index phidget22admin firmware filenames without loading firmware."""
+
+    def __init__(self, filenames):
+        self.usb = {}
+        self.vint = {}
+        for filename in filenames:
+            filename = filename.strip()
+            if not filename or filename.startswith("#"):
+                continue
+            match = _USB_FIRMWARE.match(filename)
+            if match:
+                self.usb.setdefault(match.group(1), set()).add(
+                    int(match.group(2)))
+                continue
+            match = _VINT_FIRMWARE.match(filename)
+            if match:
+                key = (match.group(1), int(match.group(2), 16))
+                self.vint.setdefault(key, set()).add(int(match.group(3)))
+
+    @classmethod
+    def loaded(cls, path):
+        with open(path, "r", encoding="utf-8") as catalog:
+            return cls(catalog)
+
+    def versions(self, identifier, vint_id=None):
+        if vint_id is None:
+            return self.usb.get(identifier, set())
+        return self.vint.get((identifier, vint_id), set())
+
+
 class VersionCollector(object):
     """Schedule version reads without blocking Indigo's lifecycle thread."""
 
     def __init__(self, plugin, logger, timer_factory=threading.Timer,
-                 thread_factory=threading.Thread):
+                 thread_factory=threading.Thread, firmware_catalog=None):
         self.plugin = plugin
         self.logger = logger
         self._timer_factory = timer_factory
@@ -42,6 +81,14 @@ class VersionCollector(object):
         self._timer = None
         self._generation = 0
         self._stopped = True
+        if firmware_catalog is None:
+            try:
+                firmware_catalog = FirmwareCatalog.loaded(CATALOG_PATH)
+            except Exception:
+                logger.warning("Unable to load firmware catalog:\n%s",
+                               traceback.format_exc())
+                firmware_catalog = FirmwareCatalog(())
+        self.firmware_catalog = firmware_catalog
 
     @property
     def interval(self):
@@ -141,6 +188,11 @@ class VersionCollector(object):
                 "firmwareVersion": "",
                 "firmwareUpgradeable": False,
                 "firmwareUpgradeabilityStatus": "Not applicable",
+                "latestFirmwareVersion": "",
+                "firmwareUpdateAvailable": False,
+                "firmwareMajorUpdateAvailable": False,
+                "firmwareUpdateStatus": "Not applicable",
+                "firmwareCatalogVersion": FIRMWARE_CATALOG_VERSION,
                 "firmwareVersionStatus": "No firmware",
                 "lastVersionCheck": checked_at,
                 "versionCheckError": "",
@@ -152,6 +204,11 @@ class VersionCollector(object):
                 "firmwareVersion": "",
                 "firmwareUpgradeable": False,
                 "firmwareUpgradeabilityStatus": "Not supported",
+                "latestFirmwareVersion": "",
+                "firmwareUpdateAvailable": False,
+                "firmwareMajorUpdateAvailable": False,
+                "firmwareUpdateStatus": "Not applicable",
+                "firmwareCatalogVersion": FIRMWARE_CATALOG_VERSION,
                 "firmwareVersionStatus": "No firmware",
                 "lastVersionCheck": checked_at,
                 "versionCheckError": "",
@@ -160,6 +217,7 @@ class VersionCollector(object):
         if getattr(wrapper, "_state", None) != "attached":
             _publish(device, {
                 "firmwareVersionStatus": "Unavailable",
+                "firmwareCatalogVersion": FIRMWARE_CATALOG_VERSION,
                 "lastVersionCheck": checked_at,
                 "versionCheckError": "Device is not attached",
             }, self.logger)
@@ -170,23 +228,62 @@ class VersionCollector(object):
             upgradeable = False
             upgradeability_status = "Not supported"
             upgradeability_error = ""
+            latest_version = 0
+            update_available = False
+            major_update_available = False
+            update_status = "Not applicable"
             if has_firmware:
                 upgrade_identifier = getattr(
                     phidget, "_getDeviceFirmwareUpgradeString", None)
                 if upgrade_identifier is not None:
                     try:
-                        upgradeable = bool(str(
-                            upgrade_identifier() or "").strip())
-                        upgradeability_status = (
-                            "Supported" if upgradeable else "Not supported")
+                        identifier = str(upgrade_identifier() or "").strip()
+                        if not identifier:
+                            update_status = "Not supported"
+                            versions = set()
+                        else:
+                            vint_id = None
+                            channel_info = getattr(wrapper, "channelInfo", None)
+                            if int(getattr(channel_info, "hubPort", -1)) >= 0:
+                                vint_getter = getattr(
+                                    phidget, "_getDeviceVINTID", None)
+                                if vint_getter is not None:
+                                    vint_id = int(vint_getter())
+                            versions = self.firmware_catalog.versions(
+                                identifier, vint_id)
+                        latest_version = max(versions) if versions else 0
+                        upgradeable = bool(versions)
+                        if identifier:
+                            upgradeability_status = (
+                                "Supported" if upgradeable else
+                                "No compatible firmware in catalog")
+                        update_available = latest_version > version
+                        major_update_available = (
+                            update_available and
+                            latest_version // 100 != version // 100)
+                        if major_update_available:
+                            update_status = "Major update available"
+                        elif update_available:
+                            update_status = "Update available"
+                        elif upgradeable:
+                            update_status = "Up to date"
+                        elif identifier:
+                            update_status = "No compatible firmware"
                     except Exception as error:
                         upgradeability_status = "Unknown"
+                        update_status = "Unknown"
                         upgradeability_error = str(error)
             _publish(device, {
                 "hasFirmware": has_firmware,
                 "firmwareVersion": str(version) if has_firmware else "",
                 "firmwareUpgradeable": upgradeable,
                 "firmwareUpgradeabilityStatus": upgradeability_status,
+                "latestFirmwareVersion": (
+                    str(latest_version) if latest_version else ""),
+                "firmwareUpdateAvailable": update_available,
+                "firmwareMajorUpdateAvailable": major_update_available,
+                "firmwareUpdateStatus": update_status,
+                "firmwareCatalogVersion": FIRMWARE_CATALOG_VERSION,
                 "firmwareVersionStatus": (
                     "Collected" if has_firmware else "No firmware"),
                 "lastVersionCheck": checked_at,
@@ -195,6 +292,7 @@ class VersionCollector(object):
         except Exception as error:
             _publish(device, {
                 "firmwareVersionStatus": "Check failed",
+                "firmwareCatalogVersion": FIRMWARE_CATALOG_VERSION,
                 "lastVersionCheck": checked_at,
                 "versionCheckError": str(error),
             }, self.logger)
