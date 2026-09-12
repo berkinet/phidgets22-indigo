@@ -1,5 +1,13 @@
 # Release notes
 
+## 0.3.63 — 2026-09-12
+
+### Fixed
+
+- Keep Network Server monitor objects out of physical-device firmware
+  collection, preventing attempts to publish undefined firmware states on
+  Network Server Indigo devices.
+
 ## 0.3.62 — 2026-09-12
 
 ### Added

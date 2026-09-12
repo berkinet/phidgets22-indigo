@@ -21,10 +21,12 @@ import version_collection
 
 
 class FakeDevice(object):
-    def __init__(self, device_id=1, name="Device", plugin_id="plugin.test"):
+    def __init__(self, device_id=1, name="Device", plugin_id="plugin.test",
+                 device_type="digitalInput"):
         self.id = device_id
         self.name = name
         self.pluginId = plugin_id
+        self.deviceTypeId = device_type
         self.states = {}
         self.refreshes = 0
 
@@ -159,21 +161,26 @@ class VersionCollectionTests(unittest.TestCase):
         channel_device = FakeDevice()
         self.plugin.activePhidgets[channel_device.id] = wrapper(
             device=channel_device, server="Server A")
-        server_device = FakeDevice(2, "Server A monitor")
+        server_device = FakeDevice(
+            2, "Server A monitor", device_type="networkServer")
         monitor = types.SimpleNamespace(
             serverName="Server A", indigoDevice=server_device)
         self.plugin._networkServerDevices = [monitor]
+        self.plugin.activePhidgets[server_device.id] = monitor
 
         self.collector.collect()
 
         self.assertEqual(server_device.states["serverVersion"], "2.5")
         self.assertEqual(server_device.states["serverVersionStatus"], "Collected")
+        self.assertNotIn("hasFirmware", server_device.states)
 
     def test_server_without_attached_channel_is_unavailable(self):
-        server_device = FakeDevice(2, "Server B monitor")
+        server_device = FakeDevice(
+            2, "Server B monitor", device_type="networkServer")
         monitor = types.SimpleNamespace(
             serverName="Server B", indigoDevice=server_device)
         self.plugin._networkServerDevices = [monitor]
+        self.plugin.activePhidgets[server_device.id] = monitor
 
         self.collector.collect()
 

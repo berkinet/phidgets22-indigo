@@ -132,6 +132,10 @@ class VersionCollector(object):
         with getattr(self.plugin, "_activePhidgetsLock", self._lock):
             wrappers = list(self.plugin.activePhidgets.values())
         for wrapper in wrappers:
+            if getattr(
+                    getattr(wrapper, "indigoDevice", None),
+                    "deviceTypeId", None) == "networkServer":
+                continue
             self._collect_device(wrapper, checked_at)
         with getattr(self.plugin, "_networkServerLock", self._lock):
             monitors = list(self.plugin._networkServerDevices)
