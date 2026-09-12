@@ -188,14 +188,14 @@ class VersionCollectionTests(unittest.TestCase):
                          "Unavailable")
         self.assertIn("No attached", server_device.states["versionCheckError"])
 
-    def test_migration_refreshes_only_plugin_owned_devices(self):
+    def test_collector_start_does_not_rebuild_device_state_lists_early(self):
         owned = FakeDevice()
         foreign = FakeDevice(2, plugin_id="another.plugin")
         with mock.patch.object(sys.modules["indigo"], "devices",
                                [owned, foreign], create=True):
-            self.collector.migrate_state_lists()
+            self.collector.start()
 
-        self.assertEqual(owned.refreshes, 1)
+        self.assertEqual(owned.refreshes, 0)
         self.assertEqual(foreign.refreshes, 0)
 
 

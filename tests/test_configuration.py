@@ -184,7 +184,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.65</string>", plist)
+        self.assertIn("<string>0.3.66</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -875,11 +875,14 @@ class ConfigurationTests(unittest.TestCase):
             "lcdInitialY": "0",
         }
         wrapper = mock.Mock()
+        device.stateListOrDisplayStateIdChanged.side_effect = lambda: (
+            self.assertIs(instance.activePhidgets[device.id], wrapper))
         with mock.patch.object(
                 device_factory, "NativeLCDPhidget", return_value=wrapper) as factory:
             instance.deviceStartComm(device)
 
         wrapper.start.assert_called_once_with()
+        device.stateListOrDisplayStateIdChanged.assert_called_once_with()
         self.assertIs(instance.activePhidgets[device.id], wrapper)
         factory.assert_called_once()
         self.assertEqual(factory.call_args.kwargs["screenSize"], 1)

@@ -51,22 +51,9 @@ class VersionCollector(object):
         except (TypeError, ValueError):
             return DEFAULT_INTERVAL_SECONDS
 
-    def migrate_state_lists(self):
-        for device in list(getattr(__import__("indigo"), "devices", ())):
-            if getattr(device, "pluginId", None) != self.plugin.pluginId:
-                continue
-            try:
-                device.stateListOrDisplayStateIdChanged()
-            except Exception:
-                self.logger.warning(
-                    "Unable to refresh version states for device='%s' id=%s:\n%s",
-                    getattr(device, "name", "unknown"),
-                    getattr(device, "id", "unknown"), traceback.format_exc())
-
     def start(self):
         with self._lock:
             self._stopped = False
-        self.migrate_state_lists()
         if self.interval:
             self._schedule(INITIAL_DELAY_SECONDS)
 

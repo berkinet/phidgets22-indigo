@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.3.66 — 2026-09-12
+
+### Fixed
+
+- Remove the premature blanket state-list refresh that ran before Indigo
+  started individual Phidget devices. During that window, device-specific
+  states could briefly disappear and disrupt plugins monitoring those states.
+- Continue migrating existing devices through their normal startup refresh,
+  after each device wrapper and its complete state list are available.
+
 ## 0.3.65 — 2026-09-12
 
 ### Fixed
