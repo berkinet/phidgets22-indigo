@@ -1,5 +1,12 @@
 # Release notes
 
+## 0.3.70 — 2026-09-12
+
+### Changed
+
+- Display firmware-update availability as `Yes` or `No` while retaining its
+  Boolean state value for Indigo automation logic.
+
 ## 0.3.69 — 2026-09-12
 
 ### Added

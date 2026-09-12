@@ -28,10 +28,13 @@ class FakeDevice(object):
         self.pluginId = plugin_id
         self.deviceTypeId = device_type
         self.states = {}
+        self.ui_values = {}
         self.refreshes = 0
 
-    def updateStateOnServer(self, key, value):
+    def updateStateOnServer(self, key, value, uiValue=None):
         self.states[key] = value
+        if uiValue is not None:
+            self.ui_values[key] = uiValue
 
     def stateListOrDisplayStateIdChanged(self):
         self.refreshes += 1
@@ -119,7 +122,9 @@ class VersionCollectionTests(unittest.TestCase):
         self.assertEqual(device.states["versionCheckError"], "")
         self.assertEqual(device.states["latestFirmwareVersion"], "124")
         self.assertTrue(device.states["firmwareUpdateAvailable"])
+        self.assertEqual(device.ui_values["firmwareUpdateAvailable"], "Yes")
         self.assertFalse(device.states["firmwareMajorUpdateAvailable"])
+        self.assertEqual(device.ui_values["firmwareMajorUpdateAvailable"], "No")
         self.assertEqual(device.states["firmwareUpdateStatus"],
                          "Update available")
         self.assertEqual(device.states["firmwareCatalogVersion"],
@@ -189,6 +194,7 @@ class VersionCollectionTests(unittest.TestCase):
         self.assertFalse(device.states["firmwareUpgradeable"])
         self.assertEqual(device.states["latestFirmwareVersion"], "")
         self.assertFalse(device.states["firmwareUpdateAvailable"])
+        self.assertEqual(device.ui_values["firmwareUpdateAvailable"], "No")
         self.assertEqual(device.states["firmwareUpdateStatus"],
                          "No compatible firmware")
 

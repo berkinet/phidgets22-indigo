@@ -14,6 +14,8 @@ INITIAL_DELAY_SECONDS = 10
 ATTACH_DELAY_SECONDS = 2
 FIRMWARE_CATALOG_VERSION = "1.26.20260828"
 CATALOG_PATH = os.path.join(os.path.dirname(__file__), "firmware_catalog.txt")
+YES_NO_STATES = frozenset((
+    "firmwareUpdateAvailable", "firmwareMajorUpdateAvailable"))
 
 _USB_FIRMWARE = re.compile(r"^(.+)v(\d+)\.bin\.rc4$")
 _VINT_FIRMWARE = re.compile(
@@ -28,7 +30,11 @@ def _publish(device, values, logger):
     """Publish independently so one stale state list cannot abort a pass."""
     for key, value in values.items():
         try:
-            device.updateStateOnServer(key, value=value)
+            if key in YES_NO_STATES:
+                device.updateStateOnServer(
+                    key, value=value, uiValue="Yes" if value else "No")
+            else:
+                device.updateStateOnServer(key, value=value)
         except Exception:
             logger.debug(
                 "Unable to update version state %s for device='%s' id=%s:\n%s",
