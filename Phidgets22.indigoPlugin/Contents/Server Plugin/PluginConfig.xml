@@ -20,6 +20,15 @@
         <Description>Repeat unavailable-device messages while attachment remains unsuccessful.</Description>
     </Field>
 
+	<Field type="checkbox" id="logDetachError" defaultValue="false">
+		<Label>Log error after detach warning:</Label>
+		<Description>Escalate a Phidget that remains detached to an Error log entry.</Description>
+	</Field>
+
+	<Field type="textfield" id="detachErrorDelay" defaultValue="300" visibleBindingId="logDetachError" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
+		<Label>Detach error delay (seconds):</Label>
+	</Field>
+
 	<Field id="versionCollectionInterval" type="menu" defaultValue="86400">
 		<Label>Version collection frequency:</Label>
 		<List>

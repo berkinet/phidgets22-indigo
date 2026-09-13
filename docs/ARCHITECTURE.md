@@ -40,6 +40,8 @@ actually reported, while device status itself remains immediate.
 A previously attached physical channel logs its SDK detach immediately. The
 grace period suppresses only Indigo detach/attach trigger pairs for transient
 interruptions; it does not suppress the diagnostic record of the interruption.
+Optional Error escalation has its own cancellable per-channel timer and is
+therefore independent of both the diagnostic Warning and Indigo Event delay.
 
 `outage_coordinator.py` separately coalesces simultaneous channel transitions
 into physical-device or Network Server diagnostics. It owns the short grouping

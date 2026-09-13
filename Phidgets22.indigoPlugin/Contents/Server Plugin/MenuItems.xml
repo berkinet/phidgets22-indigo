@@ -4,6 +4,10 @@
 		<Name>Print Phidgets network diagram to log</Name>
 		<CallbackMethod>printPhidgetsNetworkDiagram</CallbackMethod>
 	</MenuItem>
+	<MenuItem id="printVisiblePhidgets">
+		<Name>Print all visible Phidgets to log (phidget22admin -d)</Name>
+		<CallbackMethod>printVisiblePhidgets</CallbackMethod>
+	</MenuItem>
 	<MenuItem id="collectVersionsNow">
 		<Name>Collect Phidget versions now</Name>
 		<CallbackMethod>collectVersionsNow</CallbackMethod>

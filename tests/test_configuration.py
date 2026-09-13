@@ -243,8 +243,30 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.4.3</string>", plist)
+        self.assertIn("<string>0.5.0</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
+
+    def test_detach_error_delay_is_conditionally_visible(self):
+        root = ElementTree.parse(
+            SERVER_PLUGIN / "PluginConfig.xml").getroot()
+        fields = {field.get("id"): field for field in root.findall("Field")}
+
+        self.assertEqual(fields["logDetachError"].get("defaultValue"), "false")
+        self.assertEqual(fields["detachErrorDelay"].get("visibleBindingId"),
+                         "logDetachError")
+        self.assertEqual(fields["detachErrorDelay"].get("visibleBindingValue"),
+                         "true")
+
+    def test_admin_listing_menu_calls_async_runner(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.adminToolRunner = mock.Mock()
+        instance.adminToolRunner.list_devices.return_value = True
+        instance.logger = mock.Mock()
+
+        instance.printVisiblePhidgets()
+
+        instance.adminToolRunner.list_devices.assert_called_once_with()
+        instance.logger.info.assert_called_once()
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
         self.assertIs(plugin.Plugin.lcdSetDisplay, actions.ActionsMixin.lcdSetDisplay)
@@ -861,6 +883,25 @@ class ConfigurationTests(unittest.TestCase):
             self.assertFalse(valid)
             self.assertIs(returned_values, values)
             self.assertIn("detachedReminderInterval", errors)
+
+    def test_detach_error_delay_is_validated_only_when_enabled(self):
+        instance = object.__new__(plugin.Plugin)
+        values = indigo.Dict({
+            "attachTimeout": "30",
+            "detachedReminderInterval": "3600",
+            "logDetachError": True,
+            "detachErrorDelay": "0",
+        })
+
+        valid, returned_values, errors = instance.validatePrefsConfigUi(values)
+
+        self.assertFalse(valid)
+        self.assertIs(returned_values, values)
+        self.assertIn("detachErrorDelay", errors)
+
+        values["logDetachError"] = False
+        self.assertTrue(instance.validatePrefsConfigUi(values))
+        self.assertEqual(values["detachErrorDelay"], "300")
 
     def test_version_collection_interval_rejects_unknown_values(self):
         instance = object.__new__(plugin.Plugin)

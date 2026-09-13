@@ -67,12 +67,21 @@ class PhidgetBase(object):
             self.STARTUP_ERROR_GRACE_SECONDS, configured_timeout)
         self.detached_reminder_interval = int(
             indigo_plugin.pluginPrefs.get('detachedReminderInterval', '3600'))
+        self.log_detach_error = saved_bool(
+            indigo_plugin.pluginPrefs.get('logDetachError', False))
+        try:
+            self.detach_error_delay = max(1, int(
+                indigo_plugin.pluginPrefs.get('detachErrorDelay', '300')))
+        except (TypeError, ValueError):
+            self.detach_error_delay = 300
 
         self.timer = None
         self._detach_grace_timer = None
+        self._detach_error_timer = None
         self._lifecycle_lock = threading.RLock()
         self._timer_generation = 0
         self._detach_generation = 0
+        self._detach_error_generation = 0
         self._state = "stopped"
         self._detached_at = None
         self._detach_announced = False
@@ -265,6 +274,40 @@ class PhidgetBase(object):
             self._detach_grace_timer = timer
         timer.start()
 
+    def _cancel_detach_error_timer(self):
+        with self._lifecycle_lock:
+            self._detach_error_generation += 1
+            timer = self._detach_error_timer
+            self._detach_error_timer = None
+        if timer is not None:
+            timer.cancel()
+
+    def _schedule_detach_error_timer(self):
+        self._cancel_detach_error_timer()
+        if not self.log_detach_error:
+            return
+        with self._lifecycle_lock:
+            generation = self._detach_error_generation
+            timer = threading.Timer(
+                self.detach_error_delay,
+                self.detachErrorHandler,
+                args=(generation,))
+            timer.daemon = True
+            self._detach_error_timer = timer
+        timer.start()
+
+    def detachErrorHandler(self, generation):
+        with self._lifecycle_lock:
+            if (generation != self._detach_error_generation or
+                    self._state != "detached" or self._attach_count == 0):
+                return
+            self._detach_error_timer = None
+            detached_for = (time.monotonic() - self._detached_at
+                            if self._detached_at else 0)
+        self.logger.error(
+            "Phidget remains detached after %.1f seconds: %s",
+            detached_for, self._identity())
+
     def detachGraceHandler(self, generation):
         """Publish a detach only when it survives the transient grace period."""
         with self._lifecycle_lock:
@@ -328,9 +371,15 @@ class PhidgetBase(object):
                 return
             state = self._state
             detached_for = time.monotonic() - self._detached_at if self._detached_at else 0
+            operational_detach = self._attach_count > 0
             self.timer = None
         try:
-            if self._startup_contention_message:
+            if operational_detach:
+                self.logger.warning(
+                    "Phidget remains detached after %.1f seconds; awaiting "
+                    "automatic reattach: %s", detached_for,
+                    self._identity())
+            elif self._startup_contention_message:
                 with self._lifecycle_lock:
                     self._startup_contention_expired = True
                 self.indigoDevice.setErrorStateOnServer('Channel in use')
@@ -426,6 +475,7 @@ class PhidgetBase(object):
                 self.logger.warning(
                     "Phidget detached; monitoring for automatic reattach: %s",
                     self._identity())
+                self._schedule_detach_error_timer()
             coordinator = getattr(self.indigo_plugin, "phidgetDetachStarted", None)
             if coordinator is not None:
                 try:
@@ -505,6 +555,7 @@ class PhidgetBase(object):
         try:
             self._cancel_detach_grace_timer()
             self._cancel_attach_timer()
+            self._cancel_detach_error_timer()
             with self._lifecycle_lock:
                 self._state = "attached"
                 self._detached_at = None
@@ -555,6 +606,7 @@ class PhidgetBase(object):
             self._state = "stopping"
         self._cancel_attach_timer()
         self._cancel_detach_grace_timer()
+        self._cancel_detach_error_timer()
         self.logger.debug("Stopping Phidget: %s", self._identity())
         try:
             self.phidget.close()

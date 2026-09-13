@@ -1,5 +1,27 @@
 # Release notes
 
+## 0.5.0 — 2026-09-13
+
+### Added
+
+- Add an optional **Log error after detach warning** plugin preference with a
+  conditionally displayed, validated escalation delay in seconds.
+- Log one Error when a previously attached Phidget remains detached for the
+  configured escalation delay, independently of Indigo Event timing, and
+  cancel the escalation when the device reattaches.
+- Add **Print all visible Phidgets to log (phidget22admin -d)** to the plugin
+  menu. The bundled, read-only admin command runs asynchronously and reports
+  its complete device-and-channel output or a clear execution error.
+- Bundle the arm64 Phidget22 Admin Tool 1.26 executable, documentation, and
+  redistribution license supplied for this project.
+
+### Changed
+
+- Keep initial-attachment failures on the existing startup diagnostic path;
+  apply the new detach escalation only after a live device disconnects.
+- Treat operational detached-device reminders as Warnings when Error
+  escalation is disabled.
+
 ## 0.4.3 — 2026-09-13
 
 ### Changed

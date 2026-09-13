@@ -266,6 +266,27 @@ class DiscoveryUiMixin(object):
                 "Select one of the available version collection frequencies.")
             return False, valuesDict, errors
 
+        detach_error_delay = valuesDict.get("detachErrorDelay", "300")
+        detach_error_enabled = saved_bool(
+            valuesDict.get("logDetachError", False))
+        if detach_error_enabled:
+            try:
+                detach_error_delay = int(detach_error_delay)
+                if detach_error_delay <= 0:
+                    raise ValueError
+            except (TypeError, ValueError):
+                errors = indigo.Dict()
+                errors["detachErrorDelay"] = (
+                    "Enter a whole number greater than zero.")
+                return False, valuesDict, errors
+        else:
+            try:
+                detach_error_delay = int(detach_error_delay)
+                if detach_error_delay <= 0:
+                    detach_error_delay = 300
+            except (TypeError, ValueError):
+                detach_error_delay = 300
+
         try:
             attach_timeout = int(valuesDict.get("attachTimeout", "5"))
             if attach_timeout <= 0:
@@ -288,6 +309,7 @@ class DiscoveryUiMixin(object):
 
         valuesDict["attachTimeout"] = str(attach_timeout)
         valuesDict["detachedReminderInterval"] = str(reminder_interval)
+        valuesDict["detachErrorDelay"] = str(detach_error_delay)
         valuesDict["versionCollectionInterval"] = version_interval
         return True
 

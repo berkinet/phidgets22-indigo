@@ -17,6 +17,7 @@ from Phidget22.PhidgetException import PhidgetException
 
 from PhidgetInfo import PhidgetInfo
 from actions import ActionsMixin
+from admin_tool import AdminToolRunner
 from config_util import saved_bool
 from connection_identity import PhysicalDeviceIdentity, ServerIdentity
 from device_factory import create_phidget
@@ -51,6 +52,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         self._discoveredServers = {}
         self.outageCoordinator = OutageCoordinator(
             self.logger, self.runtimeRegistry.snapshot)
+        self.adminToolRunner = AdminToolRunner(self.logger)
         self.versionCollector = VersionCollector(self, self.logger)
 
     def startup(self):
@@ -456,6 +458,11 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
     def collectVersionsNow(self):
         self.logger.info("Starting requested read-only Phidget version collection")
         self.versionCollector.request_collection()
+
+    def printVisiblePhidgets(self):
+        if self.adminToolRunner.list_devices():
+            self.logger.info(
+                "Starting requested phidget22admin device listing")
 
     def __del__(self):
         indigo.PluginBase.__del__(self)

@@ -73,10 +73,13 @@ class FakeDevice(object):
 
 
 class FakePlugin(object):
-    def __init__(self, attach_timeout="30", reminder_interval="3600"):
+    def __init__(self, attach_timeout="30", reminder_interval="3600",
+                 log_detach_error=False, detach_error_delay="300"):
         self.pluginPrefs = {
             "attachTimeout": attach_timeout,
             "detachedReminderInterval": reminder_interval,
+            "logDetachError": log_detach_error,
+            "detachErrorDelay": detach_error_delay,
         }
         self.events = []
 
@@ -88,13 +91,17 @@ class TestPhidget(phidget_module.PhidgetBase):
     __test__ = False
 
     def __init__(self, fail_initialization=False, fail_open=False,
-                 peripheral_unavailable=False, attach_timeout="30"):
+                 peripheral_unavailable=False, attach_timeout="30",
+                 log_detach_error=False, detach_error_delay="300"):
         self.fail_initialization = fail_initialization
         self.peripheral_unavailable = peripheral_unavailable
         self.handlers_added = False
         self.native = FakeNativePhidget(fail_open=fail_open)
         self.device = FakeDevice()
-        self.plugin = FakePlugin(attach_timeout=attach_timeout)
+        self.plugin = FakePlugin(
+            attach_timeout=attach_timeout,
+            log_detach_error=log_detach_error,
+            detach_error_delay=detach_error_delay)
         self.test_logger = mock.Mock()
         super(TestPhidget, self).__init__(
             phidget=self.native,
@@ -194,6 +201,61 @@ class PhidgetLifecycleTests(unittest.TestCase):
         self.phidget.test_logger.warning.assert_called_once_with(
             "Phidget detached; monitoring for automatic reattach: %s",
             self.phidget._identity())
+
+    def test_configured_detach_error_logs_once_after_delay(self):
+        self.phidget = TestPhidget(
+            log_detach_error=True, detach_error_delay="120")
+        self.phidget.start()
+        self.phidget.onAttachHandler(self.phidget.native)
+
+        with mock.patch.object(phidget_module.threading, "Timer") as timer_class:
+            error_timer = mock.Mock()
+            grace_timer = mock.Mock()
+            attach_timer = mock.Mock()
+            timer_class.side_effect = [error_timer, grace_timer, attach_timer]
+            self.phidget.onDetachHandler(self.phidget.native)
+
+        first_call = timer_class.call_args_list[0]
+        self.assertEqual(first_call.args[0], 120)
+        self.assertEqual(first_call.args[1], self.phidget.detachErrorHandler)
+        error_timer.start.assert_called_once_with()
+
+        generation = self.phidget._detach_error_generation
+        self.phidget.detachErrorHandler(generation)
+
+        self.phidget.test_logger.error.assert_called_once()
+        self.assertIn("Phidget remains detached after %.1f seconds",
+                      self.phidget.test_logger.error.call_args.args[0])
+
+    def test_detach_error_is_cancelled_by_reattach(self):
+        self.phidget = TestPhidget(
+            log_detach_error=True, detach_error_delay="120")
+        self.phidget.start()
+        self.phidget.onAttachHandler(self.phidget.native)
+
+        with mock.patch.object(phidget_module.threading, "Timer") as timer_class:
+            timers = [mock.Mock(), mock.Mock(), mock.Mock()]
+            timer_class.side_effect = timers
+            self.phidget.onDetachHandler(self.phidget.native)
+            stale_generation = self.phidget._detach_error_generation
+            self.phidget.onAttachHandler(self.phidget.native)
+
+        timers[0].cancel.assert_called_once_with()
+        self.phidget.detachErrorHandler(stale_generation)
+        self.phidget.test_logger.error.assert_not_called()
+
+    def test_operational_detach_does_not_log_error_when_disabled(self):
+        self.phidget = TestPhidget(log_detach_error=False)
+        self.phidget._state = "detached"
+        self.phidget._attach_count = 1
+        self.phidget._detached_at = time.monotonic() - 30
+        generation = self.phidget._timer_generation
+
+        with mock.patch.object(phidget_module.threading, "Timer"):
+            self.phidget.connectionTimeoutHandler(generation)
+
+        self.phidget.test_logger.error.assert_not_called()
+        self.phidget.test_logger.warning.assert_called_once()
 
     def test_persistent_detach_sets_error_and_emits_events_after_grace(self):
         self.phidget = TestPhidget()
