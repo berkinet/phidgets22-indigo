@@ -8,6 +8,8 @@ import re
 import threading
 import traceback
 
+import indigo
+
 from connection_identity import ServerIdentity
 from state_publisher import update_indigo_states
 from runtime_registry import registry_for
@@ -20,6 +22,7 @@ FIRMWARE_CATALOG_VERSION = "1.26.20260828"
 CATALOG_PATH = os.path.join(os.path.dirname(__file__), "firmware_catalog.txt")
 YES_NO_STATES = frozenset((
     "firmwareUpdateAvailable", "firmwareMajorUpdateAvailable"))
+UPDATE_VARIABLE_NAME = "Phidgets22_FirmwareUpdatesAvailable"
 
 _USB_FIRMWARE = re.compile(r"^(.+)v(\d+)\.bin\.rc4$")
 _VINT_FIRMWARE = re.compile(
@@ -175,9 +178,55 @@ class VersionCollector(object):
         monitors = registry.network_servers_snapshot()
         for monitor in monitors:
             self._collect_server(monitor, wrappers, checked_at)
+        self._publish_update_list(wrappers)
+
+    def _publish_update_list(self, wrappers):
+        """Keep one user-facing variable synchronized after the entire pass."""
+        try:
+            devices = indigo.devices
+        except AttributeError:
+            devices = [wrapper.indigoDevice for wrapper in wrappers]
+        eligible = []
+        for device in devices:
+            if (getattr(device, "pluginId", None) != self.plugin.pluginId or
+                    not getattr(device, "enabled", True) or
+                    getattr(device, "deviceTypeId", None) == "networkServer"):
+                continue
+            states = getattr(device, "states", {})
+            if states.get("firmwareUpdateAvailable") is True:
+                eligible.append(device)
+        eligible.sort(key=lambda device: (device.name.lower(), device.id))
+        lines = ["%s (Indigo ID %s): firmware %s; latest %s%s" % (
+            device.name, device.id,
+            device.states.get("firmwareVersion", "unknown"),
+            device.states.get("latestFirmwareVersion", "unknown"),
+            "; major update" if device.states.get(
+                "firmwareMajorUpdateAvailable") else "")
+            for device in eligible]
+        value = "\n".join(lines)
+        try:
+            variable = (indigo.variables[UPDATE_VARIABLE_NAME]
+                        if UPDATE_VARIABLE_NAME in indigo.variables else None)
+            if variable is None:
+                indigo.variable.create(UPDATE_VARIABLE_NAME, value=value)
+                changed = bool(value)
+            else:
+                changed = str(variable.value) != value
+                if changed:
+                    indigo.variable.updateValue(variable.id, value=value)
+        except Exception as error:
+            self.logger.warning(
+                "Unable to publish firmware update variable %s: %s",
+                UPDATE_VARIABLE_NAME, error)
+            return
+        if changed and value:
+            coordinator = getattr(self.plugin, "eventCoordinator", None)
+            if coordinator is not None:
+                coordinator.trigger_global_event("firmwareUpdateAvailable")
 
     def _collect_device(self, wrapper, checked_at):
         device = wrapper.indigoDevice
+        previous_update = device.states.get("firmwareUpdateAvailable") is True
         phidget = getattr(wrapper, "phidget", None)
         getter = getattr(phidget, "getDeviceVersion", None)
         if bool(getattr(
@@ -289,6 +338,13 @@ class VersionCollector(object):
                 "lastVersionCheck": checked_at,
                 "versionCheckError": upgradeability_error,
             }, self.logger)
+            if (update_available and not previous_update and
+                    device.states.get("firmwareUpdateAvailable") is True):
+                self.logger.warning(
+                    "Phidget firmware update available: device='%s' id=%s "
+                    "installed=%s latest=%s%s", device.name, device.id,
+                    version, latest_version,
+                    " (major update)" if major_update_available else "")
         except Exception as error:
             _publish(wrapper, {
                 "firmwareVersionStatus": "Check failed",

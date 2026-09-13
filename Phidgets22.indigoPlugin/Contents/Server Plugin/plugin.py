@@ -26,7 +26,8 @@ from discovery_ui import DiscoveryUiMixin
 from event_coordinator import EventCoordinator
 from outage_coordinator import OutageCoordinator
 from version_check import start_version_check
-from version_collection import ATTACH_DELAY_SECONDS, VersionCollector
+from version_collection import (ATTACH_DELAY_SECONDS, UPDATE_VARIABLE_NAME,
+                                VersionCollector)
 from phidget import PeripheralUnavailableError
 from runtime_registry import RuntimeDeviceRegistry, registry_for
 
@@ -471,6 +472,16 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
     def collectVersionsNow(self):
         self.logger.info("Starting requested read-only Phidget version collection")
         self.versionCollector.request_collection()
+
+    def logAvailableFirmwareUpdates(self, action=None):
+        variable = (indigo.variables[UPDATE_VARIABLE_NAME]
+                    if UPDATE_VARIABLE_NAME in indigo.variables else None)
+        value = str(variable.value) if variable is not None else ""
+        if value:
+            self.logger.warning("Indigo Phidget firmware updates available:\n%s",
+                                value)
+        else:
+            self.logger.info("No Indigo Phidget firmware updates are available")
 
     def printVisiblePhidgets(self):
         inventory = self.discoveryInventory

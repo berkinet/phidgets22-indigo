@@ -1,7 +1,11 @@
 <?xml version="1.0"?>
 <Actions>
+	<Action id="logAvailableFirmwareUpdates">
+		<Name>Log devices with available firmware updates</Name>
+		<CallbackMethod>logAvailableFirmwareUpdates</CallbackMethod>
+	</Action>
 	<Action id="exportDeviceStatesJson">
-		<Name>Export Indigo Phidget devices and states to JSON</Name>
+		<Name>Export Indigo Phidget devices and states to a JSON file</Name>
 		<CallbackMethod>exportIndigoPhidgetDeviceStatesJson</CallbackMethod>
 	</Action>
 	<Action id="lcdClear" deviceFilter="self.lcd" uiPath="DeviceActions">

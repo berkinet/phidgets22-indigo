@@ -1,5 +1,22 @@
 # Release notes
 
+## 0.5.4 — 2026-09-13
+
+### Added
+
+- Log one Warning per Indigo Phidget device when it first reports an available
+  firmware update, including installed and latest compatible versions.
+- Maintain the Indigo variable `Phidgets22_FirmwareUpdatesAvailable` as a
+  readable list of all enabled plugin devices currently reporting updates.
+- Fire one global **Device firmware update available** Event after that
+  variable changes to a non-empty list; unchanged checks and clearing the
+  list do not fire the Event.
+- Add **Log devices with available firmware updates** as a plugin action.
+
+### Changed
+
+- Clarify the export menu and action wording to say **to a JSON file**.
+
 ## 0.5.3 — 2026-09-13
 
 ### Added
@@ -7,7 +24,8 @@
 - Export every configured Indigo Phidgets 22 device and its complete current
   state dictionary to a stable, human-readable JSON file in Indigo's Logs
   directory.
-- Add **Export Indigo Phidget devices and states to JSON** to the plugin menu.
+- Add **Export Indigo Phidget devices and states to a JSON file** to the plugin
+  menu.
 - Expose the same export to Indigo scripts and Action Groups through the
   `exportDeviceStatesJson` plugin action.
 

@@ -18,6 +18,7 @@ if not hasattr(sys.modules["indigo"], "PluginBase"):
         "PluginBase", (), {"__del__": lambda self: None})
 
 import version_collection
+import indigo
 
 
 class FakeDevice(object):
@@ -129,6 +130,79 @@ class VersionCollectionTests(unittest.TestCase):
                          "Update available")
         self.assertEqual(device.states["firmwareCatalogVersion"],
                          "1.26.20260828")
+
+    def test_update_variable_event_and_warnings_follow_list_changes(self):
+        first = FakeDevice(1, "First")
+        second = FakeDevice(2, "Second")
+        first_phidget = NativePhidget(123, "TESTUSB")
+        second_phidget = NativePhidget(124, "TESTUSB")
+        self.plugin.activePhidgets = {
+            1: wrapper(first, first_phidget),
+            2: wrapper(second, second_phidget),
+        }
+        self.plugin.eventCoordinator = mock.Mock()
+        variables = {}
+
+        def create(name, value):
+            variables[name] = types.SimpleNamespace(id=7, value=value)
+
+        def update(variable_id, value):
+            self.assertEqual(variable_id, 7)
+            variables[version_collection.UPDATE_VARIABLE_NAME].value = value
+
+        with mock.patch.object(indigo, "devices", [first, second], create=True), \
+                mock.patch.object(indigo, "variables", variables, create=True), \
+                mock.patch.object(indigo, "variable", types.SimpleNamespace(
+                    create=create, updateValue=update), create=True):
+            self.collector.collect()
+            self.assertIn("First (Indigo ID 1): firmware 123; latest 124",
+                          variables[version_collection.UPDATE_VARIABLE_NAME].value)
+            self.plugin.eventCoordinator.trigger_global_event.assert_called_once_with(
+                "firmwareUpdateAvailable")
+            self.assertEqual(self.logger.warning.call_count, 1)
+
+            self.collector.collect()
+            self.assertEqual(self.logger.warning.call_count, 1)
+            self.assertEqual(
+                self.plugin.eventCoordinator.trigger_global_event.call_count, 1)
+
+            second_phidget.firmware = 123
+            self.collector.collect()
+            self.assertEqual(self.logger.warning.call_count, 2)
+            self.assertEqual(
+                self.plugin.eventCoordinator.trigger_global_event.call_count, 2)
+
+            first_phidget.firmware = 124
+            second_phidget.firmware = 124
+            self.collector.collect()
+            self.assertEqual(variables[version_collection.UPDATE_VARIABLE_NAME].value,
+                             "")
+            self.assertEqual(
+                self.plugin.eventCoordinator.trigger_global_event.call_count, 2)
+
+            first_phidget.firmware = 123
+            self.collector.collect()
+            self.assertEqual(self.logger.warning.call_count, 3)
+            self.assertEqual(
+                self.plugin.eventCoordinator.trigger_global_event.call_count, 3)
+
+    def test_saved_update_state_and_variable_do_not_notify_after_restart(self):
+        device = FakeDevice(1, "Existing")
+        device.states["firmwareUpdateAvailable"] = True
+        self.plugin.activePhidgets[1] = wrapper(
+            device, NativePhidget(123, "TESTUSB"))
+        self.plugin.eventCoordinator = mock.Mock()
+        value = "Existing (Indigo ID 1): firmware 123; latest 124"
+        variables = {version_collection.UPDATE_VARIABLE_NAME:
+                     types.SimpleNamespace(id=7, value=value)}
+
+        with mock.patch.object(indigo, "devices", [device], create=True), \
+                mock.patch.object(indigo, "variables", variables, create=True), \
+                mock.patch.object(indigo, "variable", mock.Mock(), create=True):
+            self.collector.collect()
+
+        self.logger.warning.assert_not_called()
+        self.plugin.eventCoordinator.trigger_global_event.assert_not_called()
 
     def test_supplied_catalog_separates_interfacekit_revisions(self):
         catalog = version_collection.FirmwareCatalog.loaded(

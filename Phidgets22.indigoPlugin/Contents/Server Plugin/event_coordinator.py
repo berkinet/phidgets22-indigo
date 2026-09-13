@@ -16,6 +16,11 @@ class EventCoordinator(object):
         self._timer_factory = timer_factory
 
     def start_processing(self, trigger):
+        if trigger.pluginTypeId == "firmwareUpdateAvailable":
+            with self._lock:
+                self.triggers[trigger.id] = {
+                    "devid": None, "event": trigger.pluginTypeId, "delay": 0.0}
+            return
         device_id = int(trigger.pluginProps["indigoDevice"])
         try:
             delay = float(trigger.pluginProps.get("detachDelay", 0) or 0)
@@ -104,6 +109,15 @@ class EventCoordinator(object):
                     with self._lock:
                         self._reported_detaches.add(device_id)
                 indigo.trigger.execute(trigger_id)
+
+    def trigger_global_event(self, event):
+        with self._lock:
+            trigger_ids = [trigger_id for trigger_id, details
+                           in self.triggers.items()
+                           if details["devid"] is None and
+                           details["event"] == event]
+        for trigger_id in trigger_ids:
+            indigo.trigger.execute(trigger_id)
 
     def stop(self):
         with self._lock:

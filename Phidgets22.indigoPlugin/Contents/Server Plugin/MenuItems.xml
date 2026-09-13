@@ -13,7 +13,7 @@
 		<CallbackMethod>collectVersionsNow</CallbackMethod>
 	</MenuItem>
 	<MenuItem id="exportIndigoPhidgetDeviceStatesJson">
-		<Name>Export Indigo Phidget devices and states to JSON</Name>
+		<Name>Export Indigo Phidget devices and states to a JSON file</Name>
 		<CallbackMethod>exportIndigoPhidgetDeviceStatesJson</CallbackMethod>
 	</MenuItem>
 </MenuItems>

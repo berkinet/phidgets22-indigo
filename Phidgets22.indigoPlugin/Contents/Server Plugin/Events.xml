@@ -1,6 +1,10 @@
 <?xml version="1.0"?>
 <Events>
     <SupportURL>https://github.com/berkinet/phidgets22-indigo</SupportURL>
+    <Event id="firmwareUpdateAvailable">
+        <Name>Device firmware update available</Name>
+        <Label>The list of Indigo Phidget devices with available firmware updates changed</Label>
+    </Event>
     <Event id="deviceDetached" deviceFilter="self">
         <Name>Phidget device detached</Name>
         <Label>An Indigo Phidget device has been detached</Label>

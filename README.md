@@ -83,7 +83,7 @@ Use **Print all visible Phidgets to log** to print every local and remote
 device and channel currently visible to the plugin's Phidget22 Manager. The
 report is generated through the loaded SDK and requires no external executable.
 
-Use **Export Indigo Phidget devices and states to JSON** to write every
+Use **Export Indigo Phidget devices and states to a JSON file** to write every
 configured plugin device and its complete current state dictionary to
 `Phidgets 22 Device States.json` in Indigo's Logs directory. Indigo scripts
 and Action Groups can request the same read-only snapshot through the plugin
@@ -93,6 +93,16 @@ action:
 plugin = indigo.server.getPlugin("com.yikes.eric.phidgets-indigo")
 plugin.executeAction("exportDeviceStatesJson")
 ```
+
+When a firmware update first becomes available, the plugin logs one Warning
+for each affected Indigo device. After each collection it updates the Indigo
+variable `Phidgets22_FirmwareUpdatesAvailable` with a readable list of all
+enabled devices reporting updates. A change to a non-empty list fires the
+global plugin Event **Device firmware update available** once, so one Indigo
+Trigger can handle the whole collection. An unchanged list or a change to an
+empty list does not fire the Event. The plugin action **Log devices with
+available firmware updates** writes the current list at Warning level. The
+plugin never installs firmware.
 
 When the plugin starts, the first live value received for each state establishes
 its baseline without firing Indigo Device State Changed triggers. Later state

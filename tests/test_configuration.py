@@ -244,7 +244,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.5.3</string>", plist)
+        self.assertIn("<string>0.5.4</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_detach_error_delay_is_conditionally_visible(self):
@@ -350,6 +350,30 @@ class ConfigurationTests(unittest.TestCase):
         self.assertIsNotNone(action)
         self.assertEqual(action.find("CallbackMethod").text,
                          "exportIndigoPhidgetDeviceStatesJson")
+
+    def test_firmware_update_event_is_global(self):
+        events = ElementTree.parse(SERVER_PLUGIN / "Events.xml").getroot()
+        event = events.find("./Event[@id='firmwareUpdateAvailable']")
+        self.assertIsNotNone(event)
+        self.assertIsNone(event.get("deviceFilter"))
+        coordinator = event_coordinator.EventCoordinator()
+        trigger = types.SimpleNamespace(
+            id=17, pluginTypeId="firmwareUpdateAvailable", pluginProps={})
+        indigo.trigger = types.SimpleNamespace(execute=mock.Mock())
+        coordinator.start_processing(trigger)
+        coordinator.trigger_global_event("firmwareUpdateAvailable")
+        indigo.trigger.execute.assert_called_once_with(17)
+
+    def test_log_available_firmware_updates_action(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.logger = mock.Mock()
+        variable = types.SimpleNamespace(value="Device A (Indigo ID 1)")
+        with mock.patch.object(indigo, "variables", {
+                "Phidgets22_FirmwareUpdatesAvailable": variable}, create=True):
+            instance.logAvailableFirmwareUpdates()
+        instance.logger.warning.assert_called_once_with(
+            "Indigo Phidget firmware updates available:\n%s",
+            "Device A (Indigo ID 1)")
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
         self.assertIs(plugin.Plugin.lcdSetDisplay, actions.ActionsMixin.lcdSetDisplay)
