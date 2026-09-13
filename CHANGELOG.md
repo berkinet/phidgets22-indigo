@@ -18,6 +18,8 @@
 - Show the Indigo variable name and `%%v:VARIABLE_ID%%` substitution syntax
   in the firmware-update Event configuration so Trigger actions can include
   the current device list in email or log text.
+- Display the actual `%%v:<ID>%%` reference in a read-only, selectable text
+  field when configuring the Event.
 
 ### Changed
 

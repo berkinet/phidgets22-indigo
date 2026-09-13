@@ -356,10 +356,20 @@ class ConfigurationTests(unittest.TestCase):
         event = events.find("./Event[@id='firmwareUpdateAvailable']")
         self.assertIsNotNone(event)
         self.assertIsNone(event.get("deviceFilter"))
-        guidance = event.find("./ConfigUI/Field[@id='firmwareVariableHelp']/Label")
-        self.assertIsNotNone(guidance)
-        self.assertIn("%%v:VARIABLE_ID%%", guidance.text)
-        self.assertIn("Phidgets22_FirmwareUpdatesAvailable", guidance.text)
+        field = event.find("./ConfigUI/Field[@id='firmwareVariableReference']")
+        self.assertIsNotNone(field)
+        self.assertEqual(field.get("type"), "textfield")
+        self.assertEqual(field.get("readonly"), "true")
+        self.assertIn("Phidgets22_FirmwareUpdatesAvailable",
+                      field.find("Description").text)
+        instance = object.__new__(plugin.Plugin)
+        variable = types.SimpleNamespace(id=123456, value="")
+        with mock.patch.object(indigo, "variables", {
+                "Phidgets22_FirmwareUpdatesAvailable": variable}, create=True):
+            values, errors = instance.getEventConfigUiValues(
+                {}, "firmwareUpdateAvailable", 0)
+        self.assertEqual(values["firmwareVariableReference"], "%%v:123456%%")
+        self.assertEqual(errors, {})
         coordinator = event_coordinator.EventCoordinator()
         trigger = types.SimpleNamespace(
             id=17, pluginTypeId="firmwareUpdateAvailable", pluginProps={})

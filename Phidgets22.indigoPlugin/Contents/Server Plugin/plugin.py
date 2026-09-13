@@ -362,6 +362,16 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
     def triggerStopProcessing(self, trigger):
         self.eventCoordinator.stop_processing(trigger)
 
+    def getEventConfigUiValues(self, pluginProps, typeId, eventId):
+        values = indigo.Dict(pluginProps)
+        if typeId == "firmwareUpdateAvailable":
+            variable = (indigo.variables[UPDATE_VARIABLE_NAME]
+                        if UPDATE_VARIABLE_NAME in indigo.variables else None)
+            values["firmwareVariableReference"] = (
+                "%%%%v:%s%%%%" % variable.id if variable is not None else
+                "Run a version collection to create the Indigo variable")
+        return (values, indigo.Dict())
+
     def validateEventConfigUi(self, valuesDict, typeId, eventId):
         if typeId != "deviceDetached":
             return (True, valuesDict)
