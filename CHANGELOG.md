@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.5.1 — 2026-09-13
+
+### Fixed
+
+- Remove the bundled, non-notarized macOS `phidget22admin` executable that
+  caused Gatekeeper to reject the downloaded Indigo plugin bundle.
+- Generate **Print all visible Phidgets to log** directly from the plugin's
+  live Phidget22 Manager inventory, avoiding external execution while retaining
+  the requested complete local and remote channel report.
+
 ## 0.5.0 — 2026-09-13
 
 ### Added

@@ -77,10 +77,9 @@ Automatic collection is daily by default and can be disabled or changed to 6
 hours, 12 hours, or weekly in the plugin configuration. Use **Collect Phidget
 versions now** in the plugin menu for an immediate asynchronous check.
 
-Use **Print all visible Phidgets to log (phidget22admin -d)** to run the
-bundled read-only Phidget22 Admin Tool asynchronously and print every local and
-remote device and channel it can see. The supplied executable is for arm64
-macOS and requires the Phidget22 and Phidget22Extra frameworks.
+Use **Print all visible Phidgets to log** to print every local and remote
+device and channel currently visible to the plugin's Phidget22 Manager. The
+report is generated through the loaded SDK and requires no external executable.
 
 When the plugin starts, the first live value received for each state establishes
 its baseline without firing Indigo Device State Changed triggers. Later state

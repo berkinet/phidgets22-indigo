@@ -243,7 +243,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.5.0</string>", plist)
+        self.assertIn("<string>0.5.1</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_detach_error_delay_is_conditionally_visible(self):
@@ -257,16 +257,22 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(fields["detachErrorDelay"].get("visibleBindingValue"),
                          "true")
 
-    def test_admin_listing_menu_calls_async_runner(self):
+    def test_visible_phidget_menu_logs_manager_inventory(self):
         instance = object.__new__(plugin.Plugin)
-        instance.adminToolRunner = mock.Mock()
-        instance.adminToolRunner.list_devices.return_value = True
+        instance.discoveryInventory = mock.Mock()
+        instance.discoveryInventory.snapshot.return_value = [{
+            "isRemote": False, "serialNumber": 123, "hubPort": -1,
+            "isHubPortDevice": False, "channel": 0, "channelClass": 5,
+            "deviceSKU": "1012", "channelClassName": "Digital Input",
+        }]
         instance.logger = mock.Mock()
 
         instance.printVisiblePhidgets()
 
-        instance.adminToolRunner.list_devices.assert_called_once_with()
-        instance.logger.info.assert_called_once()
+        instance.discoveryInventory.snapshot.assert_called_once_with()
+        arguments = instance.logger.info.call_args.args
+        self.assertEqual(arguments[0], "Visible Phidgets and channels:\n%s")
+        self.assertIn("serial=123", arguments[1])
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
         self.assertIs(plugin.Plugin.lcdSetDisplay, actions.ActionsMixin.lcdSetDisplay)

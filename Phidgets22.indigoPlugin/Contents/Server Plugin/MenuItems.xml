@@ -5,7 +5,7 @@
 		<CallbackMethod>printPhidgetsNetworkDiagram</CallbackMethod>
 	</MenuItem>
 	<MenuItem id="printVisiblePhidgets">
-		<Name>Print all visible Phidgets to log (phidget22admin -d)</Name>
+		<Name>Print all visible Phidgets to log</Name>
 		<CallbackMethod>printVisiblePhidgets</CallbackMethod>
 	</MenuItem>
 	<MenuItem id="collectVersionsNow">

@@ -17,11 +17,10 @@ from Phidget22.PhidgetException import PhidgetException
 
 from PhidgetInfo import PhidgetInfo
 from actions import ActionsMixin
-from admin_tool import AdminToolRunner
 from config_util import saved_bool
 from connection_identity import PhysicalDeviceIdentity, ServerIdentity
 from device_factory import create_phidget
-from discovery import DiscoveryInventory
+from discovery import DiscoveryInventory, channel_sort_key, format_channel
 from discovery_ui import DiscoveryUiMixin
 from event_coordinator import EventCoordinator
 from outage_coordinator import OutageCoordinator
@@ -52,7 +51,6 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         self._discoveredServers = {}
         self.outageCoordinator = OutageCoordinator(
             self.logger, self.runtimeRegistry.snapshot)
-        self.adminToolRunner = AdminToolRunner(self.logger)
         self.versionCollector = VersionCollector(self, self.logger)
 
     def startup(self):
@@ -460,9 +458,14 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         self.versionCollector.request_collection()
 
     def printVisiblePhidgets(self):
-        if self.adminToolRunner.list_devices():
-            self.logger.info(
-                "Starting requested phidget22admin device listing")
+        inventory = self.discoveryInventory
+        channels = inventory.snapshot() if inventory is not None else []
+        if not channels:
+            self.logger.info("Visible Phidgets:\n  (no visible Phidgets)")
+            return
+        lines = [format_channel(channel)
+                 for channel in sorted(channels, key=channel_sort_key)]
+        self.logger.info("Visible Phidgets and channels:\n%s", "\n".join(lines))
 
     def __del__(self):
         indigo.PluginBase.__del__(self)
