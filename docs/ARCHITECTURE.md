@@ -25,6 +25,11 @@ A detach trigger fires only if the source remains detached for its configured
 delay. The corresponding attach trigger fires only when that detach was
 actually reported, while device status itself remains immediate.
 
+`outage_coordinator.py` separately coalesces simultaneous channel transitions
+into physical-device or Network Server diagnostics. It owns the short grouping
+timers, outage records, recovery batches, and repeated-error suppression; the
+plugin supplies only a thread-safe channel snapshot and logger.
+
 ## Version collection
 
 `version_collection.py` asynchronously reads immutable registry snapshots and

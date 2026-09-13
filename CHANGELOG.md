@@ -1,5 +1,17 @@
 # Release notes
 
+## 0.4.1 — 2026-09-13
+
+### Changed
+
+- Move delayed outage coalescing, physical-device startup diagnostics, server
+  outage classification, recovery reporting, and reminder suppression into a
+  dedicated outage coordinator.
+- Keep the existing 300 ms grouping window and current Indigo device, event,
+  and logging behavior while removing shared outage state from `plugin.py`.
+- Guard replacement timers with generation tokens so a cancelled timer that
+  races with its replacement cannot consume the newer transition batch.
+
 ## 0.4.0 — 2026-09-13
 
 ### Changed

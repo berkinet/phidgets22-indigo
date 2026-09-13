@@ -5,7 +5,6 @@
 
 import logging
 import threading
-import time
 import traceback
 
 import indigo
@@ -23,6 +22,7 @@ from device_factory import create_phidget
 from discovery import DiscoveryInventory
 from discovery_ui import DiscoveryUiMixin
 from event_coordinator import EventCoordinator
+from outage_coordinator import OutageCoordinator
 from version_check import start_version_check
 from version_collection import ATTACH_DELAY_SECONDS, VersionCollector
 from phidget import PeripheralUnavailableError
@@ -48,15 +48,8 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         self.discoveryInventory = None
         self.networkMonitor = None
         self._discoveredServers = {}
-        self._outageLock = threading.RLock()
-        self._detachBatches = {}
-        self._recoveryBatches = {}
-        self._startupContentionBatches = {}
-        self._startupUnavailableBatches = {}
-        self._startupOpenFailureBatches = {}
-        self._startupOpenFailureLastLogged = {}
-        self._batchTimers = {}
-        self._serverOutages = {}
+        self.outageCoordinator = OutageCoordinator(
+            self.logger, self.runtimeRegistry.snapshot)
         self.versionCollector = VersionCollector(self, self.logger)
 
     def startup(self):
@@ -178,28 +171,9 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                 return True
         return False
 
-    def _channelsForServer(self, server_key):
-        return [phidget for phidget in self._runtime_registry().snapshot()
-                if phidget.channelInfo.netInfo.isRemote and
-                phidget.serverKey() == server_key]
-
-    def _scheduleBatch(self, kind, server_key, callback):
-        timer_key = (kind, server_key)
-        with self._outageLock:
-            old_timer = self._batchTimers.pop(timer_key, None)
-            timer = threading.Timer(0.3, callback, args=(server_key,))
-            timer.daemon = True
-            self._batchTimers[timer_key] = timer
-        if old_timer is not None:
-            old_timer.cancel()
-        timer.start()
-
     def phidgetDetachAnnounced(self, phidget, detached_for):
         self.phidgetDetachStarted(phidget)
-        server_key = phidget.serverKey()
-        with self._outageLock:
-            self._detachBatches.setdefault(server_key, set()).add(phidget)
-        self._scheduleBatch("detach", server_key, self._flushDetachBatch)
+        self.outageCoordinator.detach_announced(phidget)
 
     def phidgetDetachStarted(self, phidget):
         """Immediately quiesce logical children of a detached provider."""
@@ -215,167 +189,17 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                     callback()
 
     def phidgetStartupContentionExpired(self, phidget, detached_for):
-        physical_key = (
-            phidget.serverKey(), phidget.channelInfo.serialNumber,
-            phidget.channelInfo.hubPort)
-        with self._outageLock:
-            self._startupContentionBatches.setdefault(
-                physical_key, {})[phidget] = detached_for
-        self._scheduleBatch(
-            "startup-contention", physical_key,
-            self._flushStartupContentionBatch)
+        self.outageCoordinator.startup_contention(phidget, detached_for)
 
     def phidgetStartupUnavailableExpired(self, phidget, detached_for, state):
         """Batch simultaneous startup timeouts by physical serial number."""
-        serial_number = phidget.channelInfo.serialNumber
-        with self._outageLock:
-            self._startupUnavailableBatches.setdefault(
-                serial_number, {})[phidget] = (detached_for, state)
-        self._scheduleBatch(
-            "startup-unavailable", serial_number,
-            self._flushStartupUnavailableBatch)
+        self.outageCoordinator.startup_unavailable(
+            phidget, detached_for, state)
 
     def phidgetStartupOpenFailureExpired(self, phidget, detached_for, message):
         """Batch repeated SDK open failures by remote server and hardware."""
-        physical_key = (
-            phidget.serverKey(), phidget.channelInfo.serialNumber)
-        with self._outageLock:
-            self._startupOpenFailureBatches.setdefault(
-                physical_key, {})[phidget] = (detached_for, str(message))
-        self._scheduleBatch(
-            "startup-open-failure", physical_key,
-            self._flushStartupOpenFailureBatch)
-
-    def _flushStartupOpenFailureBatch(self, physical_key):
-        with self._outageLock:
-            self._batchTimers.pop(
-                ("startup-open-failure", physical_key), None)
-            pending = self._startupOpenFailureBatches.pop(physical_key, {})
-        affected = {
-            phidget: details for phidget, details in pending.items()
-            if (phidget._state in ("starting", "detached") and
-                phidget._startup_error_message)
-        }
-        if not affected:
-            return
-        now = time.monotonic()
-        reminder_interval = min(
-            phidget.detached_reminder_interval for phidget in affected)
-        with self._outageLock:
-            last_logged = self._startupOpenFailureLastLogged.get(physical_key)
-            if (last_logged is not None and
-                    now - last_logged < reminder_interval):
-                return
-            self._startupOpenFailureLastLogged[physical_key] = now
-        first = next(iter(affected))
-        names = ", ".join(sorted(
-            "'%s' (hub port %s, channel %s)" % (
-                phidget.indigoDevice.name, phidget.channelInfo.hubPort,
-                phidget.channelInfo.channel)
-            for phidget in affected))
-        longest = max(details[0] for details in affected.values())
-        messages = sorted(set(details[1] for details in affected.values()))
-        self.logger.error(
-            "Phidget open failed after %.1f seconds on server '%s', physical "
-            "serial %s; %d configured channels remain unavailable: %s. %s "
-            "Automatic attachment remains active.",
-            longest, first.serverDisplayName(),
-            first.channelInfo.serialNumber, len(affected), names,
-            "; ".join(messages))
-
-    def _flushStartupUnavailableBatch(self, serial_number):
-        with self._outageLock:
-            self._batchTimers.pop(
-                ("startup-unavailable", serial_number), None)
-            pending = self._startupUnavailableBatches.pop(serial_number, {})
-        affected = {
-            phidget: details for phidget, details in pending.items()
-            if phidget._state in ("starting", "detached")
-        }
-        if not affected:
-            return
-        configured = [
-            phidget for phidget in self._runtime_registry().snapshot()
-            if phidget.channelInfo.serialNumber == serial_number]
-        all_unavailable = (len(configured) > 1 and
-                           set(affected) == set(configured))
-        if not all_unavailable:
-            for phidget, (detached_for, state) in affected.items():
-                self.logger.error(
-                    "Phidget remains detached after %.1f seconds (%s): %s; "
-                    "automatic attachment remains active",
-                    detached_for, state, phidget._identity())
-            return
-        servers = ", ".join(sorted(set(
-            phidget.serverDisplayName() for phidget in affected)))
-        names = ", ".join(sorted(
-            "'%s' (hub port %s, channel %s)" % (
-                phidget.indigoDevice.name, phidget.channelInfo.hubPort,
-                phidget.channelInfo.channel)
-            for phidget in affected))
-        longest = max(details[0] for details in affected.values())
-        self.logger.error(
-            "Physical Phidget serial %s remains unavailable after %.1f seconds; "
-            "all %d configured channels are detached (server: %s): %s. "
-            "Check the Phidget and Network Server; automatic attachment "
-            "remains active.",
-            serial_number, longest, len(affected), servers, names)
-
-    def _flushStartupContentionBatch(self, physical_key):
-        with self._outageLock:
-            self._batchTimers.pop(
-                ("startup-contention", physical_key), None)
-            pending = self._startupContentionBatches.pop(physical_key, {})
-        affected = [
-            (phidget, detached_for)
-            for phidget, detached_for in pending.items()
-            if (phidget._state != "attached" and
-                phidget._startup_contention_message)
-        ]
-        if not affected:
-            return
-        names = ", ".join(sorted(
-            "'%s' (channel %s)" % (
-                phidget.indigoDevice.name, phidget.channelInfo.channel)
-            for phidget, _ in affected))
-        longest = max(detached_for for _, detached_for in affected)
-        first = affected[0][0]
-        self.logger.error(
-            "Phidget channels remained in use for %.1f seconds on server '%s', "
-            "serial %s, hub port %s: %s. Check for another Indigo plugin "
-            "instance, Phidget Control Panel, or another program using them.",
-            longest, first.serverDisplayName(),
-            first.channelInfo.serialNumber, first.channelInfo.hubPort, names)
-
-    def _flushDetachBatch(self, server_key):
-        with self._outageLock:
-            self._batchTimers.pop(("detach", server_key), None)
-            pending = self._detachBatches.pop(server_key, set())
-        affected = [phidget for phidget in self._channelsForServer(server_key)
-                    if phidget._state == "detached" and phidget._detach_announced]
-        configured = self._channelsForServer(server_key)
-        if len(configured) > 1 and len(affected) == len(configured):
-            detached_at = min(phidget._detached_at for phidget in affected)
-            serials = {phidget.channelInfo.serialNumber for phidget in affected}
-            with self._outageLock:
-                self._serverOutages[server_key] = {
-                    "detachedAt": detached_at,
-                    "channelCount": len(affected),
-                    "serialCount": len(serials),
-                    "displayName": affected[0].serverDisplayName(),
-                }
-            self.logger.warning(
-                "Phidget server '%s' disconnected; %d configured channels across %d "
-                "physical Phidgets are unavailable and awaiting automatic reattach",
-                affected[0].serverDisplayName(), len(affected), len(serials))
-            return
-
-        for phidget in pending:
-            if phidget._state == "detached" and phidget._detach_announced:
-                detached_for = time.monotonic() - phidget._detached_at
-                self.logger.warning(
-                    "Phidget remains detached after %.1f seconds; awaiting automatic "
-                    "reattach: %s", detached_for, phidget._identity())
+        self.outageCoordinator.startup_open_failure(
+            phidget, detached_for, message)
 
     def phidgetAttachCompleted(self, phidget, detached_for, attach_count,
                                detach_announced):
@@ -395,8 +219,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             if physical_channels and all(
                     configured._state == "attached"
                     for configured in physical_channels):
-                with self._outageLock:
-                    self._startupOpenFailureLastLogged.pop(physical_key, None)
+                self.outageCoordinator.clear_open_failure(physical_key)
         supports = getattr(phidget, "supportsFunction", None)
         if supports is not None:
             adapter_id = phidget.indigoDevice.id
@@ -449,34 +272,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                 "reattached" if attach_count > 1 else "attached",
                 detached_for, attach_count, phidget._identity())
             return
-        server_key = phidget.serverKey()
-        with self._outageLock:
-            self._recoveryBatches.setdefault(server_key, {})[phidget] = detached_for
-        self._scheduleBatch("recovery", server_key, self._flushRecoveryBatch)
-
-    def _flushRecoveryBatch(self, server_key):
-        with self._outageLock:
-            self._batchTimers.pop(("recovery", server_key), None)
-            pending = self._recoveryBatches.pop(server_key, {})
-            outage = self._serverOutages.get(server_key)
-        configured = self._channelsForServer(server_key)
-        if outage is not None:
-            if configured and all(
-                    phidget._state == "attached" for phidget in configured):
-                duration = time.monotonic() - outage["detachedAt"]
-                self.logger.info(
-                    "Phidget server '%s' recovered after %.1f seconds; all %d "
-                    "configured channels across %d physical Phidgets reattached",
-                    outage["displayName"], duration, outage["channelCount"],
-                    outage["serialCount"])
-                with self._outageLock:
-                    self._serverOutages.pop(server_key, None)
-            return
-
-        for phidget, detached_for in pending.items():
-            self.logger.info(
-                "Phidget reattached in %.1f seconds (attach #%d): %s",
-                detached_for, phidget._attach_count, phidget._identity())
+        self.outageCoordinator.attach_completed(phidget, detached_for)
 
     def getDeviceStateList(self, device):
         runtime_device = self._runtime_registry().get(device.id)
@@ -603,18 +399,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         if collector is not None:
             collector.stop()
         self.eventCoordinator.stop()
-        with self._outageLock:
-            timers = list(self._batchTimers.values())
-            self._batchTimers.clear()
-            self._detachBatches.clear()
-            self._recoveryBatches.clear()
-            self._startupContentionBatches.clear()
-            self._startupUnavailableBatches.clear()
-            self._startupOpenFailureBatches.clear()
-            self._startupOpenFailureLastLogged.clear()
-            self._serverOutages.clear()
-        for timer in timers:
-            timer.cancel()
+        self.outageCoordinator.stop()
 
         if self.networkMonitor is not None:
             try:

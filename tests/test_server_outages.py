@@ -1,7 +1,6 @@
 import importlib.util
 import pathlib
 import sys
-import threading
 import time
 import types
 import unittest
@@ -27,6 +26,8 @@ sys.modules.setdefault("indigo", indigo)
 SPEC = importlib.util.spec_from_file_location("plugin_under_test", SERVER_PLUGIN / "plugin.py")
 plugin_module = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(plugin_module)
+
+from outage_coordinator import OutageCoordinator
 
 
 class FakePhidget(object):
@@ -65,52 +66,87 @@ class ServerOutageTests(unittest.TestCase):
             2: FakePhidget(2, 200),
         }
         self.plugin.logger = mock.Mock()
-        self.plugin._outageLock = threading.RLock()
-        self.plugin._detachBatches = {}
-        self.plugin._recoveryBatches = {}
-        self.plugin._startupContentionBatches = {}
-        self.plugin._startupUnavailableBatches = {}
-        self.plugin._startupOpenFailureBatches = {}
-        self.plugin._startupOpenFailureLastLogged = {}
-        self.plugin._batchTimers = {}
-        self.plugin._serverOutages = {}
+        self.coordinator = OutageCoordinator(
+            self.plugin.logger,
+            lambda: list(self.plugin.activePhidgets.values()))
         self.server_key = "Test-Server-B._phidget22server._tcp.local"
+
+    def test_batch_timer_is_replaced_and_shutdown_cancels_it(self):
+        timers = []
+
+        class FakeTimer(object):
+            def __init__(self, delay, callback, args):
+                self.delay = delay
+                self.callback = callback
+                self.args = args
+                self.daemon = False
+                self.started = False
+                self.cancelled = False
+                timers.append(self)
+
+            def start(self):
+                self.started = True
+
+            def cancel(self):
+                self.cancelled = True
+
+        coordinator = OutageCoordinator(
+            self.plugin.logger,
+            lambda: list(self.plugin.activePhidgets.values()),
+            timer_factory=FakeTimer)
+        phidget = self.plugin.activePhidgets[1]
+
+        coordinator.detach_announced(phidget)
+        coordinator.detach_announced(phidget)
+
+        self.assertEqual(len(timers), 2)
+        self.assertTrue(timers[0].cancelled)
+        self.assertTrue(timers[1].started)
+        self.assertEqual(timers[1].delay, coordinator.COALESCE_SECONDS)
+
+        timers[0].callback(*timers[0].args)
+        self.assertIn(self.server_key, coordinator._batches["detach"])
+
+        coordinator.stop()
+
+        self.assertTrue(timers[1].cancelled)
+        self.assertEqual(coordinator._batches["detach"], {})
 
     def test_all_channels_detached_produces_one_server_warning_and_recovery(self):
         channels = set(self.plugin.activePhidgets.values())
-        self.plugin._detachBatches[self.server_key] = channels
+        self.coordinator._batches["detach"][self.server_key] = channels
 
-        self.plugin._flushDetachBatch(self.server_key)
+        self.coordinator.flush_detach(self.server_key)
 
         self.plugin.logger.warning.assert_called_once()
         warning = self.plugin.logger.warning.call_args.args[0]
         self.assertIn("server '%s' disconnected", warning)
-        self.assertIn(self.server_key, self.plugin._serverOutages)
+        self.assertIn(self.server_key, self.coordinator._server_outages)
 
         for phidget in channels:
             phidget._state = "attached"
             phidget._detach_announced = False
-        self.plugin._recoveryBatches[self.server_key] = {
+        self.coordinator._batches["recovery"][self.server_key] = {
             phidget: 73.0 for phidget in channels
         }
 
-        self.plugin._flushRecoveryBatch(self.server_key)
+        self.coordinator.flush_recovery(self.server_key)
 
         self.plugin.logger.info.assert_called_once()
-        self.assertNotIn(self.server_key, self.plugin._serverOutages)
+        self.assertNotIn(self.server_key, self.coordinator._server_outages)
 
     def test_partial_detach_keeps_channel_level_warning(self):
         attached = self.plugin.activePhidgets[2]
         attached._state = "attached"
         attached._detach_announced = False
         detached = self.plugin.activePhidgets[1]
-        self.plugin._detachBatches[self.server_key] = {detached}
+        self.coordinator._batches["detach"][self.server_key] = {detached}
 
-        self.plugin._flushDetachBatch(self.server_key)
+        self.coordinator.flush_detach(self.server_key)
 
         self.plugin.logger.warning.assert_called_once()
         self.assertIn("Phidget remains detached", self.plugin.logger.warning.call_args.args[0])
-        self.assertNotIn(self.server_key, self.plugin._serverOutages)
+        self.assertNotIn(self.server_key, self.coordinator._server_outages)
 
     def test_startup_contention_is_grouped_by_physical_phidget(self):
         first = FakePhidget(1, 100, channel=0)
@@ -118,11 +154,11 @@ class ServerOutageTests(unittest.TestCase):
         first._startup_contention_message = "device is in use"
         second._startup_contention_message = "device is in use"
         physical_key = (self.server_key, 100, 1)
-        self.plugin._startupContentionBatches[physical_key] = {
+        self.coordinator._batches["startup-contention"][physical_key] = {
             first: 5.0, second: 5.1,
         }
 
-        self.plugin._flushStartupContentionBatch(physical_key)
+        self.coordinator.flush_startup_contention(physical_key)
 
         self.plugin.logger.error.assert_called_once()
         arguments = self.plugin.logger.error.call_args.args
@@ -134,10 +170,10 @@ class ServerOutageTests(unittest.TestCase):
         first = FakePhidget(1, 622666, state="starting", channel=0, hub_port=0)
         second = FakePhidget(2, 622666, state="starting", channel=0, hub_port=1)
         self.plugin.activePhidgets = {1: first, 2: second}
-        self.plugin._startupUnavailableBatches[622666] = {
+        self.coordinator._batches["startup-unavailable"][622666] = {
             first: (7200.0, "starting"), second: (7200.1, "starting")}
 
-        self.plugin._flushStartupUnavailableBatch(622666)
+        self.coordinator.flush_startup_unavailable(622666)
 
         self.plugin.logger.error.assert_called_once()
         arguments = self.plugin.logger.error.call_args.args
@@ -152,10 +188,10 @@ class ServerOutageTests(unittest.TestCase):
         first = FakePhidget(1, 622666, state="starting")
         second = FakePhidget(2, 622666, state="attached")
         self.plugin.activePhidgets = {1: first, 2: second}
-        self.plugin._startupUnavailableBatches[622666] = {
+        self.coordinator._batches["startup-unavailable"][622666] = {
             first: (7200.0, "starting")}
 
-        self.plugin._flushStartupUnavailableBatch(622666)
+        self.coordinator.flush_startup_unavailable(622666)
 
         self.plugin.logger.error.assert_called_once()
         self.assertIn("Phidget remains detached", self.plugin.logger.error.call_args.args[0])
@@ -169,13 +205,13 @@ class ServerOutageTests(unittest.TestCase):
         second._startup_error_message = "Network device open failed."
         self.plugin.activePhidgets = {1: first, 2: second}
         physical_key = (self.server_key, 623318)
-        self.plugin._startupOpenFailureBatches[physical_key] = {
+        self.coordinator._batches["startup-open-failure"][physical_key] = {
             first: (30.0, first._startup_error_message),
             second: (30.1, second._startup_error_message),
         }
 
-        with mock.patch.object(plugin_module.time, "monotonic", return_value=100.0):
-            self.plugin._flushStartupOpenFailureBatch(physical_key)
+        self.coordinator._clock = lambda: 100.0
+        self.coordinator.flush_startup_open_failure(physical_key)
 
         self.plugin.logger.error.assert_called_once()
         arguments = self.plugin.logger.error.call_args.args
@@ -188,12 +224,12 @@ class ServerOutageTests(unittest.TestCase):
         phidget = self.plugin.activePhidgets[1]
         phidget._startup_error_message = "Network device open failed."
         physical_key = (self.server_key, phidget.channelInfo.serialNumber)
-        self.plugin._startupOpenFailureLastLogged[physical_key] = 100.0
-        self.plugin._startupOpenFailureBatches[physical_key] = {
+        self.coordinator._open_failure_last_logged[physical_key] = 100.0
+        self.coordinator._batches["startup-open-failure"][physical_key] = {
             phidget: (31.0, phidget._startup_error_message)}
 
-        with mock.patch.object(plugin_module.time, "monotonic", return_value=101.0):
-            self.plugin._flushStartupOpenFailureBatch(physical_key)
+        self.coordinator._clock = lambda: 101.0
+        self.coordinator.flush_startup_open_failure(physical_key)
 
         self.plugin.logger.error.assert_not_called()
 
