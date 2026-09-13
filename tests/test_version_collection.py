@@ -31,7 +31,7 @@ class FakeDevice(object):
         self.ui_values = {}
         self.refreshes = 0
 
-    def updateStateOnServer(self, key, value, uiValue=None):
+    def updateStateOnServer(self, key, value, uiValue=None, **kwargs):
         self.states[key] = value
         if uiValue is not None:
             self.ui_values[key] = uiValue

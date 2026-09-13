@@ -20,6 +20,7 @@ from bme280 import BME280Phidget
 from sgp41 import SGP41Phidget
 from network_server import NetworkServerDevice
 from config_util import saved_bool
+from runtime_registry import registry_for
 
 
 def _channel_info(plugin, device):
@@ -202,7 +203,8 @@ def _data_adapter(plugin, device, common):
 
 
 def _adapter_gpio_channel_info(plugin, device):
-    adapter = plugin.activePhidgets.get(int(device.pluginProps["gpioAdapterDeviceId"]))
+    adapter = registry_for(plugin).get(
+        int(device.pluginProps["gpioAdapterDeviceId"]))
     if adapter is None:
         adapter_device = indigo.devices[int(device.pluginProps["gpioAdapterDeviceId"])]
         source = _channel_info(plugin, adapter_device)

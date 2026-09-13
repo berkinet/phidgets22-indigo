@@ -57,20 +57,15 @@ import indigo
 import actions
 import device_factory
 import discovery_ui
+import event_coordinator
 import plugin
 
 
 class ConfigurationTests(unittest.TestCase):
     def test_detach_trigger_delay_is_cancellable_on_reattach(self):
-        instance = object.__new__(plugin.Plugin)
-        instance.trigger_dict = {}
-        instance._triggerLock = threading.RLock()
-        instance._triggerTimers = {}
-        instance._reportedDetachDevices = set()
         wrapper = types.SimpleNamespace(
             _state="detached",
             indigoDevice=types.SimpleNamespace(id=42))
-        instance.activePhidgets = {42: wrapper}
         indigo.trigger = types.SimpleNamespace(execute=mock.Mock())
         created = []
 
@@ -93,93 +88,83 @@ class ConfigurationTests(unittest.TestCase):
         trigger = types.SimpleNamespace(
             id=7, pluginTypeId="deviceDetached",
             pluginProps={"indigoDevice": "42", "detachDelay": "60"})
-        with mock.patch.object(plugin.threading, "Timer", FakeTimer):
-            instance.triggerStartProcessing(trigger)
-            instance.triggerEvent(wrapper, "deviceDetached")
-            self.assertTrue(created[-1].started)
-            self.assertEqual(created[-1].delay, 60.0)
-            indigo.trigger.execute.assert_not_called()
+        coordinator = event_coordinator.EventCoordinator(
+            timer_factory=FakeTimer)
+        coordinator.start_processing(trigger)
+        coordinator.trigger_event(wrapper, "deviceDetached")
+        self.assertTrue(created[-1].started)
+        self.assertEqual(created[-1].delay, 60.0)
+        indigo.trigger.execute.assert_not_called()
 
-            wrapper._state = "attached"
-            instance.triggerEvent(wrapper, "deviceAttached")
-            self.assertTrue(created[-1].cancelled)
-            created[-1].callback(*created[-1].args)
-            indigo.trigger.execute.assert_not_called()
+        wrapper._state = "attached"
+        coordinator.trigger_event(wrapper, "deviceAttached")
+        self.assertTrue(created[-1].cancelled)
+        created[-1].callback(*created[-1].args)
+        indigo.trigger.execute.assert_not_called()
 
-            wrapper._state = "detached"
-            instance.triggerEvent(wrapper, "deviceDetached")
-            created[-1].callback(*created[-1].args)
-            indigo.trigger.execute.assert_called_once_with(7)
+        wrapper._state = "detached"
+        coordinator.trigger_event(wrapper, "deviceDetached")
+        created[-1].callback(*created[-1].args)
+        indigo.trigger.execute.assert_called_once_with(7)
 
     def test_attach_fires_only_after_corresponding_detach_was_reported(self):
-        instance = object.__new__(plugin.Plugin)
-        instance.trigger_dict = {
+        coordinator = event_coordinator.EventCoordinator()
+        coordinator.triggers = {
             7: {"devid": 42, "event": "deviceDetached", "delay": 60.0},
             8: {"devid": 42, "event": "deviceAttached", "delay": 0.0},
         }
-        instance._triggerLock = threading.RLock()
-        instance._triggerTimers = {}
-        instance._reportedDetachDevices = set()
         wrapper = types.SimpleNamespace(
             _state="detached",
             indigoDevice=types.SimpleNamespace(id=42))
-        instance.activePhidgets = {}
         indigo.trigger = types.SimpleNamespace(execute=mock.Mock())
 
-        with mock.patch.object(instance, "_scheduleDelayedDetach"):
-            instance.triggerEvent(wrapper, "deviceDetached")
+        with mock.patch.object(coordinator, "_schedule_detach"):
+            coordinator.trigger_event(wrapper, "deviceDetached")
         wrapper._state = "attached"
-        instance.triggerEvent(wrapper, "deviceAttached")
+        coordinator.trigger_event(wrapper, "deviceAttached")
         indigo.trigger.execute.assert_not_called()
 
-        instance._reportedDetachDevices.add(42)
-        instance.triggerEvent(wrapper, "deviceAttached")
+        coordinator._reported_detaches.add(42)
+        coordinator.trigger_event(wrapper, "deviceAttached")
         indigo.trigger.execute.assert_called_once_with(8)
-        self.assertNotIn(42, instance._reportedDetachDevices)
+        self.assertNotIn(42, coordinator._reported_detaches)
 
     def test_delayed_detach_uses_event_source_for_network_server(self):
-        instance = object.__new__(plugin.Plugin)
-        instance.trigger_dict = {
+        coordinator = event_coordinator.EventCoordinator()
+        coordinator.triggers = {
             7: {"devid": 42, "event": "deviceDetached", "delay": 60.0},
         }
-        instance._triggerLock = threading.RLock()
         token = object()
-        instance._triggerTimers = {7: (mock.Mock(), token)}
-        instance._reportedDetachDevices = set()
-        instance.activePhidgets = {}
+        coordinator._timers = {7: (mock.Mock(), token)}
         monitor = types.SimpleNamespace(
             _state="detached",
             indigoDevice=types.SimpleNamespace(id=42))
         indigo.trigger = types.SimpleNamespace(execute=mock.Mock())
 
-        instance._executeDelayedDetach(7, monitor, token)
+        coordinator._execute_delayed_detach(7, monitor, token)
 
         indigo.trigger.execute.assert_called_once_with(7)
-        self.assertIn(42, instance._reportedDetachDevices)
+        self.assertIn(42, coordinator._reported_detaches)
 
     def test_immediate_detach_allows_attach_while_delayed_peer_is_cancelled(self):
-        instance = object.__new__(plugin.Plugin)
-        instance.trigger_dict = {
+        coordinator = event_coordinator.EventCoordinator()
+        coordinator.triggers = {
             6: {"devid": 42, "event": "deviceDetached", "delay": 0.0},
             7: {"devid": 42, "event": "deviceDetached", "delay": 60.0},
             8: {"devid": 42, "event": "deviceAttached", "delay": 0.0},
         }
-        instance._triggerLock = threading.RLock()
-        instance._triggerTimers = {}
-        instance._reportedDetachDevices = set()
         wrapper = types.SimpleNamespace(
             _state="detached",
             indigoDevice=types.SimpleNamespace(id=42))
-        instance.activePhidgets = {}
         indigo.trigger = types.SimpleNamespace(execute=mock.Mock())
 
-        with mock.patch.object(instance, "_scheduleDelayedDetach") as schedule:
-            instance.triggerEvent(wrapper, "deviceDetached")
+        with mock.patch.object(coordinator, "_schedule_detach") as schedule:
+            coordinator.trigger_event(wrapper, "deviceDetached")
         indigo.trigger.execute.assert_called_once_with(6)
         schedule.assert_called_once_with(7, wrapper, 60.0)
 
         wrapper._state = "attached"
-        instance.triggerEvent(wrapper, "deviceAttached")
+        coordinator.trigger_event(wrapper, "deviceAttached")
         self.assertEqual(
             indigo.trigger.execute.call_args_list,
             [mock.call(6), mock.call(8)])
@@ -258,7 +243,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.71</string>", plist)
+        self.assertIn("<string>0.4.0</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
@@ -951,7 +936,7 @@ class ConfigurationTests(unittest.TestCase):
         }
         wrapper = mock.Mock()
         device.stateListOrDisplayStateIdChanged.side_effect = lambda: (
-            self.assertIs(instance.activePhidgets[device.id], wrapper))
+            self.assertIs(instance._runtime_registry().get(device.id), wrapper))
         with mock.patch.object(
                 device_factory, "NativeLCDPhidget", return_value=wrapper) as factory:
             instance.deviceStartComm(device)
@@ -959,7 +944,7 @@ class ConfigurationTests(unittest.TestCase):
         wrapper.start.assert_called_once_with()
         device.stateListOrDisplayStateIdChanged.assert_called_once_with()
         instance.versionCollector.request_collection.assert_not_called()
-        self.assertIs(instance.activePhidgets[device.id], wrapper)
+        self.assertIs(instance._runtime_registry().get(device.id), wrapper)
         factory.assert_called_once()
         self.assertEqual(factory.call_args.kwargs["screenSize"], 1)
         self.assertEqual(factory.call_args.kwargs["backlight"], 0.8)
@@ -979,7 +964,7 @@ class ConfigurationTests(unittest.TestCase):
         active_lcd.turnOff = mock.Mock()
         active_lcd.runDisplayWhenAttached = mock.Mock(
             side_effect=lambda callback: callback())
-        instance.activePhidgets[device.id] = active_lcd
+        instance._runtime_registry().register(device.id, active_lcd)
         substitutions = {
             "%%name%%": "Kitchen",
             "%%v:12345%%": "21.4",
@@ -1441,7 +1426,7 @@ class ConfigurationTests(unittest.TestCase):
 
         dependent.providerStopping.assert_called_once_with()
         provider.stop.assert_called_once_with()
-        self.assertNotIn(42, instance.activePhidgets)
+        self.assertIsNone(instance._runtime_registry().get(42))
 
 
 if __name__ == "__main__":

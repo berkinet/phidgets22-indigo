@@ -8,6 +8,9 @@ import re
 import threading
 import traceback
 
+from state_publisher import update_indigo_states
+from runtime_registry import registry_for
+
 
 DEFAULT_INTERVAL_SECONDS = 86400
 INITIAL_DELAY_SECONDS = 10
@@ -26,20 +29,11 @@ def _timestamp():
     return datetime.datetime.now().astimezone().isoformat(timespec="seconds")
 
 
-def _publish(device, values, logger):
-    """Publish independently so one stale state list cannot abort a pass."""
-    for key, value in values.items():
-        try:
-            if key in YES_NO_STATES:
-                device.updateStateOnServer(
-                    key, value=value, uiValue="Yes" if value else "No")
-            else:
-                device.updateStateOnServer(key, value=value)
-        except Exception:
-            logger.debug(
-                "Unable to update version state %s for device='%s' id=%s:\n%s",
-                key, getattr(device, "name", "unknown"),
-                getattr(device, "id", "unknown"), traceback.format_exc())
+def _publish(owner, values, logger):
+    update_indigo_states(
+        owner, values, logger,
+        ui_values={key: lambda value: "Yes" if value else "No"
+                   for key in YES_NO_STATES})
 
 
 class FirmwareCatalog(object):
@@ -169,16 +163,15 @@ class VersionCollector(object):
 
     def collect(self):
         checked_at = _timestamp()
-        with getattr(self.plugin, "_activePhidgetsLock", self._lock):
-            wrappers = list(self.plugin.activePhidgets.values())
+        registry = registry_for(self.plugin)
+        wrappers = registry.snapshot()
         for wrapper in wrappers:
             if getattr(
                     getattr(wrapper, "indigoDevice", None),
                     "deviceTypeId", None) == "networkServer":
                 continue
             self._collect_device(wrapper, checked_at)
-        with getattr(self.plugin, "_networkServerLock", self._lock):
-            monitors = list(self.plugin._networkServerDevices)
+        monitors = registry.network_servers_snapshot()
         for monitor in monitors:
             self._collect_server(monitor, wrappers, checked_at)
 
@@ -189,7 +182,7 @@ class VersionCollector(object):
         if bool(getattr(
                 getattr(wrapper, "channelInfo", None),
                 "isHubPortDevice", False)):
-            _publish(device, {
+            _publish(wrapper, {
                 "hasFirmware": False,
                 "firmwareVersion": "",
                 "firmwareUpgradeable": False,
@@ -205,7 +198,7 @@ class VersionCollector(object):
             }, self.logger)
             return
         if getter is None:
-            _publish(device, {
+            _publish(wrapper, {
                 "hasFirmware": False,
                 "firmwareVersion": "",
                 "firmwareUpgradeable": False,
@@ -221,7 +214,7 @@ class VersionCollector(object):
             }, self.logger)
             return
         if getattr(wrapper, "_state", None) != "attached":
-            _publish(device, {
+            _publish(wrapper, {
                 "firmwareVersionStatus": "Unavailable",
                 "firmwareCatalogVersion": FIRMWARE_CATALOG_VERSION,
                 "lastVersionCheck": checked_at,
@@ -279,7 +272,7 @@ class VersionCollector(object):
                         upgradeability_status = "Unknown"
                         update_status = "Unknown"
                         upgradeability_error = str(error)
-            _publish(device, {
+            _publish(wrapper, {
                 "hasFirmware": has_firmware,
                 "firmwareVersion": str(version) if has_firmware else "",
                 "firmwareUpgradeable": upgradeable,
@@ -296,7 +289,7 @@ class VersionCollector(object):
                 "versionCheckError": upgradeability_error,
             }, self.logger)
         except Exception as error:
-            _publish(device, {
+            _publish(wrapper, {
                 "firmwareVersionStatus": "Check failed",
                 "firmwareCatalogVersion": FIRMWARE_CATALOG_VERSION,
                 "lastVersionCheck": checked_at,
@@ -330,7 +323,7 @@ class VersionCollector(object):
                 continue
             try:
                 major, minor = getter()
-                _publish(monitor.indigoDevice, {
+                _publish(monitor, {
                     "serverVersion": "%d.%d" % (major, minor),
                     "serverVersionStatus": "Collected",
                     "lastVersionCheck": checked_at,
@@ -338,13 +331,13 @@ class VersionCollector(object):
                 }, self.logger)
                 return
             except Exception as error:
-                _publish(monitor.indigoDevice, {
+                _publish(monitor, {
                     "serverVersionStatus": "Check failed",
                     "lastVersionCheck": checked_at,
                     "versionCheckError": str(error),
                 }, self.logger)
                 return
-        _publish(monitor.indigoDevice, {
+        _publish(monitor, {
             "serverVersion": "",
             "serverVersionStatus": "Unavailable",
             "lastVersionCheck": checked_at,

@@ -9,7 +9,7 @@ import time
 
 import indigo
 
-from phidget import update_indigo_state
+from state_publisher import update_indigo_state
 
 from Phidget22.Net import Net
 from Phidget22.PhidgetServerType import PhidgetServerType

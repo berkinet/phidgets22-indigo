@@ -13,6 +13,7 @@ from config_util import (bounded_float, bounded_int, call_with_timeout,
 from formula import Formula
 from i2c_resources import (find_address_owner,
                             find_native_channel_owner)
+from runtime_registry import registry_for
 
 
 FREENOVE_I2C_PROFILE = "freenove-hd44780-pcf8574"
@@ -580,7 +581,7 @@ class DiscoveryUiMixin(object):
             if owner is not None:
                 errors["sgpAdapterSelection"] = (
                     "Address 0x59 is already assigned to '%s'." % owner.name)
-            adapter = self.activePhidgets.get(int(adapter_id))
+            adapter = registry_for(self).get(int(adapter_id))
             if adapter is not None and "sgpAdapterSelection" not in errors:
                 try:
                     response = bytes(call_with_timeout(
@@ -646,7 +647,7 @@ class DiscoveryUiMixin(object):
                 errors["bmeI2CAddress"] = (
                     "Address 0x%02X is already assigned to '%s'." %
                     (address, owner.name))
-            adapter = self.activePhidgets.get(int(adapter_id))
+            adapter = registry_for(self).get(int(adapter_id))
             if adapter is not None and "bmeI2CAddress" not in errors:
                 try:
                     response = bytes(call_with_timeout(
@@ -794,7 +795,7 @@ class DiscoveryUiMixin(object):
                         "That address is already used by '%s' on this adapter." %
                         owner.name)
 
-                adapter = self.activePhidgets.get(int(adapter_id or 0))
+                adapter = registry_for(self).get(int(adapter_id or 0))
                 probe = getattr(adapter, "i2cAddressResponds", None)
                 if ("lcdI2CAddress" not in errors and probe is not None and
                         getattr(adapter, "_state", None) == "attached"):

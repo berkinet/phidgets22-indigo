@@ -4,7 +4,8 @@
 
 import threading
 
-from phidget import update_indigo_state
+from state_publisher import update_indigo_state
+from runtime_registry import registry_for
 
 
 class I2CPeripheralBase(object):
@@ -12,7 +13,7 @@ class I2CPeripheralBase(object):
         update_indigo_state(self, key, value, **kwargs)
 
     def _resolveAdapter(self):
-        adapter = self.indigo_plugin.activePhidgets.get(self.adapterDeviceId)
+        adapter = registry_for(self.indigo_plugin).get(self.adapterDeviceId)
         if adapter is None or not adapter.supportsFunction(self.PROVIDER_FUNCTION):
             raise RuntimeError("The selected I2C adapter is not active")
         self.adapter = adapter

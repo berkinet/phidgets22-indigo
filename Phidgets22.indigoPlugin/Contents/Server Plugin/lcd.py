@@ -16,6 +16,7 @@ from Phidget22.PhidgetException import PhidgetException
 
 from phidget import PhidgetBase
 from formula import Formula
+from runtime_registry import registry_for
 
 
 class LCDPhidget(PhidgetBase):
@@ -38,7 +39,7 @@ class LCDPhidget(PhidgetBase):
             adapter_device_id = int(adapter_device_id)
         except (TypeError, ValueError):
             raise ValueError("Select an available display provider")
-        adapter = indigo_plugin.activePhidgets.get(adapter_device_id)
+        adapter = registry_for(indigo_plugin).get(adapter_device_id)
         if adapter is None:
             raise RuntimeError("The selected display provider is not active")
         supports = getattr(adapter, "supportsFunction", None)

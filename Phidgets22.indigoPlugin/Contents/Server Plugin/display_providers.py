@@ -5,6 +5,7 @@
 import indigo
 
 from discovery import channel_token, format_phidget_model
+from runtime_registry import registry_for
 
 
 LCD_FUNCTION = "lcd"
@@ -20,7 +21,7 @@ def _native_name(description):
 
 
 def _adapter_supports_lcd(plugin, device):
-    wrapper = plugin.activePhidgets.get(device.id)
+    wrapper = registry_for(plugin).get(device.id)
     supports = getattr(wrapper, "supportsFunction", None)
     if supports is not None:
         return bool(supports(LCD_FUNCTION))

@@ -9,6 +9,7 @@ import indigo
 from lcd import LCDPhidget
 from formula import Formula
 from config_util import bounded_float, bounded_int
+from runtime_registry import registry_for
 
 
 SUBSTITUTION_PATTERN = re.compile(
@@ -17,13 +18,15 @@ SUBSTITUTION_PATTERN = re.compile(
 
 class ActionsMixin(object):
     def actionControlDevice(self, action, device):
-        if device.id in self.activePhidgets:
-            return self.activePhidgets[device.id].actionControlDevice(action)
+        runtime_device = registry_for(self).get(device.id)
+        if runtime_device is not None:
+            return runtime_device.actionControlDevice(action)
         raise Exception("Unexpected device: %s" % device.id)
 
     def actionControlSensor(self, action, device):
-        if device.id in self.activePhidgets:
-            return self.activePhidgets[device.id].actionControlSensor(action)
+        runtime_device = registry_for(self).get(device.id)
+        if runtime_device is not None:
+            return runtime_device.actionControlSensor(action)
         raise Exception("Unexpected device: %s" % device.id)
 
     def _lcdForAction(self, action, device=None):
@@ -35,7 +38,7 @@ class ActionsMixin(object):
         except (TypeError, ValueError):
             raise ValueError("LCD action has no target device")
 
-        lcd = self.activePhidgets.get(device_id)
+        lcd = registry_for(self).get(device_id)
         if lcd is None or not isinstance(lcd, LCDPhidget):
             device_name = getattr(device, "name", None)
             if not device_name:

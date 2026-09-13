@@ -9,20 +9,9 @@ import traceback
 
 import phidget_util
 from config_util import saved_bool
+from state_publisher import update_indigo_state
 from Phidget22.ErrorCode import ErrorCode
 from Phidget22.PhidgetException import PhidgetException
-
-
-def update_indigo_state(owner, key, value, **kwargs):
-    """Publish a state while treating its first value as a silent baseline."""
-    initialized = getattr(owner, "_initializedIndigoStates", None)
-    if initialized is None:
-        initialized = set()
-        owner._initializedIndigoStates = initialized
-    if "triggerEvents" not in kwargs:
-        kwargs["triggerEvents"] = key in initialized
-    owner.indigoDevice.updateStateOnServer(key, value=value, **kwargs)
-    initialized.add(key)
 
 
 class PeripheralUnavailableError(RuntimeError):

@@ -1,5 +1,22 @@
 # Release notes
 
+## 0.4.0 — 2026-09-13
+
+### Changed
+
+- Centralize Indigo state publication so every device type establishes its
+  first value silently and subsequent changes retain normal trigger behavior.
+- Move paired, delay-aware attachment and detachment trigger delivery into a
+  dedicated event coordinator without changing existing trigger definitions.
+- Replace direct access to shared active-device collections with a thread-safe
+  runtime registry used by devices, actions, discovery, displays, and version
+  collection.
+
+### Fixed
+
+- Apply the same silent-initial-state rule to version-collection states,
+  preventing a version pass from bypassing restart trigger protection.
+
 ## 0.3.71 — 2026-09-13
 
 ### Fixed

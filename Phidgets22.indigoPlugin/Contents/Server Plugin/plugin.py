@@ -7,7 +7,6 @@ import logging
 import threading
 import time
 import traceback
-from contextlib import nullcontext
 
 import indigo
 
@@ -23,9 +22,11 @@ from config_util import saved_bool
 from device_factory import create_phidget
 from discovery import DiscoveryInventory
 from discovery_ui import DiscoveryUiMixin
+from event_coordinator import EventCoordinator
 from version_check import start_version_check
 from version_collection import ATTACH_DELAY_SECONDS, VersionCollector
 from phidget import PeripheralUnavailableError
+from runtime_registry import RuntimeDeviceRegistry, registry_for
 
 
 class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
@@ -37,20 +38,16 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
 
         self.plugin_file_handler.setLevel(logging.INFO)
         self.indigo_log_handler.setLevel(logging.INFO)
-        self.activePhidgets = {}
-        self._activePhidgetsLock = threading.RLock()
+        self.runtimeRegistry = RuntimeDeviceRegistry()
+        self._networkServerLock = threading.RLock()
         self.phidgetInfo = PhidgetInfo()
         self.logger.setLevel(logging.DEBUG)
-        self.trigger_dict = {}
-        self._triggerLock = threading.RLock()
-        self._triggerTimers = {}
-        self._reportedDetachDevices = set()
+        self.eventCoordinator = EventCoordinator()
+        self.trigger_dict = self.eventCoordinator.triggers
 
         self.discoveryInventory = None
         self.networkMonitor = None
-        self._networkServerLock = threading.RLock()
         self._discoveredServers = {}
-        self._networkServerDevices = set()
         self._outageLock = threading.RLock()
         self._detachBatches = {}
         self._recoveryBatches = {}
@@ -117,13 +114,16 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
 
         self.versionCollector.start()
 
+    def _runtime_registry(self):
+        return registry_for(self)
+
     def _serverAdded(self, net, server, kv):
         name = str(getattr(server, "name", "") or "").strip()
         if not name:
             return
         with self._networkServerLock:
             self._discoveredServers[name] = server
-            monitors = [monitor for monitor in self._networkServerDevices
+            monitors = [monitor for monitor in self._runtime_registry().network_servers_snapshot()
                         if monitor.serverName == name]
         self.logger.debug("Phidget network server available: %s", server)
         for monitor in monitors:
@@ -140,7 +140,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             return
         with self._networkServerLock:
             self._discoveredServers.pop(name, None)
-            monitors = [monitor for monitor in self._networkServerDevices
+            monitors = [monitor for monitor in self._runtime_registry().network_servers_snapshot()
                         if monitor.serverName == name]
         self.logger.debug("Phidget network server unavailable: %s", server)
         for monitor in monitors:
@@ -153,7 +153,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
 
     def registerNetworkServerDevice(self, monitor):
         with self._networkServerLock:
-            self._networkServerDevices.add(monitor)
+            self._runtime_registry().register_network_server(monitor)
             server = self._discoveredServers.get(monitor.serverName)
         if server is not None:
             monitor.serverAvailable(server)
@@ -161,8 +161,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             monitor.serverInitiallyUnavailable()
 
     def unregisterNetworkServerDevice(self, monitor):
-        with self._networkServerLock:
-            self._networkServerDevices.discard(monitor)
+        self._runtime_registry().remove_network_server(monitor)
 
     def networkServerHasChannels(self, server_name):
         """Return whether Manager discovery currently sees this server."""
@@ -180,7 +179,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         return False
 
     def _channelsForServer(self, server_key):
-        return [phidget for phidget in list(self.activePhidgets.values())
+        return [phidget for phidget in self._runtime_registry().snapshot()
                 if phidget.channelInfo.netInfo.isRemote and
                 phidget.serverKey() == server_key]
 
@@ -207,7 +206,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         supports = getattr(phidget, "supportsFunction", None)
         if supports is not None:
             adapter_id = phidget.indigoDevice.id
-            for dependent in list(self.activePhidgets.values()):
+            for dependent in self._runtime_registry().dependents_of(adapter_id):
                 if (dependent is phidget or
                         getattr(dependent, "adapterDeviceId", None) != adapter_id):
                     continue
@@ -296,7 +295,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         if not affected:
             return
         configured = [
-            phidget for phidget in list(self.activePhidgets.values())
+            phidget for phidget in self._runtime_registry().snapshot()
             if phidget.channelInfo.serialNumber == serial_number]
         all_unavailable = (len(configured) > 1 and
                            set(affected) == set(configured))
@@ -389,7 +388,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                 hasattr(channel_info, "serialNumber")):
             physical_key = (server_key_method(), channel_info.serialNumber)
             physical_channels = [
-                configured for configured in list(self.activePhidgets.values())
+                configured for configured in self._runtime_registry().snapshot()
                 if (getattr(configured, "serverKey", lambda: None)(),
                     getattr(getattr(configured, "channelInfo", None),
                             "serialNumber", None)) == physical_key]
@@ -420,7 +419,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                     continue
                 if selected_adapter != adapter_id:
                     continue
-                dependent = self.activePhidgets.get(device.id)
+                dependent = self._runtime_registry().get(device.id)
                 if dependent is None:
                     self.deviceStartComm(device)
                 elif (getattr(dependent, "_state", None) != "attached" or
@@ -480,8 +479,9 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                 detached_for, phidget._attach_count, phidget._identity())
 
     def getDeviceStateList(self, device):
-        if device.id in self.activePhidgets:
-            states = self.activePhidgets[device.id].getDeviceStateList()
+        runtime_device = self._runtime_registry().get(device.id)
+        if runtime_device is not None:
+            states = runtime_device.getDeviceStateList()
         else:
             states = indigo.List()
         if device.deviceTypeId == "networkServer":
@@ -514,36 +514,33 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         return states
 
     def getDeviceDisplayStateId(self, device):
-        if device.id in self.activePhidgets:
-            return self.activePhidgets[device.id].getDeviceDisplayStateId()
+        runtime_device = self._runtime_registry().get(device.id)
+        if runtime_device is not None:
+            return runtime_device.getDeviceDisplayStateId()
         return None
 
     def deviceStartComm(self, device):
         try:
             new_phidget = create_phidget(self, device)
-            with getattr(self, "_activePhidgetsLock", nullcontext()):
-                self.activePhidgets[device.id] = new_phidget
+            self._runtime_registry().register(device.id, new_phidget)
             new_phidget.start()
             device.stateListOrDisplayStateIdChanged()
         except PeripheralUnavailableError as error:
-            with getattr(self, "_activePhidgetsLock", nullcontext()):
-                self.activePhidgets.pop(device.id, None)
+            self._runtime_registry().remove(device.id)
             device.setErrorStateOnServer("Initialization failed")
             self.logger.error(
                 "Configured peripheral unavailable: device='%s' id=%s "
                 "model=%s: %s", device.name, device.id,
                 device.deviceTypeId, error)
         except PhidgetException as error:
-            with getattr(self, "_activePhidgetsLock", nullcontext()):
-                self.activePhidgets.pop(device.id, None)
+            self._runtime_registry().remove(device.id)
             device.setErrorStateOnServer("Unable to start")
             self.logger.error(
                 "Unable to start Phidget device='%s' id=%s model=%s: %d: %s\n%s",
                 device.name, device.id, device.deviceTypeId,
                 error.code, error.details, traceback.format_exc())
         except Exception:
-            with getattr(self, "_activePhidgetsLock", nullcontext()):
-                self.activePhidgets.pop(device.id, None)
+            self._runtime_registry().remove(device.id)
             device.setErrorStateOnServer("Unable to start")
             self.logger.error(
                 "Unable to start Phidget device='%s' id=%s model=%s:\n%s",
@@ -551,27 +548,10 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                 traceback.format_exc())
 
     def triggerStartProcessing(self, trigger):
-        phidget_device_id = int(trigger.pluginProps["indigoDevice"])
-        try:
-            delay = float(trigger.pluginProps.get("detachDelay", 0) or 0)
-        except (TypeError, ValueError):
-            delay = 0.0
-        with self._triggerLock:
-            pending = self._triggerTimers.pop(trigger.id, None)
-            self.trigger_dict[trigger.id] = {
-                "devid": phidget_device_id,
-                "event": trigger.pluginTypeId,
-                "delay": max(0.0, delay),
-            }
-        if pending is not None:
-            pending[0].cancel()
+        self.eventCoordinator.start_processing(trigger)
 
     def triggerStopProcessing(self, trigger):
-        with self._triggerLock:
-            self.trigger_dict.pop(trigger.id, None)
-            pending = self._triggerTimers.pop(trigger.id, None)
-        if pending is not None:
-            pending[0].cancel()
+        self.eventCoordinator.stop_processing(trigger)
 
     def validateEventConfigUi(self, valuesDict, typeId, eventId):
         if typeId != "deviceDetached":
@@ -588,76 +568,11 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         valuesDict["detachDelay"] = "%g" % delay
         return (True, valuesDict)
 
-    def _cancelDelayedDetachForDevice(self, device_id):
-        with self._triggerLock:
-            trigger_ids = [
-                trigger_id for trigger_id, details in self.trigger_dict.items()
-                if details["devid"] == device_id]
-            timers = [self._triggerTimers.pop(trigger_id)[0]
-                      for trigger_id in trigger_ids
-                      if trigger_id in self._triggerTimers]
-        for timer in timers:
-            timer.cancel()
-
-    def _scheduleDelayedDetach(self, trigger_id, device, delay):
-        device_id = device.indigoDevice.id
-        token = object()
-        timer = threading.Timer(
-            delay, self._executeDelayedDetach,
-            args=(trigger_id, device, token))
-        timer.daemon = True
-        with self._triggerLock:
-            old = self._triggerTimers.pop(trigger_id, None)
-            self._triggerTimers[trigger_id] = (timer, token)
-        if old is not None:
-            old[0].cancel()
-        timer.start()
-
-    def _executeDelayedDetach(self, trigger_id, device, token):
-        device_id = device.indigoDevice.id
-        with self._triggerLock:
-            pending = self._triggerTimers.get(trigger_id)
-            details = self.trigger_dict.get(trigger_id)
-            if (pending is None or pending[1] is not token or
-                    details is None or details["devid"] != device_id or
-                    details["event"] != "deviceDetached"):
-                return
-            self._triggerTimers.pop(trigger_id, None)
-            if getattr(device, "_state", None) != "detached":
-                return
-            self._reportedDetachDevices.add(device_id)
-        indigo.trigger.execute(trigger_id)
-
     def triggerEvent(self, device, event):
-        device_id = device.indigoDevice.id
-        if event == "deviceAttached":
-            self._cancelDelayedDetachForDevice(device_id)
-        with self._triggerLock:
-            triggers = list(self.trigger_dict.items())
-            detach_tracked = any(
-                details["devid"] == device_id and
-                details["event"] == "deviceDetached"
-                for details in self.trigger_dict.values())
-            detach_reported = device_id in self._reportedDetachDevices
-            if event == "deviceAttached" and detach_reported:
-                self._reportedDetachDevices.discard(device_id)
-        if event == "deviceAttached" and detach_tracked and not detach_reported:
-            return
-        for trigger_id, trigger in triggers:
-            if (trigger["devid"] == device.indigoDevice.id and
-                    trigger["event"] == event):
-                delay = trigger.get("delay", 0.0)
-                if event == "deviceDetached" and delay > 0:
-                    self._scheduleDelayedDetach(
-                        trigger_id, device, delay)
-                else:
-                    if event == "deviceDetached":
-                        with self._triggerLock:
-                            self._reportedDetachDevices.add(device_id)
-                    indigo.trigger.execute(trigger_id)
+        self.eventCoordinator.trigger_event(device, event)
 
     def deviceStopComm(self, device):
-        phidget = self.activePhidgets.get(device.id)
+        phidget = self._runtime_registry().get(device.id)
         if phidget is None:
             self.logger.debug(
                 "Stop requested for inactive Phidget device='%s' id=%s",
@@ -668,15 +583,14 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             # Indigo may stop a shared DataAdapter before its logical LCD.
             # Quiesce dependent timers while the provider is still attached so
             # an in-flight frame finishes before the bus is closed.
-            for dependent in list(self.activePhidgets.values()):
+            for dependent in self._runtime_registry().dependents_of(device.id):
                 if (dependent is phidget or
                         getattr(dependent, "adapterDeviceId", None) != device.id):
                     continue
                 callback = getattr(dependent, "providerStopping", None)
                 if callback is not None:
                     callback()
-        with getattr(self, "_activePhidgetsLock", nullcontext()):
-            self.activePhidgets.pop(device.id, None)
+        self._runtime_registry().remove(device.id)
         try:
             phidget.stop()
         except Exception:
@@ -688,13 +602,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         collector = getattr(self, "versionCollector", None)
         if collector is not None:
             collector.stop()
-        with self._triggerLock:
-            trigger_timers = [item[0]
-                              for item in self._triggerTimers.values()]
-            self._triggerTimers.clear()
-            self._reportedDetachDevices.clear()
-        for timer in trigger_timers:
-            timer.cancel()
+        self.eventCoordinator.stop()
         with self._outageLock:
             timers = list(self._batchTimers.values())
             self._batchTimers.clear()
@@ -718,8 +626,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                     traceback.format_exc())
             self.networkMonitor = None
 
-        with getattr(self, "_activePhidgetsLock", nullcontext()):
-            active = list(self.activePhidgets.items())
+        active = self._runtime_registry().items_snapshot()
         # Quiesce all logical children before any shared provider can close.
         for _, provider in active:
             if getattr(provider, "supportsFunction", None) is None:
@@ -746,8 +653,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                 self.logger.warning(
                     "Unable to stop active Phidget id=%s during shutdown:\n%s",
                     device_id, traceback.format_exc())
-        with getattr(self, "_activePhidgetsLock", nullcontext()):
-            self.activePhidgets.clear()
+        self._runtime_registry().clear()
 
         if self.discoveryInventory is not None:
             try:
