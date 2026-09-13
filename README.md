@@ -104,6 +104,12 @@ empty list does not fire the Event. The plugin action **Log devices with
 available firmware updates** writes the current list at Warning level. The
 plugin never installs firmware.
 
+In a Trigger action's text field (for example an email body), reference the
+variable using Indigo's `%%v:VARIABLE_ID%%` substitution. Replace
+`VARIABLE_ID` with the ID of `Phidgets22_FirmwareUpdatesAvailable` shown in
+Indigo's Variables list. The firmware Event's configuration page includes the
+same reminder.
+
 When the plugin starts, the first live value received for each state establishes
 its baseline without firing Indigo Device State Changed triggers. Later state
 updates retain normal trigger behavior.

@@ -13,6 +13,12 @@
   list do not fire the Event.
 - Add **Log devices with available firmware updates** as a plugin action.
 
+### Documentation
+
+- Show the Indigo variable name and `%%v:VARIABLE_ID%%` substitution syntax
+  in the firmware-update Event configuration so Trigger actions can include
+  the current device list in email or log text.
+
 ### Changed
 
 - Clarify the export menu and action wording to say **to a JSON file**.

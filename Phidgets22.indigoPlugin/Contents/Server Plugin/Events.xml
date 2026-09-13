@@ -4,6 +4,11 @@
     <Event id="firmwareUpdateAvailable">
         <Name>Device firmware update available</Name>
         <Label>The list of Indigo Phidget devices with available firmware updates changed</Label>
+        <ConfigUI>
+            <Field id="firmwareVariableHelp" type="label" fontSize="small" fontColor="darkgray">
+                <Label>Use Indigo variable Phidgets22_FirmwareUpdatesAvailable in the Trigger's action text. Insert its value with %%v:VARIABLE_ID%%, replacing VARIABLE_ID with the variable's Indigo ID.</Label>
+            </Field>
+        </ConfigUI>
     </Event>
     <Event id="deviceDetached" deviceFilter="self">
         <Name>Phidget device detached</Name>

@@ -356,6 +356,10 @@ class ConfigurationTests(unittest.TestCase):
         event = events.find("./Event[@id='firmwareUpdateAvailable']")
         self.assertIsNotNone(event)
         self.assertIsNone(event.get("deviceFilter"))
+        guidance = event.find("./ConfigUI/Field[@id='firmwareVariableHelp']/Label")
+        self.assertIsNotNone(guidance)
+        self.assertIn("%%v:VARIABLE_ID%%", guidance.text)
+        self.assertIn("Phidgets22_FirmwareUpdatesAvailable", guidance.text)
         coordinator = event_coordinator.EventCoordinator()
         trigger = types.SimpleNamespace(
             id=17, pluginTypeId="firmwareUpdateAvailable", pluginProps={})
