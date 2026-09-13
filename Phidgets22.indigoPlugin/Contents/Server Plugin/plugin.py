@@ -44,6 +44,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         self.trigger_dict = {}
         self._triggerLock = threading.RLock()
         self._triggerTimers = {}
+        self._reportedDetachDevices = set()
 
         self.discoveryInventory = None
         self.networkMonitor = None
@@ -598,11 +599,12 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         for timer in timers:
             timer.cancel()
 
-    def _scheduleDelayedDetach(self, trigger_id, device_id, delay):
+    def _scheduleDelayedDetach(self, trigger_id, device, delay):
+        device_id = device.indigoDevice.id
         token = object()
         timer = threading.Timer(
             delay, self._executeDelayedDetach,
-            args=(trigger_id, device_id, token))
+            args=(trigger_id, device, token))
         timer.daemon = True
         with self._triggerLock:
             old = self._triggerTimers.pop(trigger_id, None)
@@ -611,7 +613,8 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             old[0].cancel()
         timer.start()
 
-    def _executeDelayedDetach(self, trigger_id, device_id, token):
+    def _executeDelayedDetach(self, trigger_id, device, token):
+        device_id = device.indigoDevice.id
         with self._triggerLock:
             pending = self._triggerTimers.get(trigger_id)
             details = self.trigger_dict.get(trigger_id)
@@ -620,9 +623,9 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                     details["event"] != "deviceDetached"):
                 return
             self._triggerTimers.pop(trigger_id, None)
-        phidget = self.activePhidgets.get(device_id)
-        if phidget is None or getattr(phidget, "_state", None) != "detached":
-            return
+            if getattr(device, "_state", None) != "detached":
+                return
+            self._reportedDetachDevices.add(device_id)
         indigo.trigger.execute(trigger_id)
 
     def triggerEvent(self, device, event):
@@ -631,14 +634,26 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             self._cancelDelayedDetachForDevice(device_id)
         with self._triggerLock:
             triggers = list(self.trigger_dict.items())
+            detach_tracked = any(
+                details["devid"] == device_id and
+                details["event"] == "deviceDetached"
+                for details in self.trigger_dict.values())
+            detach_reported = device_id in self._reportedDetachDevices
+            if event == "deviceAttached" and detach_reported:
+                self._reportedDetachDevices.discard(device_id)
+        if event == "deviceAttached" and detach_tracked and not detach_reported:
+            return
         for trigger_id, trigger in triggers:
             if (trigger["devid"] == device.indigoDevice.id and
                     trigger["event"] == event):
                 delay = trigger.get("delay", 0.0)
                 if event == "deviceDetached" and delay > 0:
                     self._scheduleDelayedDetach(
-                        trigger_id, device_id, delay)
+                        trigger_id, device, delay)
                 else:
+                    if event == "deviceDetached":
+                        with self._triggerLock:
+                            self._reportedDetachDevices.add(device_id)
                     indigo.trigger.execute(trigger_id)
 
     def deviceStopComm(self, device):
@@ -677,6 +692,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             trigger_timers = [item[0]
                               for item in self._triggerTimers.values()]
             self._triggerTimers.clear()
+            self._reportedDetachDevices.clear()
         for timer in trigger_timers:
             timer.cancel()
         with self._outageLock:

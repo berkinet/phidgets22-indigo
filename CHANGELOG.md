@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.3.71 — 2026-09-13
+
+### Fixed
+
+- Pair attachment events with detachments that actually passed their
+  configured delay and fired. A brief outage still updates device status but
+  now cancels both automation events.
+- Apply delayed detach events to Network Server devices as well as physical
+  Phidget channel devices.
+
 ## 0.3.70 — 2026-09-12
 
 ### Changed

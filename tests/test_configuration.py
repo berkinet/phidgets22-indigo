@@ -66,6 +66,7 @@ class ConfigurationTests(unittest.TestCase):
         instance.trigger_dict = {}
         instance._triggerLock = threading.RLock()
         instance._triggerTimers = {}
+        instance._reportedDetachDevices = set()
         wrapper = types.SimpleNamespace(
             _state="detached",
             indigoDevice=types.SimpleNamespace(id=42))
@@ -109,6 +110,79 @@ class ConfigurationTests(unittest.TestCase):
             instance.triggerEvent(wrapper, "deviceDetached")
             created[-1].callback(*created[-1].args)
             indigo.trigger.execute.assert_called_once_with(7)
+
+    def test_attach_fires_only_after_corresponding_detach_was_reported(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.trigger_dict = {
+            7: {"devid": 42, "event": "deviceDetached", "delay": 60.0},
+            8: {"devid": 42, "event": "deviceAttached", "delay": 0.0},
+        }
+        instance._triggerLock = threading.RLock()
+        instance._triggerTimers = {}
+        instance._reportedDetachDevices = set()
+        wrapper = types.SimpleNamespace(
+            _state="detached",
+            indigoDevice=types.SimpleNamespace(id=42))
+        instance.activePhidgets = {}
+        indigo.trigger = types.SimpleNamespace(execute=mock.Mock())
+
+        with mock.patch.object(instance, "_scheduleDelayedDetach"):
+            instance.triggerEvent(wrapper, "deviceDetached")
+        wrapper._state = "attached"
+        instance.triggerEvent(wrapper, "deviceAttached")
+        indigo.trigger.execute.assert_not_called()
+
+        instance._reportedDetachDevices.add(42)
+        instance.triggerEvent(wrapper, "deviceAttached")
+        indigo.trigger.execute.assert_called_once_with(8)
+        self.assertNotIn(42, instance._reportedDetachDevices)
+
+    def test_delayed_detach_uses_event_source_for_network_server(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.trigger_dict = {
+            7: {"devid": 42, "event": "deviceDetached", "delay": 60.0},
+        }
+        instance._triggerLock = threading.RLock()
+        token = object()
+        instance._triggerTimers = {7: (mock.Mock(), token)}
+        instance._reportedDetachDevices = set()
+        instance.activePhidgets = {}
+        monitor = types.SimpleNamespace(
+            _state="detached",
+            indigoDevice=types.SimpleNamespace(id=42))
+        indigo.trigger = types.SimpleNamespace(execute=mock.Mock())
+
+        instance._executeDelayedDetach(7, monitor, token)
+
+        indigo.trigger.execute.assert_called_once_with(7)
+        self.assertIn(42, instance._reportedDetachDevices)
+
+    def test_immediate_detach_allows_attach_while_delayed_peer_is_cancelled(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.trigger_dict = {
+            6: {"devid": 42, "event": "deviceDetached", "delay": 0.0},
+            7: {"devid": 42, "event": "deviceDetached", "delay": 60.0},
+            8: {"devid": 42, "event": "deviceAttached", "delay": 0.0},
+        }
+        instance._triggerLock = threading.RLock()
+        instance._triggerTimers = {}
+        instance._reportedDetachDevices = set()
+        wrapper = types.SimpleNamespace(
+            _state="detached",
+            indigoDevice=types.SimpleNamespace(id=42))
+        instance.activePhidgets = {}
+        indigo.trigger = types.SimpleNamespace(execute=mock.Mock())
+
+        with mock.patch.object(instance, "_scheduleDelayedDetach") as schedule:
+            instance.triggerEvent(wrapper, "deviceDetached")
+        indigo.trigger.execute.assert_called_once_with(6)
+        schedule.assert_called_once_with(7, wrapper, 60.0)
+
+        wrapper._state = "attached"
+        instance.triggerEvent(wrapper, "deviceAttached")
+        self.assertEqual(
+            indigo.trigger.execute.call_args_list,
+            [mock.call(6), mock.call(8)])
 
     def test_detach_trigger_delay_validation(self):
         instance = object.__new__(plugin.Plugin)
@@ -184,7 +258,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.3.70</string>", plist)
+        self.assertIn("<string>0.3.71</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
