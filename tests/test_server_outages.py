@@ -151,6 +151,22 @@ class ServerOutageTests(unittest.TestCase):
         self.assertIn("Phidget remains detached", self.plugin.logger.warning.call_args.args[0])
         self.assertNotIn(self.server_key, self.coordinator._server_outages)
 
+    def test_network_server_monitor_does_not_abort_channel_warning(self):
+        detached = self.plugin.activePhidgets[1]
+        self.plugin.activePhidgets[2]._state = "attached"
+        self.plugin.activePhidgets[2]._detach_announced = False
+        self.plugin.activePhidgets[99] = types.SimpleNamespace(
+            indigoDevice=types.SimpleNamespace(
+                id=99, deviceTypeId="networkServer"))
+        self.coordinator._batches["detach"][self.server_key] = {detached}
+
+        self.coordinator.flush_detach(self.server_key)
+
+        self.plugin.logger.warning.assert_called_once()
+        self.assertIn(
+            "Phidget remains detached",
+            self.plugin.logger.warning.call_args.args[0])
+
     def test_startup_contention_is_grouped_by_physical_phidget(self):
         first = FakePhidget(1, 100, channel=0)
         second = FakePhidget(2, 100, channel=1)

@@ -37,6 +37,10 @@ A detach trigger fires only if the source remains detached for its configured
 delay. The corresponding attach trigger fires only when that detach was
 actually reported, while device status itself remains immediate.
 
+A previously attached physical channel logs its SDK detach immediately. The
+grace period suppresses only Indigo detach/attach trigger pairs for transient
+interruptions; it does not suppress the diagnostic record of the interruption.
+
 `outage_coordinator.py` separately coalesces simultaneous channel transitions
 into physical-device or Network Server diagnostics. It owns the short grouping
 timers, outage records, recovery batches, and repeated-error suppression; the

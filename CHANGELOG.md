@@ -1,5 +1,20 @@
 # Release notes
 
+## 0.4.3 — 2026-09-13
+
+### Changed
+
+- Log an immediate warning whenever a previously attached physical Phidget
+  detaches, including transient detachments that recover during the grace
+  period and therefore do not fire Indigo detach or attach triggers.
+- Retain delayed `remains detached` and grouped Network Server reporting for
+  outages that survive the grace period.
+
+### Fixed
+
+- Ignore non-channel runtime entries while assembling delayed outage reports,
+  so an Indigo Network Server monitor cannot abort a physical-device warning.
+
 ## 0.4.2 — 2026-09-13
 
 ### Added

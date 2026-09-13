@@ -31,9 +31,15 @@ class OutageCoordinator(object):
         self._open_failure_last_logged = {}
 
     def _channels_for_server(self, server_key):
-        return [phidget for phidget in self._channel_snapshot()
-                if phidget.channelInfo.netInfo.isRemote and
-                ServerIdentity.from_wrapper(phidget).key == server_key]
+        channels = []
+        for runtime_device in self._channel_snapshot():
+            channel_info = getattr(runtime_device, "channelInfo", None)
+            net_info = getattr(channel_info, "netInfo", None)
+            if (net_info is not None and net_info.isRemote and
+                    ServerIdentity.from_wrapper(runtime_device).key ==
+                    server_key):
+                channels.append(runtime_device)
+        return channels
 
     def _schedule(self, kind, key, callback):
         timer_key = (kind, key)
@@ -140,7 +146,9 @@ class OutageCoordinator(object):
             return
         configured = [
             phidget for phidget in self._channel_snapshot()
-            if PhysicalDeviceIdentity.from_wrapper(phidget) == physical_device]
+            if (getattr(phidget, "channelInfo", None) is not None and
+                PhysicalDeviceIdentity.from_wrapper(phidget) ==
+                physical_device)]
         if not (len(configured) > 1 and set(affected) == set(configured)):
             for phidget, (detached_for, state) in affected.items():
                 self.logger.error(

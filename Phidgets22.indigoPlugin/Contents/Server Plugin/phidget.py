@@ -421,6 +421,11 @@ class PhidgetBase(object):
                 self._state = "detached"
                 self._detached_at = time.monotonic()
                 self._detach_announced = False
+                previously_attached = self._attach_count > 0
+            if previously_attached:
+                self.logger.warning(
+                    "Phidget detached; monitoring for automatic reattach: %s",
+                    self._identity())
             coordinator = getattr(self.indigo_plugin, "phidgetDetachStarted", None)
             if coordinator is not None:
                 try:
