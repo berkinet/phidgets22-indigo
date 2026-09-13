@@ -204,6 +204,60 @@ class VersionCollectionTests(unittest.TestCase):
         self.logger.warning.assert_not_called()
         self.plugin.eventCoordinator.trigger_global_event.assert_not_called()
 
+    def test_temporary_older_version_exercises_real_notification_path(self):
+        device = FakeDevice(1, "Test device")
+        phidget = NativePhidget(124, "TESTUSB")
+        self.plugin.activePhidgets[1] = wrapper(device, phidget)
+        self.plugin.eventCoordinator = mock.Mock()
+        variables = {}
+        self.collector.request_collection = mock.Mock()
+
+        def create(name, value):
+            variables[name] = types.SimpleNamespace(id=7, value=value)
+
+        def update(variable_id, value):
+            variables[version_collection.UPDATE_VARIABLE_NAME].value = value
+
+        with mock.patch.object(indigo, "devices", [device], create=True), \
+                mock.patch.object(indigo, "variables", variables, create=True), \
+                mock.patch.object(indigo, "variable", types.SimpleNamespace(
+                    create=create, updateValue=update), create=True):
+            self.collector.collect()
+            self.assertFalse(device.states["firmwareUpdateAvailable"])
+            self.collector.set_test_override(1, 123)
+            self.collector.collect()
+            self.assertEqual(device.states["firmwareVersion"], "123")
+            self.assertTrue(device.states["firmwareUpdateAvailable"])
+            self.assertIn("[TEST OVERRIDE]", variables[
+                version_collection.UPDATE_VARIABLE_NAME].value)
+            self.assertEqual(
+                self.plugin.eventCoordinator.trigger_global_event.call_count, 1)
+            self.collector.collect()
+            self.assertEqual(
+                self.plugin.eventCoordinator.trigger_global_event.call_count, 1)
+            self.collector.clear_test_override(1)
+            self.collector.collect()
+            self.assertEqual(device.states["firmwareVersion"], "124")
+            self.assertFalse(device.states["firmwareUpdateAvailable"])
+            self.assertEqual(variables[
+                version_collection.UPDATE_VARIABLE_NAME].value, "")
+            self.assertEqual(
+                self.plugin.eventCoordinator.trigger_global_event.call_count, 1)
+
+    def test_temporary_override_rejects_invalid_versions_and_clears_on_stop(self):
+        device = FakeDevice(1, "Test device")
+        self.plugin.activePhidgets[1] = wrapper(
+            device, NativePhidget(124, "TESTUSB"))
+        self.collector.request_collection = mock.Mock()
+        with self.assertRaises(ValueError):
+            self.collector.set_test_override(1, 124)
+        with self.assertRaises(ValueError):
+            self.collector.set_test_override(1, 0)
+        self.collector.set_test_override(1, 123)
+        self.assertEqual(self.collector._test_version_for(1), 123)
+        self.collector.stop()
+        self.assertIsNone(self.collector._test_version_for(1))
+
     def test_supplied_catalog_separates_interfacekit_revisions(self):
         catalog = version_collection.FirmwareCatalog.loaded(
             version_collection.CATALOG_PATH)

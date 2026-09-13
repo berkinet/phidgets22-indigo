@@ -244,7 +244,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.5.4</string>", plist)
+        self.assertIn("<string>0.5.5</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_detach_error_delay_is_conditionally_visible(self):
@@ -388,6 +388,25 @@ class ConfigurationTests(unittest.TestCase):
         instance.logger.warning.assert_called_once_with(
             "Indigo Phidget firmware updates available:\n%s",
             "Device A (Indigo ID 1)")
+
+    def test_scriptable_firmware_test_override_action(self):
+        root = ElementTree.parse(SERVER_PLUGIN / "Actions.xml").getroot()
+        action = root.find("./Action[@id='testFirmwareVersionOverride']")
+        self.assertIsNotNone(action)
+        self.assertEqual(action.find("CallbackMethod").text,
+                         "testFirmwareVersionOverride")
+        instance = object.__new__(plugin.Plugin)
+        instance.versionCollector = mock.Mock()
+        instance.logger = mock.Mock()
+        self.assertTrue(instance.testFirmwareVersionOverride(
+            types.SimpleNamespace(props={
+                "deviceId": "42", "firmwareVersion": "100"})))
+        instance.versionCollector.set_test_override.assert_called_once_with(
+            42, 100)
+        self.assertTrue(instance.testFirmwareVersionOverride(
+            types.SimpleNamespace(props={
+                "deviceId": "42", "firmwareVersion": ""})))
+        instance.versionCollector.clear_test_override.assert_called_once_with(42)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
         self.assertIs(plugin.Plugin.lcdSetDisplay, actions.ActionsMixin.lcdSetDisplay)

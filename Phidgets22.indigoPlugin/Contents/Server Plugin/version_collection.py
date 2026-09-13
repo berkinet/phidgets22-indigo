@@ -85,6 +85,7 @@ class VersionCollector(object):
         self._timer = None
         self._generation = 0
         self._stopped = True
+        self._test_override = None
         if firmware_catalog is None:
             try:
                 firmware_catalog = FirmwareCatalog.loaded(CATALOG_PATH)
@@ -111,6 +112,7 @@ class VersionCollector(object):
     def stop(self):
         with self._lock:
             self._stopped = True
+            self._test_override = None
             self._generation += 1
             timer, self._timer = self._timer, None
         if timer is not None:
@@ -180,6 +182,67 @@ class VersionCollector(object):
             self._collect_server(monitor, wrappers, checked_at)
         self._publish_update_list(wrappers)
 
+    def set_test_override(self, device_id, reported_version):
+        """Temporarily substitute one older reported installed version."""
+        device_id = int(device_id)
+        runtime = registry_for(self.plugin).get(device_id)
+        if runtime is None or getattr(runtime, "_state", None) != "attached":
+            raise ValueError("Selected Indigo Phidget device is not attached")
+        device = runtime.indigoDevice
+        if (device.pluginId != self.plugin.pluginId or
+                device.deviceTypeId == "networkServer" or
+                getattr(runtime.channelInfo, "isHubPortDevice", False)):
+            raise ValueError("Selected device has no independent firmware")
+        phidget = runtime.phidget
+        real_version = int(phidget.getDeviceVersion())
+        identifier = str(phidget._getDeviceFirmwareUpgradeString() or "").strip()
+        if not identifier:
+            raise ValueError("Device has no firmware upgrade identifier")
+        vint_id = None
+        if int(getattr(runtime.channelInfo, "hubPort", -1)) >= 0:
+            vint_getter = getattr(phidget, "_getDeviceVINTID", None)
+            if vint_getter is not None:
+                vint_id = int(vint_getter())
+        versions = self.firmware_catalog.versions(identifier, vint_id)
+        reported_version = int(reported_version)
+        latest_version = max(versions) if versions else 0
+        if (reported_version <= 0 or
+                reported_version >= real_version or
+                latest_version <= reported_version or
+                latest_version > real_version):
+            raise ValueError(
+                "Choose a positive test version below both installed "
+                "firmware %s and latest catalog version %s; this device "
+                "must currently be up to date" %
+                (real_version, latest_version))
+        with self._collection_lock:
+            with self._lock:
+                self._test_override = (device_id, reported_version)
+        self.logger.warning(
+            "TEST ONLY: reporting firmware %s instead of SDK version %s "
+            "for device='%s' id=%s until test override is cleared",
+            reported_version, real_version, device.name, device_id)
+        self.request_collection()
+
+    def clear_test_override(self, device_id):
+        with self._collection_lock:
+            with self._lock:
+                if self._test_override is None:
+                    return False
+                if self._test_override[0] != int(device_id):
+                    raise ValueError("Test override belongs to Indigo device %s" %
+                                     self._test_override[0])
+                self._test_override = None
+        self.logger.info("Firmware version test override cleared for id=%s",
+                         device_id)
+        self.request_collection()
+        return True
+
+    def _test_version_for(self, device_id):
+        with self._lock:
+            override = self._test_override
+        return override[1] if override is not None and override[0] == device_id else None
+
     def _publish_update_list(self, wrappers):
         """Keep one user-facing variable synchronized after the entire pass."""
         try:
@@ -200,8 +263,10 @@ class VersionCollector(object):
             device.name, device.id,
             device.states.get("firmwareVersion", "unknown"),
             device.states.get("latestFirmwareVersion", "unknown"),
-            "; major update" if device.states.get(
-                "firmwareMajorUpdateAvailable") else "")
+            ("; major update" if device.states.get(
+                "firmwareMajorUpdateAvailable") else "") +
+            (" [TEST OVERRIDE]" if self._test_version_for(device.id)
+             is not None else ""))
             for device in eligible]
         value = "\n".join(lines)
         try:
@@ -272,7 +337,9 @@ class VersionCollector(object):
             }, self.logger)
             return
         try:
-            version = int(getter())
+            real_version = int(getter())
+            test_version = self._test_version_for(device.id)
+            version = test_version if test_version is not None else real_version
             has_firmware = version > 0
             upgradeable = False
             upgradeability_status = "Not supported"
@@ -341,8 +408,10 @@ class VersionCollector(object):
             if (update_available and not previous_update and
                     device.states.get("firmwareUpdateAvailable") is True):
                 self.logger.warning(
-                    "Phidget firmware update available: device='%s' id=%s "
-                    "installed=%s latest=%s%s", device.name, device.id,
+                    "%sPhidget firmware update available: device='%s' id=%s "
+                    "installed=%s latest=%s%s",
+                    "TEST ONLY: " if test_version is not None else "",
+                    device.name, device.id,
                     version, latest_version,
                     " (major update)" if major_update_available else "")
         except Exception as error:

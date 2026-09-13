@@ -483,6 +483,22 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         self.logger.info("Starting requested read-only Phidget version collection")
         self.versionCollector.request_collection()
 
+    def testFirmwareVersionOverride(self, action):
+        """Scriptable, temporary override of one reported installed version."""
+        props = getattr(action, "props", {})
+        try:
+            device_id = int(props.get("deviceId"))
+            version = str(props.get("firmwareVersion", "") or "").strip()
+            if version:
+                self.versionCollector.set_test_override(device_id, int(version))
+            else:
+                self.versionCollector.clear_test_override(device_id)
+            return True
+        except (AttributeError, TypeError, ValueError) as error:
+            self.logger.error("Firmware version test override rejected: %s",
+                              error)
+            return False
+
     def logAvailableFirmwareUpdates(self, action=None):
         variable = (indigo.variables[UPDATE_VARIABLE_NAME]
                     if UPDATE_VARIABLE_NAME in indigo.variables else None)

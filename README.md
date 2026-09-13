@@ -111,6 +111,31 @@ Indigo's Variables list. The firmware Event's configuration page displays the
 actual, selectable `%%v:<ID>%%` reference for copying into an action. If the
 variable has not been created yet, run a version collection first.
 
+To exercise the full firmware-update notification path without changing
+hardware, use the plugin's **Test firmware update detection (temporary version
+override)** action. Supply an attached Indigo Phidget device ID and a positive
+firmware version older than both the installed and latest catalog versions.
+The action runs a normal asynchronous collection with that one reported
+version overridden. Its Warning and variable entry are marked `TEST ONLY`.
+Leave the override active for another collection to verify that no duplicate
+notification fires. Clear it by executing the same action with the same device
+ID and an empty firmware version; another collection restores the SDK value
+and clears the test update. The override is also discarded on plugin restart.
+
+Indigo scripting-shell example:
+
+```python
+plugin = indigo.server.getPlugin("com.yikes.eric.phidgets-indigo")
+plugin.executeAction("testFirmwareVersionOverride", props={
+    "deviceId": "123456789", "firmwareVersion": "100"})
+# Later, restore the real SDK-reported version:
+plugin.executeAction("testFirmwareVersionOverride", props={
+    "deviceId": "123456789", "firmwareVersion": ""})
+```
+
+This action can execute the user's real Trigger actions, such as email or
+logging. It never writes firmware to a Phidget.
+
 When the plugin starts, the first live value received for each state establishes
 its baseline without firing Indigo Device State Changed triggers. Later state
 updates retain normal trigger behavior.

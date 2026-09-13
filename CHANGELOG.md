@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.5.5 — 2026-09-13
+
+### Added
+
+- Add a scriptable, temporary reported-firmware-version override for one
+  attached Indigo Phidget device. It exercises normal version collection,
+  Warning, variable, Event, and Trigger behavior without changing hardware.
+- Clearing the override or restarting the plugin restores SDK-reported
+  versions; simulated update entries are explicitly marked as tests.
+
 ## 0.5.4 — 2026-09-13
 
 ### Added

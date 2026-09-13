@@ -1,5 +1,14 @@
 <?xml version="1.0"?>
 <Actions>
+	<Action id="testFirmwareVersionOverride">
+		<Name>Test firmware update detection (temporary version override)</Name>
+		<CallbackMethod>testFirmwareVersionOverride</CallbackMethod>
+		<ConfigUI>
+			<Field id="deviceId" type="textfield"><Label>Indigo device ID:</Label></Field>
+			<Field id="firmwareVersion" type="textfield"><Label>Older firmware version (blank to clear):</Label></Field>
+			<Field id="testWarning" type="label"><Label>TEST ONLY: Overrides this device's reported installed version until cleared or plugin restart. No hardware firmware is changed. This can fire real Triggers and actions.</Label></Field>
+		</ConfigUI>
+	</Action>
 	<Action id="logAvailableFirmwareUpdates">
 		<Name>Log devices with available firmware updates</Name>
 		<CallbackMethod>logAvailableFirmwareUpdates</CallbackMethod>
