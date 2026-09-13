@@ -243,7 +243,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.5.1</string>", plist)
+        self.assertIn("<string>0.5.2</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_detach_error_delay_is_conditionally_visible(self):
@@ -273,6 +273,29 @@ class ConfigurationTests(unittest.TestCase):
         arguments = instance.logger.info.call_args.args
         self.assertEqual(arguments[0], "Visible Phidgets and channels:\n%s")
         self.assertIn("serial=123", arguments[1])
+
+    def test_indigo_phidget_menu_logs_only_plugin_devices(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.pluginId = "test.plugin"
+        instance.logger = mock.Mock()
+        included = types.SimpleNamespace(
+            pluginId="test.plugin", name="Kitchen sensor", id=42,
+            deviceTypeId="temperatureSensor", enabled=True,
+            address="p1-c0", states={"connectionPath": "Hub→Port 1"})
+        excluded = types.SimpleNamespace(
+            pluginId="another.plugin", name="Other", id=99,
+            deviceTypeId="sensor", enabled=True, address="", states={})
+
+        with mock.patch.object(
+                indigo, "devices", [excluded, included], create=True):
+            instance.printIndigoPhidgetDevices()
+
+        self.assertEqual(instance.logger.info.call_count, 2)
+        self.assertEqual(instance.logger.info.call_args_list[0].args,
+                         ("Indigo Phidget devices: %d", 1))
+        detail = instance.logger.info.call_args_list[1].args
+        self.assertEqual(detail[1], "Kitchen sensor")
+        self.assertEqual(detail[2], 42)
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
         self.assertIs(plugin.Plugin.lcdSetDisplay, actions.ActionsMixin.lcdSetDisplay)

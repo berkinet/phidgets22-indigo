@@ -1,15 +1,15 @@
 <?xml version="1.0"?>
 <MenuItems>
-	<MenuItem id="printPhidgetsNetworkDiagram">
-		<Name>Print Phidgets network diagram to log</Name>
-		<CallbackMethod>printPhidgetsNetworkDiagram</CallbackMethod>
+	<MenuItem id="printIndigoPhidgetDevices">
+		<Name>Print Indigo Phidget devices to log</Name>
+		<CallbackMethod>printIndigoPhidgetDevices</CallbackMethod>
 	</MenuItem>
 	<MenuItem id="printVisiblePhidgets">
 		<Name>Print all visible Phidgets to log</Name>
 		<CallbackMethod>printVisiblePhidgets</CallbackMethod>
 	</MenuItem>
 	<MenuItem id="collectVersionsNow">
-		<Name>Collect Phidget versions now</Name>
+		<Name>Update Indigo Phidget device firmware versions</Name>
 		<CallbackMethod>collectVersionsNow</CallbackMethod>
 	</MenuItem>
 </MenuItems>

@@ -77,6 +77,7 @@ Automatic collection is daily by default and can be disabled or changed to 6
 hours, 12 hours, or weekly in the plugin configuration. Use **Collect Phidget
 versions now** in the plugin menu for an immediate asynchronous check.
 
+Use **Print Indigo Phidget devices to log** for the configured Indigo records.
 Use **Print all visible Phidgets to log** to print every local and remote
 device and channel currently visible to the plugin's Phidget22 Manager. The
 report is generated through the loaded SDK and requires no external executable.

@@ -1,5 +1,17 @@
 # Release notes
 
+## 0.5.2 — 2026-09-13
+
+### Changed
+
+- Clarify the plugin menu as **Print Indigo Phidget devices to log**, **Print
+  all visible Phidgets to log**, and **Update Indigo Phidget device firmware
+  versions**.
+- Make the first report enumerate only Indigo devices owned by this plugin,
+  including their IDs, types, enabled status, addresses, and observed
+  connection paths. The second report remains the complete live discovery
+  inventory, including hardware without an Indigo device.
+
 ## 0.5.1 — 2026-09-13
 
 ### Fixed

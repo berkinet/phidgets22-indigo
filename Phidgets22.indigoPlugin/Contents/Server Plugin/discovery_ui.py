@@ -1216,6 +1216,22 @@ class DiscoveryUiMixin(object):
         for line in format_network_diagram(self.discoveryInventory.snapshot()):
             self.logger.info("%s", line)
 
+    def printIndigoPhidgetDevices(self):
+        devices = sorted(
+            (device for device in indigo.devices
+             if getattr(device, "pluginId", None) == self.pluginId),
+            key=lambda device: str(device.name).lower())
+        self.logger.info("Indigo Phidget devices: %d", len(devices))
+        for device in devices:
+            states = getattr(device, "states", {})
+            connection = states.get("connectionPath", "")
+            suffix = " connection=%r" % connection if connection else ""
+            self.logger.info(
+                "  name=%r id=%s type=%s enabled=%s address=%r%s",
+                device.name, device.id, device.deviceTypeId,
+                getattr(device, "enabled", True),
+                getattr(device, "address", ""), suffix)
+
     def getAttachCapableList(self, filter="", valuesDict=None,
                              typeId="", targetId=0):
         result = []
