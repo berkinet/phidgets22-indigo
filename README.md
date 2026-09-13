@@ -74,13 +74,25 @@ devices report the server protocol version when an attached plugin device on
 that server is available for the read.
 
 Automatic collection is daily by default and can be disabled or changed to 6
-hours, 12 hours, or weekly in the plugin configuration. Use **Collect Phidget
-versions now** in the plugin menu for an immediate asynchronous check.
+hours, 12 hours, or weekly in the plugin configuration. Use **Update Indigo
+Phidget device firmware versions** in the plugin menu for an immediate
+asynchronous check.
 
 Use **Print Indigo Phidget devices to log** for the configured Indigo records.
 Use **Print all visible Phidgets to log** to print every local and remote
 device and channel currently visible to the plugin's Phidget22 Manager. The
 report is generated through the loaded SDK and requires no external executable.
+
+Use **Export Indigo Phidget devices and states to JSON** to write every
+configured plugin device and its complete current state dictionary to
+`Phidgets 22 Device States.json` in Indigo's Logs directory. Indigo scripts
+and Action Groups can request the same read-only snapshot through the plugin
+action:
+
+```python
+plugin = indigo.server.getPlugin("com.yikes.eric.phidgets-indigo")
+plugin.executeAction("exportDeviceStatesJson")
+```
 
 When the plugin starts, the first live value received for each state establishes
 its baseline without firing Indigo Device State Changed triggers. Later state

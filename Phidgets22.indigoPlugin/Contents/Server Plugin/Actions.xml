@@ -1,5 +1,9 @@
 <?xml version="1.0"?>
 <Actions>
+	<Action id="exportDeviceStatesJson">
+		<Name>Export Indigo Phidget devices and states to JSON</Name>
+		<CallbackMethod>exportIndigoPhidgetDeviceStatesJson</CallbackMethod>
+	</Action>
 	<Action id="lcdClear" deviceFilter="self.lcd" uiPath="DeviceActions">
 		<Name>Clear LCD</Name>
 		<CallbackMethod>lcdClear</CallbackMethod>

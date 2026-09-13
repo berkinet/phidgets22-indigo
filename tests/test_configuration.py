@@ -58,6 +58,7 @@ import actions
 import device_factory
 import discovery_ui
 import event_coordinator
+import device_state_export
 import plugin
 
 
@@ -243,7 +244,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>0.5.2</string>", plist)
+        self.assertIn("<string>0.5.3</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_detach_error_delay_is_conditionally_visible(self):
@@ -296,6 +297,59 @@ class ConfigurationTests(unittest.TestCase):
         detail = instance.logger.info.call_args_list[1].args
         self.assertEqual(detail[1], "Kitchen sensor")
         self.assertEqual(detail[2], 42)
+
+    def test_device_state_json_export_includes_all_states(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.pluginId = "test.plugin"
+        instance.pluginDisplayName = "Phidgets 22"
+        instance.pluginVersion = "0.5.3"
+        included = types.SimpleNamespace(
+            pluginId="test.plugin", name="Kitchen sensor", id=42,
+            deviceTypeId="temperatureSensor", typeName="Temperature Sensor",
+            enabled=True, address="p1-c0",
+            states=IndigoLikeDict({
+                "tempC": 21.5,
+                "firmwareVersion": "110",
+                "firmwareUpdateAvailable": False,
+            }))
+        excluded = types.SimpleNamespace(
+            pluginId="another.plugin", name="Other", id=99,
+            deviceTypeId="sensor", states={})
+
+        snapshot = device_state_export.build_device_state_snapshot(
+            instance, [excluded, included])
+
+        self.assertEqual(snapshot["deviceCount"], 1)
+        self.assertEqual(snapshot["plugin"]["version"], "0.5.3")
+        self.assertEqual(snapshot["devices"][0]["id"], 42)
+        self.assertEqual(snapshot["devices"][0]["states"], {
+            "tempC": 21.5,
+            "firmwareVersion": "110",
+            "firmwareUpdateAvailable": False,
+        })
+
+    def test_export_callback_writes_json_and_logs_path(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.logger = mock.Mock()
+        instance.pluginId = "test.plugin"
+        with mock.patch.object(
+                plugin, "write_device_state_snapshot",
+                return_value=("/tmp/device-states.json", {"deviceCount": 3})):
+            path = instance.exportIndigoPhidgetDeviceStatesJson()
+
+        self.assertEqual(path, "/tmp/device-states.json")
+        instance.logger.info.assert_called_once_with(
+            "Exported %d Indigo Phidget devices and their states to %s",
+            3, "/tmp/device-states.json")
+
+    def test_json_export_is_available_to_scripts_as_plugin_action(self):
+        actions_root = ElementTree.parse(
+            SERVER_PLUGIN / "Actions.xml").getroot()
+        action = actions_root.find("./Action[@id='exportDeviceStatesJson']")
+
+        self.assertIsNotNone(action)
+        self.assertEqual(action.find("CallbackMethod").text,
+                         "exportIndigoPhidgetDeviceStatesJson")
 
     def test_plugin_responsibilities_are_supplied_by_focused_modules(self):
         self.assertIs(plugin.Plugin.lcdSetDisplay, actions.ActionsMixin.lcdSetDisplay)
@@ -795,11 +849,14 @@ class ConfigurationTests(unittest.TestCase):
                          "actionGroup")
 
         actions = ElementTree.parse(SERVER_PLUGIN / "Actions.xml").getroot()
-        action_ids = {action.get("id") for action in actions.findall("Action")}
+        device_actions = [
+            action for action in actions.findall("Action")
+            if action.get("deviceFilter")]
+        action_ids = {action.get("id") for action in device_actions}
         self.assertEqual(action_ids, {"lcdClear", "lcdStartAnimation",
                                       "lcdStopAnimation", "lcdSleep", "lcdWake"})
         self.assertTrue(all(action.get("deviceFilter") == "self.lcd"
-                            for action in actions.findall("Action")))
+                            for action in device_actions))
         display_action = actions.find("./Action[@id='lcdStartAnimation']")
         fields = {field.get("id"): field for field in display_action.iter("Field")}
         self.assertIn("static2", fields["animationLine1"].get("visibleBindingValue"))

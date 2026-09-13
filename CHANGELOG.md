@@ -1,5 +1,16 @@
 # Release notes
 
+## 0.5.3 — 2026-09-13
+
+### Added
+
+- Export every configured Indigo Phidgets 22 device and its complete current
+  state dictionary to a stable, human-readable JSON file in Indigo's Logs
+  directory.
+- Add **Export Indigo Phidget devices and states to JSON** to the plugin menu.
+- Expose the same export to Indigo scripts and Action Groups through the
+  `exportDeviceStatesJson` plugin action.
+
 ## 0.5.2 — 2026-09-13
 
 ### Changed

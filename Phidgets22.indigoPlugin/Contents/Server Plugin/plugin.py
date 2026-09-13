@@ -19,6 +19,7 @@ from PhidgetInfo import PhidgetInfo
 from actions import ActionsMixin
 from config_util import saved_bool
 from connection_identity import PhysicalDeviceIdentity, ServerIdentity
+from device_state_export import write_device_state_snapshot
 from device_factory import create_phidget
 from discovery import DiscoveryInventory, channel_sort_key, format_channel
 from discovery_ui import DiscoveryUiMixin
@@ -311,6 +312,20 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         if runtime_device is not None:
             return runtime_device.getDeviceDisplayStateId()
         return None
+
+    def exportIndigoPhidgetDeviceStatesJson(self, action=None):
+        """Export every configured plugin device and all its current states."""
+        try:
+            path, snapshot = write_device_state_snapshot(self, indigo.devices)
+            self.logger.info(
+                "Exported %d Indigo Phidget devices and their states to %s",
+                snapshot["deviceCount"], path)
+            return path
+        except Exception:
+            self.logger.error(
+                "Unable to export Indigo Phidget device states:\n%s",
+                traceback.format_exc())
+            return None
 
     def deviceStartComm(self, device):
         try:

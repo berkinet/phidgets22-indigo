@@ -12,4 +12,8 @@
 		<Name>Update Indigo Phidget device firmware versions</Name>
 		<CallbackMethod>collectVersionsNow</CallbackMethod>
 	</MenuItem>
+	<MenuItem id="exportIndigoPhidgetDeviceStatesJson">
+		<Name>Export Indigo Phidget devices and states to JSON</Name>
+		<CallbackMethod>exportIndigoPhidgetDeviceStatesJson</CallbackMethod>
+	</MenuItem>
 </MenuItems>
