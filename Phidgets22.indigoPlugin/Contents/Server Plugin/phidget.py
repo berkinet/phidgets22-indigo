@@ -9,6 +9,8 @@ import traceback
 
 import phidget_util
 from config_util import saved_bool
+from connection_identity import (ChannelIdentity, PhysicalDeviceIdentity,
+                                 PortIdentity, ServerIdentity)
 from state_publisher import update_indigo_state
 from Phidget22.ErrorCode import ErrorCode
 from Phidget22.PhidgetException import PhidgetException
@@ -117,12 +119,23 @@ class PhidgetBase(object):
                 "device is in use" not in message)
 
     def serverKey(self):
-        return (self.runtimeServerUniqueName or self.runtimeServerName or
-                self.channelInfo.netInfo.serverName or "local")
+        return self.serverIdentity().key
 
     def serverDisplayName(self):
-        return (self.runtimeServerName or self.runtimeServerHostname or
-                self.runtimeServerUniqueName or self.channelInfo.netInfo.serverName or "any")
+        identity = self.serverIdentity()
+        return identity.display_name if identity.remote else "any"
+
+    def serverIdentity(self):
+        return ServerIdentity.from_wrapper(self)
+
+    def physicalDeviceIdentity(self):
+        return PhysicalDeviceIdentity.from_wrapper(self)
+
+    def portIdentity(self):
+        return PortIdentity.from_wrapper(self)
+
+    def channelIdentity(self, channel_class=None):
+        return ChannelIdentity.from_wrapper(self, channel_class)
 
     def _cache_runtime_server(self, ph):
         if self.channelInfo.netInfo.isRemote:
@@ -148,15 +161,16 @@ class PhidgetBase(object):
         return "remote" if self.channelInfo.netInfo.isRemote else "local"
 
     def connectionSummary(self):
-        if not self.channelInfo.netInfo.isRemote:
+        server = self.serverIdentity()
+        if not server.remote:
             return "Local USB"
         details = []
-        if self.runtimeServerHostname and self.runtimeServerHostname != self.serverDisplayName():
-            details.append(self.runtimeServerHostname)
-        if self.runtimeServerPeerName:
-            details.append(self.runtimeServerPeerName)
+        if server.hostname and server.hostname != server.display_name:
+            details.append(server.hostname)
+        if server.peer:
+            details.append(server.peer)
         suffix = " (%s)" % ", ".join(details) if details else ""
-        return "Remote via %s%s" % (self.serverDisplayName(), suffix)
+        return "Remote via %s%s" % (server.display_name, suffix)
 
     def connectionPath(self):
         parts = [self.serverDisplayName() if self.channelInfo.netInfo.isRemote else "Local USB"]

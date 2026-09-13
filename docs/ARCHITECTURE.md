@@ -3,6 +3,18 @@
 The plugin keeps Indigo-facing orchestration in `plugin.py` and delegates
 shared runtime concerns to small services in the Server Plugin directory.
 
+## Connection identities
+
+`connection_identity.py` defines immutable identities at five distinct levels:
+Network Server, physical Phidget, VINT hub port, live channel, and saved Indigo
+channel address. Server identities retain configured and runtime aliases while
+providing one canonical grouping key and display name.
+
+Discovery, duplicate-address validation, outage reporting, physical attachment
+recovery, and version collection consume these identities instead of building
+similar but differently interpreted tuples. A serial number is therefore
+scoped to its server, while ports and channels remain separate identity levels.
+
 ## Runtime device registry
 
 `runtime_registry.py` is the canonical, thread-safe index of active Phidget

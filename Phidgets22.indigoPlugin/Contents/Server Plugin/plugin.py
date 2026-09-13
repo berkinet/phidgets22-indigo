@@ -18,6 +18,7 @@ from Phidget22.PhidgetException import PhidgetException
 from PhidgetInfo import PhidgetInfo
 from actions import ActionsMixin
 from config_util import saved_bool
+from connection_identity import PhysicalDeviceIdentity, ServerIdentity
 from device_factory import create_phidget
 from discovery import DiscoveryInventory
 from discovery_ui import DiscoveryUiMixin
@@ -163,11 +164,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             return False
         expected = str(server_name or "").strip()
         for channel in inventory.snapshot():
-            if expected in (
-                    str(channel.get("serverName") or "").strip(),
-                    str(channel.get("serverUniqueName") or "").strip(),
-                    str(channel.get("serverHostname") or "").strip(),
-                    str(channel.get("serverPeerName") or "").strip()):
+            if ServerIdentity.from_description(channel).matches(expected):
                 return True
         return False
 
@@ -210,12 +207,12 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         channel_info = getattr(phidget, "channelInfo", None)
         if (server_key_method is not None and channel_info is not None and
                 hasattr(channel_info, "serialNumber")):
-            physical_key = (server_key_method(), channel_info.serialNumber)
+            physical_key = PhysicalDeviceIdentity.from_wrapper(phidget)
             physical_channels = [
                 configured for configured in self._runtime_registry().snapshot()
-                if (getattr(configured, "serverKey", lambda: None)(),
-                    getattr(getattr(configured, "channelInfo", None),
-                            "serialNumber", None)) == physical_key]
+                if (getattr(configured, "channelInfo", None) is not None and
+                    PhysicalDeviceIdentity.from_wrapper(configured) ==
+                    physical_key)]
             if physical_channels and all(
                     configured._state == "attached"
                     for configured in physical_channels):

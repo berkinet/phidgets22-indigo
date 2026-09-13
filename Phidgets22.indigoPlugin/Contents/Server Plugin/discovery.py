@@ -8,6 +8,8 @@ import threading
 
 from Phidget22.Devices.Manager import Manager
 from config_util import saved_bool
+from connection_identity import (ChannelIdentity, ServerIdentity,
+                                 discovery_device_key)
 
 
 CHANNEL_CLASSES_BY_DEVICE_TYPE = {
@@ -68,14 +70,7 @@ def describe_channel(channel):
 
 def channel_key(description):
     """Build an identity key from addressing fields, including the server."""
-    return (
-        description.get("serverUniqueName") or description.get("serverName"),
-        description.get("serialNumber"),
-        description.get("hubPort"),
-        description.get("isHubPortDevice"),
-        description.get("channel"),
-        description.get("channelClass"),
-    )
+    return ChannelIdentity.from_description(description).discovery_key()
 
 
 def channel_sort_key(description):
@@ -85,18 +80,7 @@ def channel_sort_key(description):
 
 def device_key(description):
     """Identify a top-level physical Phidget or the parent of VINT ports."""
-    if description.get("deviceClass") == 21:
-        return (
-            description.get("serverUniqueName") or description.get("serverName"),
-            description.get("serialNumber"),
-            "VINT_HUB",
-        )
-    return (
-        description.get("serverUniqueName") or description.get("serverName"),
-        description.get("serialNumber"),
-        description.get("deviceClass"),
-        description.get("deviceSKU"),
-    )
+    return discovery_device_key(description)
 
 
 def port_key(description):
@@ -111,7 +95,7 @@ def target_key(description):
 
 
 def server_key(description):
-    return (description.get("serverUniqueName") or description.get("serverName"),)
+    return (ServerIdentity.from_description(description).discovery_key,)
 
 
 def _token(kind, key):
@@ -184,7 +168,7 @@ def format_channel_choice(description):
 
 def format_channel(description):
     """Format one inventory row for the Indigo log."""
-    server = description.get("serverName") or description.get("serverUniqueName") or "Local"
+    server = ServerIdentity.from_description(description).topology_name
     device = description.get("deviceSKU") or description.get("deviceName") or "Unknown device"
     channel = description.get("channelClassName") or description.get("channelName") or "Unknown channel"
     label = description.get("deviceLabel")
@@ -207,7 +191,7 @@ def format_network_diagram(channels):
     """Render discovered topology as an indented, log-friendly hierarchy."""
     servers = {}
     for item in sorted((dict(channel) for channel in channels), key=channel_sort_key):
-        server = item.get("serverName") or item.get("serverUniqueName") or "Local"
+        server = ServerIdentity.from_description(item).topology_name
         servers.setdefault(server, {}).setdefault(device_key(item), []).append(item)
 
     lines = ["Phidgets network diagram:"]
@@ -297,11 +281,9 @@ class DiscoveryInventory(object):
 
         saved_server = str(saved.get("serverName") or "").strip()
         if saved_server:
-            candidates = [item for item in candidates if saved_server in (
-                str(item.get("serverName") or ""),
-                str(item.get("serverUniqueName") or ""),
-                str(item.get("serverHostname") or ""),
-            )]
+            candidates = [
+                item for item in candidates
+                if ServerIdentity.from_description(item).matches(saved_server)]
 
         saved_channel = saved.get("channel")
         if saved_channel not in (None, ""):
@@ -351,7 +333,7 @@ class DiscoveryInventory(object):
             servers[server_key(item)] = item
         choices = []
         for item in servers.values():
-            name = item.get("serverName") or item.get("serverUniqueName") or "Local"
+            name = ServerIdentity.from_description(item).topology_name
             choices.append((server_token(item), name))
         return sorted(choices, key=lambda choice: choice[1].lower())
 

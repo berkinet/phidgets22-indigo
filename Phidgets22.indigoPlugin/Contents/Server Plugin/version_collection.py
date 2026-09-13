@@ -8,6 +8,7 @@ import re
 import threading
 import traceback
 
+from connection_identity import ServerIdentity
 from state_publisher import update_indigo_states
 from runtime_registry import registry_for
 
@@ -298,19 +299,7 @@ class VersionCollector(object):
 
     @staticmethod
     def _server_matches(monitor, wrapper):
-        if not bool(getattr(
-                getattr(wrapper, "channelInfo", None), "netInfo", None) and
-                wrapper.channelInfo.netInfo.isRemote):
-            return False
-        names = {
-            str(getattr(wrapper, name, "") or "").strip()
-            for name in ("runtimeServerName", "runtimeServerUniqueName",
-                         "runtimeServerHostname")
-        }
-        configured = str(getattr(
-            wrapper.channelInfo.netInfo, "serverName", "") or "").strip()
-        names.add(configured)
-        return monitor.serverName in names
+        return ServerIdentity.from_wrapper(wrapper).matches(monitor.serverName)
 
     def _collect_server(self, monitor, wrappers, checked_at):
         candidates = [wrapper for wrapper in wrappers

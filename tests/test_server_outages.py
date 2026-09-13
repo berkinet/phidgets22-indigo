@@ -27,6 +27,7 @@ SPEC = importlib.util.spec_from_file_location("plugin_under_test", SERVER_PLUGIN
 plugin_module = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(plugin_module)
 
+from connection_identity import PhysicalDeviceIdentity, PortIdentity
 from outage_coordinator import OutageCoordinator
 
 
@@ -39,7 +40,9 @@ class FakePhidget(object):
             serialNumber=serial,
             hubPort=hub_port,
             channel=channel,
-            netInfo=types.SimpleNamespace(isRemote=True),
+            netInfo=types.SimpleNamespace(
+                isRemote=True,
+                serverName="Test-Server-B._phidget22server._tcp.local"),
         )
         self._state = state
         self._detach_announced = state == "detached"
@@ -153,7 +156,7 @@ class ServerOutageTests(unittest.TestCase):
         second = FakePhidget(2, 100, channel=1)
         first._startup_contention_message = "device is in use"
         second._startup_contention_message = "device is in use"
-        physical_key = (self.server_key, 100, 1)
+        physical_key = PortIdentity.from_wrapper(first)
         self.coordinator._batches["startup-contention"][physical_key] = {
             first: 5.0, second: 5.1,
         }
@@ -170,10 +173,11 @@ class ServerOutageTests(unittest.TestCase):
         first = FakePhidget(1, 622666, state="starting", channel=0, hub_port=0)
         second = FakePhidget(2, 622666, state="starting", channel=0, hub_port=1)
         self.plugin.activePhidgets = {1: first, 2: second}
-        self.coordinator._batches["startup-unavailable"][622666] = {
+        physical_key = PhysicalDeviceIdentity.from_wrapper(first)
+        self.coordinator._batches["startup-unavailable"][physical_key] = {
             first: (7200.0, "starting"), second: (7200.1, "starting")}
 
-        self.coordinator.flush_startup_unavailable(622666)
+        self.coordinator.flush_startup_unavailable(physical_key)
 
         self.plugin.logger.error.assert_called_once()
         arguments = self.plugin.logger.error.call_args.args
@@ -188,10 +192,11 @@ class ServerOutageTests(unittest.TestCase):
         first = FakePhidget(1, 622666, state="starting")
         second = FakePhidget(2, 622666, state="attached")
         self.plugin.activePhidgets = {1: first, 2: second}
-        self.coordinator._batches["startup-unavailable"][622666] = {
+        physical_key = PhysicalDeviceIdentity.from_wrapper(first)
+        self.coordinator._batches["startup-unavailable"][physical_key] = {
             first: (7200.0, "starting")}
 
-        self.coordinator.flush_startup_unavailable(622666)
+        self.coordinator.flush_startup_unavailable(physical_key)
 
         self.plugin.logger.error.assert_called_once()
         self.assertIn("Phidget remains detached", self.plugin.logger.error.call_args.args[0])
@@ -204,7 +209,7 @@ class ServerOutageTests(unittest.TestCase):
         first._startup_error_message = "Network device open failed."
         second._startup_error_message = "Network device open failed."
         self.plugin.activePhidgets = {1: first, 2: second}
-        physical_key = (self.server_key, 623318)
+        physical_key = PhysicalDeviceIdentity.from_wrapper(first)
         self.coordinator._batches["startup-open-failure"][physical_key] = {
             first: (30.0, first._startup_error_message),
             second: (30.1, second._startup_error_message),
@@ -223,7 +228,7 @@ class ServerOutageTests(unittest.TestCase):
     def test_identical_open_failure_is_suppressed_until_reminder_interval(self):
         phidget = self.plugin.activePhidgets[1]
         phidget._startup_error_message = "Network device open failed."
-        physical_key = (self.server_key, phidget.channelInfo.serialNumber)
+        physical_key = PhysicalDeviceIdentity.from_wrapper(phidget)
         self.coordinator._open_failure_last_logged[physical_key] = 100.0
         self.coordinator._batches["startup-open-failure"][physical_key] = {
             phidget: (31.0, phidget._startup_error_message)}

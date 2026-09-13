@@ -3,6 +3,7 @@
 """Shared ownership rules for logical devices on an Indigo I2C adapter."""
 
 from config_util import saved_bool
+from connection_identity import ConfiguredChannelIdentity
 
 
 def assignment(device):
@@ -40,18 +41,8 @@ def find_address_owner(devices, plugin_id, adapter_id, address,
 
 
 def native_channel_key(props, device_type):
-    try:
-        return (
-            str(device_type or ""),
-            str(props.get("serverName") or ""),
-            int(props.get("serialNumber")),
-            int(props.get("hubPort", -1) or -1),
-            int(props.get("channel", -1) or -1),
-            saved_bool(props.get("isVintHub", False)),
-            saved_bool(props.get("isVintDevice", False)),
-        )
-    except (TypeError, ValueError):
-        return None
+    return ConfiguredChannelIdentity.from_properties(
+        props, device_type, saved_bool)
 
 
 def find_native_channel_owner(devices, plugin_id, props, device_type,

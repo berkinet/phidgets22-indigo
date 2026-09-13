@@ -5,6 +5,9 @@
 import threading
 import time
 
+from connection_identity import (PhysicalDeviceIdentity, PortIdentity,
+                                 ServerIdentity)
+
 
 class OutageCoordinator(object):
     COALESCE_SECONDS = 0.3
@@ -30,7 +33,7 @@ class OutageCoordinator(object):
     def _channels_for_server(self, server_key):
         return [phidget for phidget in self._channel_snapshot()
                 if phidget.channelInfo.netInfo.isRemote and
-                phidget.serverKey() == server_key]
+                ServerIdentity.from_wrapper(phidget).key == server_key]
 
     def _schedule(self, kind, key, callback):
         timer_key = (kind, key)
@@ -46,28 +49,27 @@ class OutageCoordinator(object):
         timer.start()
 
     def detach_announced(self, phidget):
-        server_key = phidget.serverKey()
+        server_key = ServerIdentity.from_wrapper(phidget).key
         with self._lock:
             self._batches["detach"].setdefault(server_key, set()).add(phidget)
         self._schedule("detach", server_key, self.flush_detach)
 
     def startup_contention(self, phidget, detached_for):
-        key = (phidget.serverKey(), phidget.channelInfo.serialNumber,
-               phidget.channelInfo.hubPort)
+        key = PortIdentity.from_wrapper(phidget)
         with self._lock:
             self._batches["startup-contention"].setdefault(
                 key, {})[phidget] = detached_for
         self._schedule("startup-contention", key, self.flush_startup_contention)
 
     def startup_unavailable(self, phidget, detached_for, state):
-        key = phidget.channelInfo.serialNumber
+        key = PhysicalDeviceIdentity.from_wrapper(phidget)
         with self._lock:
             self._batches["startup-unavailable"].setdefault(
                 key, {})[phidget] = (detached_for, state)
         self._schedule("startup-unavailable", key, self.flush_startup_unavailable)
 
     def startup_open_failure(self, phidget, detached_for, message):
-        key = (phidget.serverKey(), phidget.channelInfo.serialNumber)
+        key = PhysicalDeviceIdentity.from_wrapper(phidget)
         with self._lock:
             self._batches["startup-open-failure"].setdefault(
                 key, {})[phidget] = (detached_for, str(message))
@@ -75,7 +77,7 @@ class OutageCoordinator(object):
             "startup-open-failure", key, self.flush_startup_open_failure)
 
     def attach_completed(self, phidget, detached_for):
-        server_key = phidget.serverKey()
+        server_key = ServerIdentity.from_wrapper(phidget).key
         with self._lock:
             self._batches["recovery"].setdefault(
                 server_key, {})[phidget] = detached_for
@@ -127,9 +129,9 @@ class OutageCoordinator(object):
             longest, first.serverDisplayName(), first.channelInfo.serialNumber,
             len(affected), names, "; ".join(messages))
 
-    def flush_startup_unavailable(self, serial_number, token=None):
+    def flush_startup_unavailable(self, physical_device, token=None):
         pending = self._take_batch(
-            "startup-unavailable", serial_number, {}, token)
+            "startup-unavailable", physical_device, {}, token)
         affected = {
             phidget: details for phidget, details in pending.items()
             if phidget._state in ("starting", "detached")
@@ -138,7 +140,7 @@ class OutageCoordinator(object):
             return
         configured = [
             phidget for phidget in self._channel_snapshot()
-            if phidget.channelInfo.serialNumber == serial_number]
+            if PhysicalDeviceIdentity.from_wrapper(phidget) == physical_device]
         if not (len(configured) > 1 and set(affected) == set(configured)):
             for phidget, (detached_for, state) in affected.items():
                 self.logger.error(
@@ -159,7 +161,8 @@ class OutageCoordinator(object):
             "all %d configured channels are detached (server: %s): %s. "
             "Check the Phidget and Network Server; automatic attachment "
             "remains active.",
-            serial_number, longest, len(affected), servers, names)
+            physical_device.serial_number, longest, len(affected), servers,
+            names)
 
     def flush_startup_contention(self, key, token=None):
         pending = self._take_batch("startup-contention", key, {}, token)

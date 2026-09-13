@@ -1,5 +1,25 @@
 # Release notes
 
+## 0.4.2 — 2026-09-13
+
+### Added
+
+- Add immutable identities for Network Servers, physical Phidgets, hub ports,
+  runtime channels, and saved Indigo channel addresses.
+
+### Changed
+
+- Use canonical identities for discovery keys, duplicate-address detection,
+  outage grouping, recovery suppression, version-server matching, and physical
+  device attachment recovery.
+- Centralize server aliases and display names across configured names, runtime
+  names, unique service names, hostnames, and peers.
+
+### Fixed
+
+- Keep equal serial numbers on different local or remote servers from being
+  grouped as the same unavailable physical Phidget during startup.
+
 ## 0.4.1 — 2026-09-13
 
 ### Changed

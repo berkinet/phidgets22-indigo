@@ -4,6 +4,7 @@
 
 import indigo
 
+from connection_identity import ServerIdentity
 from discovery import channel_token, format_phidget_model
 from runtime_registry import registry_for
 
@@ -16,8 +17,8 @@ def _native_name(description):
     label = description.get("deviceLabel")
     if label:
         name = str(label)
-    server = description.get("serverName") or description.get("serverUniqueName")
-    return "%s — %s" % (name, server) if server else name
+    server = ServerIdentity.from_description(description)
+    return "%s — %s" % (name, server.display_name) if server.remote else name
 
 
 def _adapter_supports_lcd(plugin, device):
