@@ -2,6 +2,8 @@
 
 ## Configure the plugin
 
+Use Indigo 2025.2 or newer with its Python 3.13 runtime. Then:
+
 1. Install the official Phidget22 package for Indigo's Python:
 
    ```bash
@@ -91,8 +93,8 @@ compensation; the defaults are 50 %RH and 25 °C.
 After startup or adapter reattachment, the sensor conditions its NOx pixel for
 10 seconds. During that period Indigo publishes the raw VOC signal and shows
 the conditioning state; raw NOx readings begin when conditioning finishes.
-Both signals are updated once per second. The initial implementation publishes
-the sensor's 16-bit raw signals rather than calculated gas indices.
+Both raw signals and the calculated VOC/NOx gas indices are updated once per
+second. The indices begin at zero during warm-up and are not gas concentrations.
 
 Use the sensor's **Display state** setting to choose whether Raw VOC or Raw NOx
 appears in Indigo's Home → Devices → State column. BME280/BMP280 devices offer
@@ -130,8 +132,10 @@ text is not clipped because the complete message scrolls through the row. Each
 clipped row produces one Indigo Event Log warning showing its original and
 displayed text; Flash logs this when the animation starts, not on every frame.
 
-## Print the Phidgets network map
+## Inspect visible Phidgets
 
-Choose **Plugins → Phidgets 22 → Print Phidgets network diagram to log**.
-The complete discovered hierarchy is written to Indigo's Event Log, organized
-by server, physical Phidget, VINT port, and channel.
+Choose **Plugins → Phidgets 22 → Print all visible Phidgets to log** to write
+the discovered local and remote device/channel hierarchy to Indigo's Event
+Log. **Print Indigo Phidget devices to log** lists only devices configured in
+this plugin. The menu also offers an asynchronous firmware-version collection
+and a JSON export of all configured plugin devices and states.

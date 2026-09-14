@@ -3,10 +3,14 @@
 """Asynchronous, read-only collection of server and device versions."""
 
 import datetime
+import io
+import json
 import os
 import re
+import tarfile
 import threading
 import traceback
+from urllib.request import Request, urlopen
 
 import indigo
 
@@ -20,6 +24,11 @@ INITIAL_DELAY_SECONDS = 10
 ATTACH_DELAY_SECONDS = 2
 FIRMWARE_CATALOG_VERSION = "1.26.20260828"
 CATALOG_PATH = os.path.join(os.path.dirname(__file__), "firmware_catalog.txt")
+CACHE_FILENAME = "Phidgets 22 Firmware Catalog.json"
+ADMIN_ARCHIVE_INDEX = "https://www.phidgets.com/downloads/phidget22/tools/linux/phidget22admin/"
+ADMIN_ARCHIVE_NAME = re.compile(r"phidget22admin-(\d+\.\d+\.\d{8})\.tar\.gz")
+MAX_INDEX_BYTES = 256 * 1024
+MAX_ARCHIVE_BYTES = 20 * 1024 * 1024
 YES_NO_STATES = frozenset((
     "firmwareUpdateAvailable", "firmwareMajorUpdateAvailable"))
 UPDATE_VARIABLE_NAME = "Phidgets22_FirmwareUpdatesAvailable"
@@ -46,17 +55,20 @@ class FirmwareCatalog(object):
     def __init__(self, filenames):
         self.usb = {}
         self.vint = {}
+        self.filenames = []
         for filename in filenames:
             filename = filename.strip()
             if not filename or filename.startswith("#"):
                 continue
             match = _USB_FIRMWARE.match(filename)
             if match:
+                self.filenames.append(filename)
                 self.usb.setdefault(match.group(1), set()).add(
                     int(match.group(2)))
                 continue
             match = _VINT_FIRMWARE.match(filename)
             if match:
+                self.filenames.append(filename)
                 key = (match.group(1), int(match.group(2), 16))
                 self.vint.setdefault(key, set()).add(int(match.group(3)))
 
@@ -69,6 +81,40 @@ class FirmwareCatalog(object):
         if vint_id is None:
             return self.usb.get(identifier, set())
         return self.vint.get((identifier, vint_id), set())
+
+
+def _read_bounded(response, limit):
+    payload = response.read(limit + 1)
+    if len(payload) > limit:
+        raise ValueError("Phidgets catalog response exceeds %s bytes" % limit)
+    return payload
+
+
+def fetch_firmware_catalog(current_version=FIRMWARE_CATALOG_VERSION, opener=urlopen):
+    """Read firmware filenames from the latest official admin source archive."""
+    request = Request(ADMIN_ARCHIVE_INDEX,
+                      headers={"User-Agent": "Phidgets-Indigo-Firmware-Catalog/1"})
+    with opener(request, timeout=5) as response:
+        listing = _read_bounded(response, MAX_INDEX_BYTES).decode("utf-8")
+    versions = ADMIN_ARCHIVE_NAME.findall(listing)
+    if not versions:
+        raise ValueError("No phidget22admin archive found in Phidgets index")
+    version = max(versions, key=lambda value: tuple(map(int, value.split("."))))
+    if tuple(map(int, version.split("."))) <= tuple(
+            map(int, current_version.split("."))):
+        return None
+    archive_url = ADMIN_ARCHIVE_INDEX + "phidget22admin-%s.tar.gz" % version
+    with opener(Request(archive_url, headers={
+            "User-Agent": "Phidgets-Indigo-Firmware-Catalog/1"}),
+            timeout=10) as response:
+        payload = _read_bounded(response, MAX_ARCHIVE_BYTES)
+    with tarfile.open(fileobj=io.BytesIO(payload), mode="r:gz") as archive:
+        filenames = [os.path.basename(member.name) for member in archive
+                     if member.isfile() and "/firmware/" in member.name]
+    catalog = FirmwareCatalog(filenames)
+    if not catalog.usb and not catalog.vint:
+        raise ValueError("Phidgets admin archive has no recognized firmware")
+    return version, catalog
 
 
 class VersionCollector(object):
@@ -86,6 +132,8 @@ class VersionCollector(object):
         self._generation = 0
         self._stopped = True
         self._test_override = None
+        self._remote_catalog_enabled = firmware_catalog is None
+        self.catalog_version = FIRMWARE_CATALOG_VERSION
         if firmware_catalog is None:
             try:
                 firmware_catalog = FirmwareCatalog.loaded(CATALOG_PATH)
@@ -94,6 +142,48 @@ class VersionCollector(object):
                                traceback.format_exc())
                 firmware_catalog = FirmwareCatalog(())
         self.firmware_catalog = firmware_catalog
+        if self._remote_catalog_enabled:
+            self._load_cached_catalog()
+
+    def _cache_path(self):
+        log_path = getattr(getattr(self.plugin, "plugin_file_handler", None),
+                           "baseFilename", "")
+        return (os.path.join(os.path.dirname(log_path), CACHE_FILENAME)
+                if log_path else None)
+
+    def _load_cached_catalog(self):
+        path = self._cache_path()
+        if not path or not os.path.exists(path):
+            return
+        try:
+            with open(path, "r", encoding="utf-8") as cached:
+                data = json.load(cached)
+            version = data["version"]
+            if not isinstance(version, str) or not re.fullmatch(
+                    r"\d+\.\d+\.\d{8}", version):
+                raise ValueError("Invalid cached catalog version")
+            catalog = FirmwareCatalog(data["filenames"])
+            if not catalog.usb and not catalog.vint:
+                raise ValueError("Cached catalog has no firmware entries")
+            if tuple(map(int, version.split("."))) > tuple(
+                    map(int, self.catalog_version.split("."))):
+                self.firmware_catalog = catalog
+                self.catalog_version = version
+        except Exception as error:
+            self.logger.warning("Unable to load cached firmware catalog: %s", error)
+
+    def _save_cached_catalog(self):
+        path = self._cache_path()
+        if not path:
+            return
+        temporary_path = path + ".tmp"
+        try:
+            with open(temporary_path, "w", encoding="utf-8") as output:
+                json.dump({"version": self.catalog_version,
+                           "filenames": self.firmware_catalog.filenames}, output)
+            os.replace(temporary_path, path)
+        except Exception as error:
+            self.logger.warning("Unable to cache firmware catalog: %s", error)
 
     @property
     def interval(self):
@@ -162,12 +252,32 @@ class VersionCollector(object):
             return
         try:
             self.collect()
+        except Exception:
+            self.logger.error("Version collection failed; next check remains scheduled:\n%s",
+                              traceback.format_exc())
         finally:
             self._collection_lock.release()
-        if self.interval:
-            self._schedule(self.interval)
+            if self.interval:
+                self._schedule(self.interval)
+
+    def _refresh_catalog(self):
+        if not self._remote_catalog_enabled:
+            return
+        try:
+            refreshed = fetch_firmware_catalog(self.catalog_version)
+            if refreshed is not None:
+                version, catalog = refreshed
+                self.firmware_catalog = catalog
+                self.catalog_version = version
+                self._save_cached_catalog()
+                self.logger.info("Firmware catalog refreshed from Phidgets admin %s",
+                                 version)
+        except Exception as error:
+            self.logger.warning("Unable to refresh Phidgets firmware catalog; "
+                                "using %s: %s", self.catalog_version, error)
 
     def collect(self):
+        self._refresh_catalog()
         checked_at = _timestamp()
         registry = registry_for(self.plugin)
         wrappers = registry.snapshot()
@@ -306,7 +416,7 @@ class VersionCollector(object):
                 "firmwareUpdateAvailable": False,
                 "firmwareMajorUpdateAvailable": False,
                 "firmwareUpdateStatus": "Not applicable",
-                "firmwareCatalogVersion": FIRMWARE_CATALOG_VERSION,
+                "firmwareCatalogVersion": self.catalog_version,
                 "firmwareVersionStatus": "No firmware",
                 "lastVersionCheck": checked_at,
                 "versionCheckError": "",
@@ -322,7 +432,7 @@ class VersionCollector(object):
                 "firmwareUpdateAvailable": False,
                 "firmwareMajorUpdateAvailable": False,
                 "firmwareUpdateStatus": "Not applicable",
-                "firmwareCatalogVersion": FIRMWARE_CATALOG_VERSION,
+                "firmwareCatalogVersion": self.catalog_version,
                 "firmwareVersionStatus": "No firmware",
                 "lastVersionCheck": checked_at,
                 "versionCheckError": "",
@@ -331,7 +441,7 @@ class VersionCollector(object):
         if getattr(wrapper, "_state", None) != "attached":
             _publish(wrapper, {
                 "firmwareVersionStatus": "Unavailable",
-                "firmwareCatalogVersion": FIRMWARE_CATALOG_VERSION,
+                "firmwareCatalogVersion": self.catalog_version,
                 "lastVersionCheck": checked_at,
                 "versionCheckError": "Device is not attached",
             }, self.logger)
@@ -399,7 +509,7 @@ class VersionCollector(object):
                 "firmwareUpdateAvailable": update_available,
                 "firmwareMajorUpdateAvailable": major_update_available,
                 "firmwareUpdateStatus": update_status,
-                "firmwareCatalogVersion": FIRMWARE_CATALOG_VERSION,
+                "firmwareCatalogVersion": self.catalog_version,
                 "firmwareVersionStatus": (
                     "Collected" if has_firmware else "No firmware"),
                 "lastVersionCheck": checked_at,
@@ -417,7 +527,7 @@ class VersionCollector(object):
         except Exception as error:
             _publish(wrapper, {
                 "firmwareVersionStatus": "Check failed",
-                "firmwareCatalogVersion": FIRMWARE_CATALOG_VERSION,
+                "firmwareCatalogVersion": self.catalog_version,
                 "lastVersionCheck": checked_at,
                 "versionCheckError": str(error),
             }, self.logger)

@@ -1,6 +1,10 @@
 import logging
+import io
+import json
 import pathlib
 import sys
+import tarfile
+import tempfile
 import threading
 import types
 import unittest
@@ -106,6 +110,61 @@ class VersionCollectionTests(unittest.TestCase):
                 "HUM1000_0x014_v104.bin.obf",
                 "HUM1000_0x014_v105.bin.obf",
             )))
+
+    def test_failed_collection_logs_and_reschedules(self):
+        with mock.patch.object(self.collector, "collect", side_effect=RuntimeError("boom")), \
+                mock.patch.object(self.collector, "_schedule") as schedule:
+            self.collector._collect_and_reschedule()
+        self.logger.error.assert_called_once()
+        schedule.assert_called_once_with(86400)
+        self.assertTrue(self.collector._collection_lock.acquire(False))
+        self.collector._collection_lock.release()
+
+    def test_official_catalog_refresh_reads_only_firmware_filenames(self):
+        archive_data = io.BytesIO()
+        with tarfile.open(fileobj=archive_data, mode="w:gz") as archive:
+            filename = b"TESTUSBv125.bin.rc4"
+            member = tarfile.TarInfo("phidget22admin-1.27.20260914/firmware/" +
+                                     filename.decode("ascii"))
+            member.size = len(filename)
+            archive.addfile(member, io.BytesIO(filename))
+        responses = [io.BytesIO(b'<a href="phidget22admin-1.27.20260914.tar.gz">'),
+                     io.BytesIO(archive_data.getvalue())]
+        opener = mock.Mock(side_effect=responses)
+        version, catalog = version_collection.fetch_firmware_catalog(
+            opener=opener)
+        self.assertEqual(version, "1.27.20260914")
+        self.assertEqual(catalog.versions("TESTUSB"), {125})
+        self.assertEqual(opener.call_count, 2)
+
+    def test_catalog_refresh_skips_archive_if_no_newer_version(self):
+        opener = mock.Mock(return_value=io.BytesIO(
+            b'<a href="phidget22admin-1.26.20260828.tar.gz">'))
+        self.assertIsNone(version_collection.fetch_firmware_catalog(
+            opener=opener))
+        opener.assert_called_once()
+
+    def test_last_successful_catalog_survives_restart_and_network_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self.plugin.plugin_file_handler = types.SimpleNamespace(
+                baseFilename=str(pathlib.Path(directory) / "plugin.log"))
+            first = version_collection.VersionCollector(
+                self.plugin, self.logger)
+            catalog = version_collection.FirmwareCatalog((
+                "TESTUSBv125.bin.rc4",))
+            with mock.patch.object(version_collection, "fetch_firmware_catalog",
+                                   return_value=("1.27.20260914", catalog)):
+                first._refresh_catalog()
+            cache_path = pathlib.Path(directory) / version_collection.CACHE_FILENAME
+            self.assertEqual(json.loads(cache_path.read_text())["version"],
+                             "1.27.20260914")
+            restored = version_collection.VersionCollector(
+                self.plugin, self.logger)
+            with mock.patch.object(version_collection, "fetch_firmware_catalog",
+                                   side_effect=TimeoutError("offline")):
+                restored._refresh_catalog()
+            self.assertEqual(restored.catalog_version, "1.27.20260914")
+            self.assertEqual(restored.firmware_catalog.versions("TESTUSB"), {125})
 
     def test_collects_firmware_and_upgradeability_independently(self):
         device = FakeDevice()

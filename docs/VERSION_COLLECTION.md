@@ -39,7 +39,14 @@ device operation or availability.
 An attached channel's Phidget SDK handle supplies its physical-device firmware
 version and exact firmware-upgrade identifier. That identifier, plus the VINT
 ID where applicable, is matched against a filename-only catalog generated from
-`phidget22admin` 1.26.20260828. The highest matching version determines whether
+`phidget22admin` 1.26.20260828. Before each collection, the plugin checks the
+official Phidgets admin archive index; when it finds a newer archive, it reads
+the firmware filenames from that archive into memory. It never runs the admin
+tool, bundles new firmware payloads, or applies firmware. The last successful
+filename catalog is cached beside the Indigo plugin log and reused even after
+a restart. A failed network or archive check retains that catalog, or the
+bundled snapshot if no download has succeeded, and is retried next time. The
+highest matching version in that catalog determines whether
 an update is available; crossing a hundred-series boundary is marked as a
 potentially breaking major update. No firmware payloads are bundled or applied.
 

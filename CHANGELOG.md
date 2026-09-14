@@ -1,5 +1,21 @@
 # Release notes
 
+## 0.5.7 — 2026-09-14
+
+### Fixed
+
+- Keep periodic version collection scheduled after an unexpected collection
+  error, with an error log entry for diagnosis.
+
+### Changed
+
+- Set the documented minimum to Indigo 2025.2 with Python 3.13.
+- Check Phidgets' official `phidget22admin` archive index at each version
+  collection. Download firmware filenames only when a newer archive is found,
+  and preserve the last successful catalog across plugin restarts. Network
+  failures retain the cached or bundled catalog; no firmware is installed.
+- Refresh Store and getting-started documentation for the current 0.5.x plugin.
+
 ## 0.5.6 — 2026-09-14
 
 ### Changed

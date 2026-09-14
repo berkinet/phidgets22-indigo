@@ -18,7 +18,7 @@ double-click `Phidgets22.indigoPlugin` to install it in Indigo.
 
 ## Requirements
 
-- [Indigo](https://www.indigodomo.com) 2022.1 or newer
+- [Indigo](https://www.indigodomo.com) 2025.2 or newer (Python 3.13)
 - The official [Phidget22 Python package](https://www.phidgets.com/docs/Language_-_Python), installed for Indigo's Python 3.13:
 
   ```bash
@@ -66,12 +66,22 @@ Only network phidgets are supported. To use local attached phidgets, enable the 
 
 The plugin collects version information without changing servers or device
 firmware. Native Phidget devices report the installed and latest compatible
-firmware versions, whether the supplied `phidget22admin` catalog supports the
+firmware versions, whether the Phidgets `phidget22admin` catalog supports the
 exact hardware, and whether a newer firmware version is available. Potentially
 breaking major updates are identified separately. Logical peripherals and hub
 port modes without independent firmware report **No firmware**. Network Server
 devices report the server protocol version when an attached plugin device on
 that server is available for the read.
+
+At each collection, the plugin checks Phidgets' official `phidget22admin`
+archive index. If a newer archive exists, it reads only the firmware filenames
+from that archive; it does not install firmware or run the admin tool. If the
+check fails, it keeps the last successfully downloaded catalog across plugin
+restarts (or the bundled snapshot if none has been downloaded), and tries again
+on the next collection. The filename cache is stored beside the Indigo plugin
+log. Firmware availability is therefore
+relative to the most recently retrieved catalog, not a guarantee that every
+new Phidgets release has already been checked.
 
 Automatic collection is daily by default and can be disabled or changed to 6
 hours, 12 hours, or weekly in the plugin configuration. Use **Update Indigo

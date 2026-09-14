@@ -11,33 +11,24 @@ Phidgets 22 to the Indigo Plugin Store.
 - Developer identifier: `com.berkinet`
 - Indigo website / Plugin Store account: `berkinet2`
 - Category: **Digital/Analog I/O Modules**
-- Minimum Indigo version: **2022.1**
+- Minimum Indigo version: **2025.2** (Python 3.13)
 - First Store-compatible version: **0.3.0**
-- Intended first public Store release: **1.0.0** (deferred until submission)
+- Current pre-submission release line: **0.5.x**
 
 Version 0.3.0 begins the three-part `X.Y.Z` version scheme required by the
-Store. Versions through 0.2.1.49 remain part of the development history. Later
-patch releases should be numbered 0.3.1, 0.3.2, and so on.
-
-Continue using `0.3.x` versions during the present hardware-testing and
-pre-publication phase. When the plugin and Store submission are ready, promote
-the tested release candidate to `1.0.0` and publish its matching tag and GitHub
-Release. Do not bump the plugin, tag `v1.0.0`, or create that release before the
-submission milestone.
-
-The remaining hardware work before that milestone is real-hardware verification
-of the implemented SGP41 I2C profile. The BME280 profile and ADP0001 GPIO
-support are implemented and hardware-tested.
-
-The planned LCD1100 text and formula-graph support is implemented and
-hardware-tested; it no longer represents a Store-submission dependency.
+Store. Versions through 0.2.1.49 remain part of the development history. The
+first Store submission should use a tested 0.5.x release unless the owner
+chooses a different version; do not assume that 1.0.0 is required. Before
+submission, verify current hardware behavior, the clean-install path, and the
+current release notes. The plugin requires Indigo 2025.2's Python 3.13 and an
+externally installed official Phidget22 package.
 
 ## Permanent identity and compatibility
 
 Indigo associates devices, actions, and other objects with the plugin
 identifier. Changing the identifier would cause existing objects to remain
 associated with the old plugin identity and appear lost to the replacement.
-For that reason, version 0.3.0 preserves the established identifier
+For that reason, the plugin preserves the established identifier
 `com.yikes.eric.phidgets-indigo`.
 
 The identifier does not begin with the `com.berkinet` developer ID. Indigo
@@ -72,27 +63,21 @@ For every Store release:
 5. Create and push the corresponding annotated version tag.
 6. Create a **published** GitHub Release from that tag. Do not mark a Store
    release as a draft or prerelease.
-7. Confirm that the tag format is accepted as matching `PluginVersion`. The
-   initial tag is `v0.3.0` and the plist value is `0.3.0`; if the contribution
-   form treats the leading `v` as a mismatch, correct the tag/release before
-   importing it.
+7. Confirm that the tag format is accepted as matching `PluginVersion` (for
+   example, tag `v0.5.7` and plist value `0.5.7`). If the contribution form
+   treats the leading `v` as a mismatch, resolve that before importing.
 
 The repository already contains the required top-level README, license,
 `.indigoPlugin` bundle, and `Contents/Resources/icon.png`. A separate plugin ZIP
 is optional. When no release asset is attached, GitHub's source archive
 contains the installable bundle at the repository's top level.
 
-## Initial v0.3.0 publication status
+## Existing GitHub publication
 
-- `PluginVersion` changed to `0.3.0`.
-- Established plugin identifier `com.yikes.eric.phidgets-indigo` preserved.
-- Changelog updated.
-- All 62 automated tests passed.
-- Plist, XML, and diff validation passed.
-- Commit `268e8b99af1b0fcb3918b32ec5d10f158d015265` published to `main`.
-- Annotated tag `v0.3.0` published and verified against that commit.
-- Published GitHub Release `v0.3.0` created and verified as the latest
-  production release (not a prerelease).
+The historical `v0.3.0` release was published before this Store submission.
+It does not represent the current plugin. Verify that the tested 0.5.x tag and
+published GitHub Release contain the intended candidate before importing a
+version into the Store. A tag by itself is not sufficient.
 
 ## Indigo account steps
 
@@ -106,7 +91,7 @@ of the Indigo account:
    `phidgets22-indigo`.
 3. Set or verify the Store name, category, minimum Indigo version, summary,
    support URL, supported-device information, and release notes.
-4. Import the published 0.3.0 GitHub Release.
+4. Import the published, tested 0.5.x GitHub Release.
 5. Verify the Store page, icon, release information, download, installation,
    and version notification behavior.
 6. After the new listing is working, contact Indigo Domotics to retire or
@@ -114,8 +99,8 @@ of the Indigo account:
 
 Account and identity prerequisites are complete: the owner created Indigo
 website account `berkinet2`, and Indigo confirmed that the established
-developer identity may be retained. The next step is to add the GitHub-managed
-plugin from that account's **Plugin Contributions** page.
+developer identity may be retained. The Store submission itself is not yet
+complete.
 
 See Indigo's
 [Plugin Store submission guidance](https://docs.indigodomo.com/2025.2/plugin-dev/guide/#adding-your-plugins-to-the-plugin-store)
