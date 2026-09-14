@@ -1,5 +1,12 @@
 # Release notes
 
+## 0.5.6 — 2026-09-14
+
+### Changed
+
+- Hide the temporary firmware-version test action from Indigo's Action picker
+  while retaining its `plugin.executeAction()` scripting interface.
+
 ## 0.5.5 — 2026-09-13
 
 ### Added

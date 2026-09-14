@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <Actions>
-	<Action id="testFirmwareVersionOverride">
+	<Action id="testFirmwareVersionOverride" uiPath="hidden">
 		<Name>Test firmware update detection (temporary version override)</Name>
 		<CallbackMethod>testFirmwareVersionOverride</CallbackMethod>
 		<ConfigUI>
