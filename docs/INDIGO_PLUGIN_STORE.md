@@ -13,7 +13,7 @@ Phidgets 22 to the Indigo Plugin Store.
 - Category: **Digital/Analog I/O Modules**
 - Minimum Indigo version: **2025.2** (Python 3.13)
 - First Store-compatible version: **0.3.0**
-- Current Store submission candidate: **2026.1.0**
+- Current Store submission candidate: **2026.1.1**
 
 Version 2026.1.0 adopts `year.major.minor`: the calendar year, major release
 within that year, and minor update. Increment to 2026.1.1 for the next minor
@@ -95,7 +95,7 @@ of the Indigo account:
    `phidgets22-indigo`.
 3. Set or verify the Store name, category, minimum Indigo version, summary,
    support URL, supported-device information, and release notes.
-4. Import the published, tested 2026.1.0 GitHub Release.
+4. Import the published, tested 2026.1.1 GitHub Release.
 5. Verify the Store page, icon, release information, download, installation,
    and version notification behavior.
 6. After the new listing is working, contact Indigo Domotics to retire or

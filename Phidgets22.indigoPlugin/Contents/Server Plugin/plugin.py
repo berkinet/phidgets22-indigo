@@ -9,11 +9,27 @@ import traceback
 
 import indigo
 
-from Phidget22.Devices.Log import Log
-from Phidget22.LogLevel import LogLevel
-from Phidget22.Net import Net, PhidgetServerType
-from Phidget22.Phidget import Phidget
-from Phidget22.PhidgetException import PhidgetException
+try:
+    from Phidget22.Devices.Log import Log
+    from Phidget22.LogLevel import LogLevel
+    from Phidget22.Net import Net, PhidgetServerType
+    from Phidget22.Phidget import Phidget
+    from Phidget22.PhidgetException import PhidgetException
+except ModuleNotFoundError as error:
+    if error.name != "Phidget22":
+        raise
+    message = (
+        "Phidgets 22 cannot start: the required Phidget22 Python package is "
+        "not installed in Indigo's Python environment. On the Mac running "
+        "Indigo Server, open Terminal and run:\n"
+        '"/Library/Frameworks/Python.framework/Versions/3.13/bin/python3.13" '
+        "-m pip install --upgrade phidget22\n"
+        "Then reload Phidgets 22 in Indigo. This plugin requires Indigo "
+        "2025.2 or newer (Python 3.13)."
+    )
+    indigo.server.log(message, isError=True)
+    # Fail initialization rather than leaving a partially functional plugin.
+    raise ImportError(message) from None
 
 from PhidgetInfo import PhidgetInfo
 from actions import ActionsMixin

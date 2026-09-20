@@ -1,5 +1,14 @@
 # Release notes
 
+## 2026.1.1 — 2026-09-20
+
+### Fixed
+
+- When the Phidget22 Python package is missing, log the exact installation
+  command for Indigo Python 3.13 and instructions to reload the plugin.
+  Stop initialization clearly rather than leaving a partially loaded plugin.
+- Preserve the original error for unrelated missing modules.
+
 ## 2026.1.0 — 2026-09-20
 
 ### Changed
