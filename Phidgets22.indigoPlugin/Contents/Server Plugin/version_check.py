@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Non-blocking Phidget22 native-library version checking."""
 
+from python_environment import phidget_install_advice
+
 import calendar
 import json
 import re
@@ -10,8 +12,6 @@ from urllib.request import Request, urlopen
 
 PHIDGETS_PYPI_URL = "https://pypi.org/pypi/phidget22/json"
 PHIDGETS_PYTHON_INFO_URL = "https://www.phidgets.com/docs/Language_-_Python"
-PHIDGETS_UPDATE_COMMAND = ('"/Library/Frameworks/Python.framework/Versions/3.13/bin/'
-                           'python3.13" -m pip install --upgrade phidget22')
 DEFAULT_TIMEOUT_SECONDS = 5
 
 _INSTALLED_PATTERN = re.compile(
@@ -63,8 +63,8 @@ def check_and_log(library_version, logger, timeout=DEFAULT_TIMEOUT_SECONDS, open
         if _version_tuple(installed) < _version_tuple(current):
             logger.warning(
                 "Installed Phidget22 version is %s; newer version %s is available. "
-                "To update it, run: %s. For more information, see: %s",
-                installed, current, PHIDGETS_UPDATE_COMMAND, PHIDGETS_PYTHON_INFO_URL)
+                "%s For more information, see: %s",
+                installed, current, phidget_install_advice(), PHIDGETS_PYTHON_INFO_URL)
         else:
             logger.info(
                 "Installed Phidget22 version is %s and is up to date. "

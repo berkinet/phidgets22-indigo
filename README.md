@@ -216,3 +216,16 @@ configuration and discovery callbacks.
 - [Preparatory cleanup audit](docs/CLEANUP_AUDIT.md)
 - [Phidget class support roadmap](docs/PHIDGET_CLASS_ROADMAP.md)
 - [Indigo Plugin Store publication](docs/INDIGO_PLUGIN_STORE.md)
+
+### Indigo 2025.1 compatibility
+
+The automated suite also passes on Python 3.10, used by Indigo 2025.1.
+Live Indigo 2025.1 validation is pending; users testing that version should
+install the dependency with:
+
+```zsh
+"/Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10" -m pip install --upgrade phidget22
+```
+
+The plugin's dependency messages detect the running Python version and provide
+the matching command. No additional Python version needs to be installed.

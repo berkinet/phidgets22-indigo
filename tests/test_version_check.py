@@ -1,5 +1,6 @@
 import importlib.util
 import logging
+import sys
 import pathlib
 import unittest
 
@@ -65,7 +66,7 @@ class VersionCheckTests(unittest.TestCase):
                 "Phidget22 - Version 1.23 - Built Oct  6 2025 09:00:00",
                 logger, opener=opener)
         self.assertIn("newer version 1.25.20260408", captured.output[0])
-        self.assertIn("python3.13", captured.output[0])
+        self.assertIn("python%s.%s" % sys.version_info[:2], captured.output[0])
         self.assertIn("pip install --upgrade phidget22", captured.output[0])
 
     def test_network_failure_logs_info_without_raising(self):

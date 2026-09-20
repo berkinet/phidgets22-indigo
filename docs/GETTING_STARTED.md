@@ -139,3 +139,16 @@ the discovered local and remote device/channel hierarchy to Indigo's Event
 Log. **Print Indigo Phidget devices to log** lists only devices configured in
 this plugin. The menu also offers an asynchronous firmware-version collection
 and a JSON export of all configured plugin devices and states.
+
+### Indigo 2025.1 compatibility
+
+The automated suite also passes on Python 3.10, used by Indigo 2025.1.
+Live Indigo 2025.1 validation is pending; users testing that version should
+install the dependency with:
+
+```zsh
+"/Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10" -m pip install --upgrade phidget22
+```
+
+The plugin's dependency messages detect the running Python version and provide
+the matching command. No additional Python version needs to be installed.

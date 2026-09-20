@@ -1,5 +1,16 @@
 # Release notes
 
+## 2026.1.2 — 2026-09-20
+
+### Fixed
+
+- Select Phidget22 installation and update advice using the Python version
+  actually hosting the plugin, including Python 3.10 on Indigo 2025.1.
+- If the matching framework interpreter is absent, explain that Indigo
+  Python needs checking rather than suggesting a nonexistent executable.
+- Validate the automated suite on Python 3.10 and 3.13; live Indigo 2025.1
+  compatibility remains pending user confirmation.
+
 ## 2026.1.1 — 2026-09-20
 
 ### Fixed
