@@ -5,9 +5,10 @@
   branch.
 - When a requested implementation is complete, do not stop after the local
   code change. Unless the user explicitly says the work is local-only, finish
-  the release: update the plugin patch version and release notes, run the full
+  the release: update the plugin year.major.minor version and release notes, run the full
   tests and validation, commit, push `main`, create and push the matching
-  annotated version tag, and verify the remote commit and tag.
+  annotated version tag (exactly matching PluginVersion, without a v prefix),
+  create a published GitHub Release, and verify the remote commit, tag, and release.
 - Distribution is through GitHub's **Code → Download ZIP** command. Do not
   create or attach a custom ZIP and do not use a GitHub Release asset as the
   download method.

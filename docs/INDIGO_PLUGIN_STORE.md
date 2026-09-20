@@ -13,15 +13,19 @@ Phidgets 22 to the Indigo Plugin Store.
 - Category: **Digital/Analog I/O Modules**
 - Minimum Indigo version: **2025.2** (Python 3.13)
 - First Store-compatible version: **0.3.0**
-- Current pre-submission release line: **0.5.x**
+- Current Store submission candidate: **2026.1.0**
 
-Version 0.3.0 begins the three-part `X.Y.Z` version scheme required by the
-Store. Versions through 0.2.1.49 remain part of the development history. The
-first Store submission should use a tested 0.5.x release unless the owner
-chooses a different version; do not assume that 1.0.0 is required. Before
-submission, verify current hardware behavior, the clean-install path, and the
-current release notes. The plugin requires Indigo 2025.2's Python 3.13 and an
-externally installed official Phidget22 package.
+Version 2026.1.0 adopts `year.major.minor`: the calendar year, major release
+within that year, and minor update. Increment to 2026.1.1 for the next minor
+update, 2026.2.0 for the next major release, and 2027.1.0 for the first release
+of 2027. Keep historical versions and tags unchanged. Use the exact
+PluginVersion as the release tag, without a `v` prefix.
+
+Version 0.3.0 began the three-part version scheme; versions through 0.2.1.49
+remain part of development history. Before Store submission, verify current
+hardware behavior, the clean-install path, and the release notes. The plugin
+requires Indigo 2025.2's Python 3.13 and an externally installed official
+Phidget22 package.
 
 ## Permanent identity and compatibility
 
@@ -63,9 +67,8 @@ For every Store release:
 5. Create and push the corresponding annotated version tag.
 6. Create a **published** GitHub Release from that tag. Do not mark a Store
    release as a draft or prerelease.
-7. Confirm that the tag format is accepted as matching `PluginVersion` (for
-   example, tag `v0.5.7` and plist value `0.5.7`). If the contribution form
-   treats the leading `v` as a mismatch, resolve that before importing.
+7. Verify that the published release tag and the tagged source archive's
+   PluginVersion both equal `2026.1.0` (or the new release version).
 
 The repository already contains the required top-level README, license,
 `.indigoPlugin` bundle, and `Contents/Resources/icon.png`. A separate plugin ZIP
@@ -74,10 +77,11 @@ contains the installable bundle at the repository's top level.
 
 ## Existing GitHub publication
 
-The historical `v0.3.0` release was published before this Store submission.
-It does not represent the current plugin. Verify that the tested 0.5.x tag and
-published GitHub Release contain the intended candidate before importing a
-version into the Store. A tag by itself is not sufficient.
+Before publication of 2026.1.0, GitHub's latest published release was
+`v0.3.47`; later source changes existed on main without a matching published
+release. Publish 2026.1.0 from the tested main commit and verify that its tag
+and source archive contain the intended candidate before importing it into
+the Store. A tag by itself is not sufficient.
 
 ## Indigo account steps
 
@@ -91,7 +95,7 @@ of the Indigo account:
    `phidgets22-indigo`.
 3. Set or verify the Store name, category, minimum Indigo version, summary,
    support URL, supported-device information, and release notes.
-4. Import the published, tested 0.5.x GitHub Release.
+4. Import the published, tested 2026.1.0 GitHub Release.
 5. Verify the Store page, icon, release information, download, installation,
    and version notification behavior.
 6. After the new listing is working, contact Indigo Domotics to retire or

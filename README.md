@@ -21,7 +21,7 @@ double-click `Phidgets22.indigoPlugin` to install it in Indigo.
 - [Indigo](https://www.indigodomo.com) 2025.2 or newer (Python 3.13)
 - The official [Phidget22 Python package](https://www.phidgets.com/docs/Language_-_Python), installed for Indigo's Python 3.13:
 
-  ```bash
+  ```zsh
   "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3.13" \
     -m pip install --upgrade phidget22
   ```
@@ -33,6 +33,7 @@ on routine plugin updates and keeps the Python bindings and native library match
 See the brief [Getting started guide](docs/GETTING_STARTED.md) for plugin setup,
 device creation, and printing a Phidgets network map.
 
+Releases use `year.major.minor` version numbers, starting with **2026.1.0**.
 See [Release notes](CHANGELOG.md) for changes in each published version.
 
 Maintainers should follow the

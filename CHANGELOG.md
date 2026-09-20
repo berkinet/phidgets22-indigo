@@ -1,5 +1,18 @@
 # Release notes
 
+## 2026.1.0 — 2026-09-20
+
+### Changed
+
+- Adopt year.major.minor version numbers: the year, major release within that
+  year, and minor update. The next minor update is 2026.1.1; the next major
+  release is 2026.2.0. Historical versions remain unchanged.
+- Align GitHub release tags exactly with PluginVersion, without a v prefix.
+- Refresh Store publication guidance for the separate berkinet2 publishing
+  account while preserving the established plugin and developer identifiers.
+- This release carries forward the changes documented below through 0.5.7;
+  the version-format change itself does not alter runtime behavior.
+
 ## 0.5.7 — 2026-09-14
 
 ### Fixed
