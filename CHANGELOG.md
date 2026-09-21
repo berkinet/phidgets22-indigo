@@ -1,5 +1,14 @@
 # Release notes
 
+## 2026.1.3 — 2026-09-21
+
+### Fixed
+
+- Handle SGP41 CRC and incomplete-response failures without a traceback.
+  Discard invalid measurements, retry on the next scheduled poll, warn once,
+  escalate on the third invalid response, and report recovery on a valid sample.
+- Preserve tracebacks for unexpected programming failures.
+
 ## 2026.1.2 — 2026-09-20
 
 ### Fixed

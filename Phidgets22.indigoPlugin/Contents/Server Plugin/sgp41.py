@@ -16,6 +16,10 @@ from sensirion_gas_index_algorithm import (
     ALGORITHM_TYPE_NOX, ALGORITHM_TYPE_VOC, GasIndexAlgorithm)
 
 
+class SensorResponseError(RuntimeError):
+    """A sensor reply cannot be safely used as a measurement."""
+
+
 class SGP41Phidget(I2CPeripheralBase):
     PROVIDER_FUNCTION = "sgp41"
     ADDRESS = 0x59
@@ -54,6 +58,7 @@ class SGP41Phidget(I2CPeripheralBase):
         self._actual_humidity = self.relativeHumidity
         self._actual_temperature = self.temperature
         self._compensation_issue = None
+        self._response_error_count = 0
         self._state = "stopped"
         self._timer = None
         self._generation = 0
@@ -79,12 +84,12 @@ class SGP41Phidget(I2CPeripheralBase):
     @classmethod
     def _decode_words(cls, response, count):
         if len(response) != count * 3:
-            raise RuntimeError("The SGP41 returned an incomplete response")
+            raise SensorResponseError("The SGP41 returned an incomplete response")
         words = []
         for offset in range(0, len(response), 3):
             data = response[offset:offset + 2]
             if response[offset + 2] != cls.crc(data):
-                raise RuntimeError("The SGP41 returned an invalid CRC")
+                raise SensorResponseError("The SGP41 returned an invalid CRC")
             words.append((data[0] << 8) | data[1])
         return words
 
@@ -214,7 +219,24 @@ class SGP41Phidget(I2CPeripheralBase):
                         self.indigoDevice.name)
                     self._transport_error_count = 0
                     self._transport_error_code = None
+                if self._response_error_count:
+                    self.logger.info(
+                        "SGP41 valid readings resumed after %d invalid responses: device='%s'",
+                        self._response_error_count, self.indigoDevice.name)
+                    self._response_error_count = 0
                 self.indigoDevice.setErrorStateOnServer(None)
+            except SensorResponseError as error:
+                if not self._pollInterruptedByProviderDetach():
+                    self._response_error_count += 1
+                    if self._response_error_count == 1:
+                        self.logger.warning(
+                            "SGP41 reading discarded; retrying on the next poll: device='%s': %s",
+                            self.indigoDevice.name, error)
+                    elif self._response_error_count == 3:
+                        self.logger.error(
+                            "SGP41 repeated invalid responses; retries remain active: device='%s': %s",
+                            self.indigoDevice.name, error)
+                    self.indigoDevice.setErrorStateOnServer("Invalid I2C response; retrying")
             except PeripheralUnavailableError as error:
                 message = str(error)
                 if message != self._offline_message:

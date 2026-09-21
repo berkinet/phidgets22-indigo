@@ -209,6 +209,35 @@ class SGP41Tests(unittest.TestCase):
             "Traceback", wrapper.logger.warning.call_args.args[0])
         wrapper.logger.error.assert_not_called()
 
+    def test_invalid_responses_are_discarded_and_recover(self):
+        for response in (b"\x00\x00\x00", b"\x11"):
+            with self.subTest(response=response):
+                wrapper, adapter, device = self.wrapper()
+                with mock.patch.object(i2c_peripheral.threading, "Timer") as timer:
+                    wrapper.start()
+                    samples = wrapper._algorithm_sample_count
+                    device.updateStateOnServer.reset_mock()
+                    original = adapter.i2cCommandResponse
+                    adapter.i2cCommandResponse = mock.Mock(return_value=response)
+                    for _ in range(4):
+                        wrapper._poll(wrapper._generation)
+                    self.assertEqual(wrapper._algorithm_sample_count, samples)
+                    self.assertFalse(any(call.args and call.args[0] in
+                        ("rawVoc", "rawNox", "vocIndex", "noxIndex")
+                        for call in device.updateStateOnServer.call_args_list))
+                    device.setErrorStateOnServer.assert_called_with("Invalid I2C response; retrying")
+                    wrapper.logger.warning.assert_called_once()
+                    wrapper.logger.error.assert_called_once()
+                    self.assertNotIn("Traceback", wrapper.logger.error.call_args.args[0])
+                    self.assertTrue(timer.called)
+                    adapter.i2cCommandResponse = original
+                    wrapper._poll(wrapper._generation)
+                self.assertEqual(wrapper._response_error_count, 0)
+                device.setErrorStateOnServer.assert_called_with(None)
+                wrapper.logger.info.assert_any_call(
+                    "SGP41 valid readings resumed after %d invalid responses: device='%s'",
+                    4, device.name)
+
     def test_state_list_is_rebuilt_before_first_state_update(self):
         wrapper, _, device = self.wrapper()
 
