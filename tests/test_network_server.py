@@ -104,9 +104,10 @@ class NetworkServerDeviceTests(unittest.TestCase):
         self.monitor.stop()
 
     def test_initially_unavailable_server_shows_red_circle(self):
+        self.device.error = "Offline"  # Persisted error from earlier releases.
         self.monitor.serverInitiallyUnavailable()
         self.assertEqual(self.device.states["availability"], "Offline")
-        self.assertEqual(self.device.error, "Offline")
+        self.assertIsNone(self.device.error)
         self.assertEqual(self.device.image, "red")
 
     def test_discovery_publishes_read_only_server_metadata_and_attach(self):
@@ -134,7 +135,7 @@ class NetworkServerDeviceTests(unittest.TestCase):
 
         self.assertFalse(self.device.states["onOffState"])
         self.assertEqual(self.device.states["availability"], "Offline")
-        self.assertEqual(self.device.error, "Offline")
+        self.assertIsNone(self.device.error)
         self.assertEqual(self.device.image, "red")
         self.assertEqual(
             self.plugin.events, ["deviceDetached"])

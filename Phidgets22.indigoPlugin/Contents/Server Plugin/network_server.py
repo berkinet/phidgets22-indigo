@@ -138,10 +138,14 @@ class NetworkServerDevice(object):
             "serverName": self.serverName,
             "reconnectCount": 0,
         })
+        # Offline is this monitor's measured state, not an Indigo device error.
+        # Keep the normal availability display and explicit red-circle image.
         try:
-            self.indigoDevice.setErrorStateOnServer("Offline")
-        except Exception:
-            pass
+            self.indigoDevice.setErrorStateOnServer(None)
+        except Exception as error:
+            self.logger.warning(
+                "Unable to clear display error for network server '%s': %s",
+                self.serverName, error)
         self.indigoDevice.updateStateImageOnServer(
             indigo.kStateImageSel.SensorTripped)
         self._schedule_unavailable_timer(self._initial_unavailable_timeout)
@@ -255,10 +259,14 @@ class NetworkServerDevice(object):
             "lastDetached": _timestamp(),
             "lastOutageSeconds": 0.0,
         })
+        # Offline is this monitor's measured state, not an Indigo device error.
+        # Keep the normal availability display and explicit red-circle image.
         try:
-            self.indigoDevice.setErrorStateOnServer("Offline")
-        except Exception:
-            pass
+            self.indigoDevice.setErrorStateOnServer(None)
+        except Exception as error:
+            self.logger.warning(
+                "Unable to clear display error for network server '%s': %s",
+                self.serverName, error)
         self.indigoDevice.updateStateImageOnServer(
             indigo.kStateImageSel.SensorTripped)
         self.indigo_plugin.triggerEvent(self, "deviceDetached")

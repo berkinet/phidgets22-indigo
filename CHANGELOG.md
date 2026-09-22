@@ -1,5 +1,14 @@
 # Release notes
 
+## 2026.1.6 — 2026-09-22
+
+### Fixed
+
+- Publish network-server Offline as a normal availability state and clear
+  Indigo's separate device-error override, allowing the explicit red-circle
+  image to remain visible. Clear persisted errors from earlier releases too.
+- Preserve offline state values, outage notifications, and reconnect behavior.
+
 ## 2026.1.5 — 2026-09-22
 
 ### Fixed
