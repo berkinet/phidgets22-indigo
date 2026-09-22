@@ -1,5 +1,13 @@
 # Release notes
 
+## 2026.1.5 — 2026-09-22
+
+### Fixed
+
+- Show a red circle for offline Phidget Network Server devices, both when
+  initially unavailable and after a disconnection. Online servers retain
+  their green circle. Use Indigo's explicit red-circle image selector.
+
 ## 2026.1.4 — 2026-09-22
 
 ### Documentation

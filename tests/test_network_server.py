@@ -17,7 +17,7 @@ if not hasattr(sys.modules["indigo"], "devices"):
     sys.modules["indigo"].devices = []
 if not hasattr(sys.modules["indigo"], "kStateImageSel"):
     sys.modules["indigo"].kStateImageSel = types.SimpleNamespace(
-        SensorOn="green", Error="red")
+        SensorOn="green", SensorTripped="red", Error="generic-error")
 
 from Phidget22.Net import Net
 from Phidget22.PhidgetServer import PhidgetServer
@@ -103,6 +103,12 @@ class NetworkServerDeviceTests(unittest.TestCase):
     def tearDown(self):
         self.monitor.stop()
 
+    def test_initially_unavailable_server_shows_red_circle(self):
+        self.monitor.serverInitiallyUnavailable()
+        self.assertEqual(self.device.states["availability"], "Offline")
+        self.assertEqual(self.device.error, "Offline")
+        self.assertEqual(self.device.image, "red")
+
     def test_discovery_publishes_read_only_server_metadata_and_attach(self):
         self.monitor.serverAvailable(server())
 
@@ -135,6 +141,7 @@ class NetworkServerDeviceTests(unittest.TestCase):
 
         self.monitor.serverAvailable(server())
         self.assertEqual(self.device.states["reconnectCount"], 1)
+        self.assertEqual(self.device.image, "green")
         self.assertEqual(
             self.plugin.events,
             ["deviceDetached", "deviceAttached"])

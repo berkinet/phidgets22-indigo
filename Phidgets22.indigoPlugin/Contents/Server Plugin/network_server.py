@@ -143,7 +143,7 @@ class NetworkServerDevice(object):
         except Exception:
             pass
         self.indigoDevice.updateStateImageOnServer(
-            indigo.kStateImageSel.Error)
+            indigo.kStateImageSel.SensorTripped)
         self._schedule_unavailable_timer(self._initial_unavailable_timeout)
 
     def serverUnavailable(self):
@@ -260,7 +260,7 @@ class NetworkServerDevice(object):
         except Exception:
             pass
         self.indigoDevice.updateStateImageOnServer(
-            indigo.kStateImageSel.Error)
+            indigo.kStateImageSel.SensorTripped)
         self.indigo_plugin.triggerEvent(self, "deviceDetached")
         self.logger.warning(
             "Phidget network server '%s' unavailable; awaiting rediscovery",
