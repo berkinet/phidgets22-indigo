@@ -1,5 +1,17 @@
 # Release notes
 
+## 2026.1.7 — 2026-09-22
+
+### Fixed
+
+- Recover network-server monitors from current remote-channel discovery when
+  the separate server announcement is missing, including at plugin startup.
+  Verify the discovered endpoint is reachable before publishing Online and
+  continue checking for outages and endpoint changes.
+- Include channel-discovered servers in the server selection menu instead of
+  incorrectly labelling them offline solely because an announcement is absent.
+- Do not invent authentication metadata or select ambiguous server endpoints.
+
 ## 2026.1.6 — 2026-09-22
 
 ### Fixed

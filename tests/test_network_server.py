@@ -23,6 +23,7 @@ from Phidget22.Net import Net
 from Phidget22.PhidgetServer import PhidgetServer
 from Phidget22.PhidgetServerType import PhidgetServerType
 from network_server import NetworkServerDevice
+from server_discovery import channel_server_records
 import discovery_ui
 
 
@@ -212,6 +213,68 @@ class NetworkServerDeviceTests(unittest.TestCase):
             self.plugin.events,
             ["deviceDetached", "deviceAttached"])
 
+    @mock.patch("network_server.socket.create_connection")
+    def test_missing_announcement_recovers_from_channels_and_detects_later_loss(self, connect):
+        self.plugin.discoveryInventory = types.SimpleNamespace(
+            snapshot=lambda: [{"isRemote": True, "serverName": "CM-Spare",
+                               "serverPeerName": "192.0.2.20:5661"}])
+        self.monitor.serverInitiallyUnavailable()
+        self.assertIsNotNone(self.monitor._liveness_timer)
+        with mock.patch.object(self.monitor, "_schedule_liveness_check"):
+            self.monitor._check_liveness(self.monitor._liveness_generation)
+        connect.assert_called_with(("192.0.2.20", 5661), timeout=2.0)
+        self.assertEqual(self.device.states["availability"], "Online")
+        self.assertEqual(self.device.image, "green")
+        self.assertNotIn("authenticationRequired", self.device.states)
+        connect.side_effect = OSError("unreachable")
+        with mock.patch.object(self.monitor, "_schedule_liveness_check"):
+            self.monitor._check_liveness(self.monitor._liveness_generation)
+            self.monitor._check_liveness(self.monitor._liveness_generation)
+        self.monitor._confirmUnavailable(self.monitor._detach_generation)
+        self.assertEqual(self.device.states["availability"], "Offline")
+        self.assertEqual(self.device.image, "red")
+
+    @mock.patch("network_server.socket.create_connection")
+    def test_missing_announcement_waits_for_inventory_and_reachability(self, connect):
+        channels = []
+        self.plugin.discoveryInventory = types.SimpleNamespace(snapshot=lambda: channels)
+        self.monitor.serverInitiallyUnavailable()
+        with mock.patch.object(self.monitor, "_schedule_liveness_check") as schedule:
+            self.monitor._check_liveness(self.monitor._liveness_generation)
+            connect.assert_not_called()
+            schedule.assert_called_once()
+        channels.append({"isRemote": True, "serverName": "CM-Spare",
+                         "serverPeerName": "192.0.2.20:5661"})
+        connect.side_effect = OSError("unreachable")
+        with mock.patch.object(self.monitor, "_schedule_liveness_check"):
+            self.monitor._check_liveness(self.monitor._liveness_generation)
+        self.assertEqual(self.device.states["availability"], "Offline")
+        connect.side_effect = None
+        with mock.patch.object(self.monitor, "_schedule_liveness_check"):
+            self.monitor._check_liveness(self.monitor._liveness_generation)
+        self.assertEqual(self.device.states["availability"], "Online")
+
+    @mock.patch("network_server.socket.create_connection")
+    def test_recovery_uses_new_channel_endpoint_after_address_change(self, connect):
+        self.monitor.serverAvailable(server())
+        self.monitor.serverUnavailable()
+        self.monitor._confirmUnavailable(self.monitor._detach_generation)
+        self.plugin.discoveryInventory = types.SimpleNamespace(snapshot=lambda: [
+            {"isRemote": True, "serverName": "CM-Spare",
+             "serverPeerName": "192.0.2.99:5662"}])
+        with mock.patch.object(self.monitor, "_schedule_liveness_check"):
+            self.monitor._check_liveness(self.monitor._liveness_generation)
+        connect.assert_called_with(("192.0.2.99", 5662), timeout=2.0)
+        self.assertEqual(self.device.states["address"], "192.0.2.99")
+        self.assertEqual(self.device.states["reconnectCount"], 1)
+
+    @mock.patch("network_server.socket.create_connection")
+    def test_stopped_monitor_does_not_probe_inventory_endpoint(self, connect):
+        generation = self.monitor._liveness_generation
+        self.monitor.stop()
+        self.monitor._check_liveness(generation)
+        connect.assert_not_called()
+
     def test_sustained_outage_escalates_and_schedules_reminder(self):
         with mock.patch.object(
                 __import__("network_server").time, "monotonic",
@@ -261,6 +324,33 @@ class NetworkServerConfigurationTests(unittest.TestCase):
 
         self.assertFalse(valid)
         self.assertIn("networkServerSelection", errors)
+
+    def test_menu_uses_channel_discovery_when_announcement_is_missing(self):
+        coordinator = object.__new__(discovery_ui.DiscoveryUiMixin)
+        coordinator.pluginId = "test"
+        coordinator._networkServerLock = __import__("threading").RLock()
+        coordinator._discoveredServers = {}
+        channels = [{"isRemote": True, "serverName": "CM-Vin",
+                     "serverPeerName": "192.0.2.20:5661"}]
+        coordinator.discoveryInventory = types.SimpleNamespace(snapshot=lambda: channels)
+        device = types.SimpleNamespace(pluginId="test", pluginProps={"networkServerName": "CM-Vin"})
+        with mock.patch.object(discovery_ui.indigo, "devices", [device]):
+            self.assertEqual(coordinator.getNetworkServerMenu(), [("CM-Vin", "CM-Vin")])
+            channels.clear()
+            self.assertEqual(coordinator.getNetworkServerMenu(), [("CM-Vin", "CM-Vin (offline)")])
+
+    def test_inventory_resolver_handles_aliases_ipv6_and_ambiguous_names(self):
+        channels = [{"isRemote": True, "serverName": "CM-Vin",
+                     "serverUniqueName": "CM-Vin._phidget22server._tcp.local",
+                     "serverPeerName": "[2001:db8::1]:5661"}]
+        inventory = types.SimpleNamespace(snapshot=lambda: channels)
+        records = channel_server_records(inventory)
+        self.assertEqual(records["CM-Vin"].addr, "2001:db8::1")
+        self.assertIs(records["CM-Vin"], records[channels[0]["serverUniqueName"]])
+        channels.append(dict(channels[0], serverPeerName="192.0.2.20:5661"))
+        self.assertNotIn("CM-Vin", channel_server_records(inventory))
+        channels[:] = [{"isRemote": True, "serverName": "CM-Vin", "serverPeerName": "bad"}]
+        self.assertEqual(channel_server_records(inventory), {})
 
     def test_menu_has_no_manual_server_entry(self):
         coordinator = object.__new__(discovery_ui.DiscoveryUiMixin)

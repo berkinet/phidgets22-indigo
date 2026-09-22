@@ -10,6 +10,7 @@ import time
 import indigo
 
 from state_publisher import update_indigo_state
+from server_discovery import channel_server_records
 
 from Phidget22.Net import Net
 from Phidget22.PhidgetServerType import PhidgetServerType
@@ -101,12 +102,13 @@ class NetworkServerDevice(object):
             "address": server.addr or "",
             "host": server.host or "",
             "port": int(server.port or 0),
-            "authenticationRequired": bool(server.flags & Net.AUTHREQUIRED),
-            "flags": int(server.flags or 0),
             "lastAttached": _timestamp(),
             "lastOutageSeconds": round(outage_seconds, 1),
             "reconnectCount": reconnect_count,
         }
+        if server.flags is not None:
+            values["authenticationRequired"] = bool(server.flags & Net.AUTHREQUIRED)
+            values["flags"] = int(server.flags or 0)
         self._update_states(values)
         try:
             self.indigoDevice.setErrorStateOnServer(None)
@@ -149,6 +151,7 @@ class NetworkServerDevice(object):
         self.indigoDevice.updateStateImageOnServer(
             indigo.kStateImageSel.SensorTripped)
         self._schedule_unavailable_timer(self._initial_unavailable_timeout)
+        self._schedule_liveness_check()
 
     def serverUnavailable(self):
         with self._lock:
@@ -174,7 +177,7 @@ class NetworkServerDevice(object):
     def _schedule_liveness_check(self):
         self._cancel_liveness_timer()
         with self._lock:
-            if self._state not in ("attached", "detached") or self._server_endpoint is None:
+            if self._state not in ("attached", "detached"):
                 return
             generation = self._liveness_generation
             timer = threading.Timer(
@@ -188,12 +191,28 @@ class NetworkServerDevice(object):
         """Detect a hard network loss when SDK removal discovery goes stale."""
         with self._lock:
             if (generation != self._liveness_generation or
-                    self._state not in ("attached", "detached") or
-                    self._server_endpoint is None):
+                    self._state not in ("attached", "detached")):
                 return
             self._liveness_timer = None
             endpoint = self._server_endpoint
             state = self._state
+
+        # Manager discovery can see working channels even when the separate
+        # server-added callback was missed. Refresh endpoints after upgrades.
+        candidate = None
+        if state == "detached":
+            try:
+                candidate = channel_server_records(getattr(
+                    self.indigo_plugin, "discoveryInventory", None)).get(self.serverName)
+            except Exception as error:
+                self.logger.warning(
+                    "Unable to check channel discovery for server '%s': %s",
+                    self.serverName, error)
+            if candidate is not None:
+                endpoint = (candidate.addr, candidate.port)
+        if endpoint is None:
+            self._schedule_liveness_check()
+            return
 
         reachable = False
         try:
@@ -220,8 +239,13 @@ class NetworkServerDevice(object):
             channels_seen = getattr(
                 self.indigo_plugin, "networkServerHasChannels",
                 lambda server_name: False)(self.serverName)
-            if reachable and channels_seen and self._server_record is not None:
-                self.serverAvailable(self._server_record)
+            record = candidate or self._server_record
+            if reachable and (candidate is not None or channels_seen) and record is not None:
+                self.serverAvailable(record)
+                if candidate is not None:
+                    self.logger.info(
+                        "Phidget network server '%s' verified through channel discovery at %s:%s",
+                        self.serverName, record.addr, record.port)
                 return
             self._schedule_liveness_check()
             return

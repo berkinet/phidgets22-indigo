@@ -14,6 +14,7 @@ from formula import Formula
 from i2c_resources import (find_address_owner,
                             find_native_channel_owner)
 from runtime_registry import registry_for
+from server_discovery import channel_server_records
 
 
 FREENOVE_I2C_PROFILE = "freenove-hd44780-pcf8574"
@@ -1055,6 +1056,13 @@ class DiscoveryUiMixin(object):
         with self._networkServerLock:
             online = set(self._discoveredServers)
             names.update(online)
+        try:
+            channel_records = channel_server_records(getattr(self, "discoveryInventory", None))
+        except Exception as error:
+            self.logger.warning("Unable to read server channel inventory: %s", error)
+            channel_records = {}
+        names.update(record.name for record in channel_records.values())
+        online.update(channel_records)
         for device in indigo.devices:
             if getattr(device, "pluginId", None) != self.pluginId:
                 continue

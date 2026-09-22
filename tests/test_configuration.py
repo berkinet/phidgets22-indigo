@@ -244,7 +244,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>2026.1.6</string>", plist)
+        self.assertIn("<string>2026.1.7</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_detach_error_delay_is_conditionally_visible(self):
