@@ -1,5 +1,17 @@
 # Release notes
 
+## 2026.1.4 — 2026-09-22
+
+### Documentation
+
+- Correct Indigo 2025.1 compatibility notes and dependency installation
+  commands to Python 3.11, with a link to Indigo documentation.
+- Explain that Indigo 2025.1 use may be possible with manual intervention;
+  retain Indigo 2025.2 as the supported minimum pending live 2025.1 testing.
+- Validation: all 264 tests pass on Python 3.11 and 3.13 using the current
+  Phidget22 package; plist and XML validation pass.
+- No plugin runtime behavior changes.
+
 ## 2026.1.3 — 2026-09-21
 
 ### Fixed
@@ -14,7 +26,8 @@
 ### Fixed
 
 - Select Phidget22 installation and update advice using the Python version
-  actually hosting the plugin, including Python 3.10 on Indigo 2025.1.
+  actually hosting the plugin. (Correction: Indigo 2025.1 uses Python 3.11,
+  not Python 3.10 as originally stated.)
 - If the matching framework interpreter is absent, explain that Indigo
   Python needs checking rather than suggesting a nonexistent executable.
 - Validate the automated suite on Python 3.10 and 3.13; live Indigo 2025.1

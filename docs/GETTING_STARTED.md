@@ -142,12 +142,16 @@ and a JSON export of all configured plugin devices and states.
 
 ### Indigo 2025.1 compatibility
 
-The automated suite also passes on Python 3.10, used by Indigo 2025.1.
-Live Indigo 2025.1 validation is pending; users testing that version should
-install the dependency with:
+Indigo 2025.1 uses Python 3.11, according to the
+[Indigo Python packages documentation](https://wiki.indigodomo.com/doku.php?id=indigo_2025.1_documentation%3Apython_packages).
+Use with Indigo 2025.1 may be possible, but remains unverified on a live
+installation and may require manual intervention, particularly installing or
+updating Phidget22 for Indigo's Python runtime. Indigo 2025.2 remains the
+supported minimum for the Store release. To test 2025.1, install the dependency
+for its documented Python 3.11 runtime with:
 
 ```zsh
-"/Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10" -m pip install --upgrade phidget22
+"/Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11" -m pip install --upgrade phidget22
 ```
 
 The plugin's dependency messages detect the running Python version and provide
