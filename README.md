@@ -1,7 +1,7 @@
 
 # Phidgets 22 for Indigo
 
-<img src="./Phidgets22.indigoPlugin/Contents/Resources/icon.png" width="200" height="200" alt="[Phidget22 logo]" align="right"/>
+<img src="https://raw.githubusercontent.com/berkinet/phidgets22-indigo/main/Phidgets22.indigoPlugin/Contents/Resources/icon.png" width="200" height="200" alt="[Phidget22 logo]" align="right"/>
 
 An update to the [Phidgets Plugin](https://www.indigodomo.com/pluginstore/76/)
 for [Indigo](https://www.indigodomo.com/).
@@ -30,19 +30,20 @@ The plugin intentionally does not bundle the native Phidget22 library. Installin
 the official package with Indigo's interpreter avoids macOS Gatekeeper quarantine
 on routine plugin updates and keeps the Python bindings and native library matched.
 
-See the brief [Getting started guide](docs/GETTING_STARTED.md) for plugin setup,
+See the brief [Getting started guide](https://github.com/berkinet/phidgets22-indigo/blob/main/docs/GETTING_STARTED.md) for plugin setup,
 device creation, and printing a Phidgets network map.
 
 Releases use `year.major.minor` version numbers, starting with **2026.1.0**.
-See [Release notes](CHANGELOG.md) for changes in each published version.
+See [Release notes](https://github.com/berkinet/phidgets22-indigo/blob/main/CHANGELOG.md) for changes in each published version.
 
 Maintainers should follow the
-[Indigo Plugin Store publication guide](docs/INDIGO_PLUGIN_STORE.md) for the
+[Indigo Plugin Store publication guide](https://github.com/berkinet/phidgets22-indigo/blob/main/docs/INDIGO_PLUGIN_STORE.md) for the
 permanent plugin identity, release procedure, and Store submission checklist.
 
 ## Status
 
 The following Phidget classes are currently supported:
+
 * Phidget Network Server (read-only availability and connection metadata)
 * DigitalInput
 * DigitalOutput
@@ -168,11 +169,11 @@ with the corresponding directly entered fallback value and logs one warning.
 
 The bundled pure-Python Gas Index Algorithm is derived from Sensirion's
 BSD-licensed reference implementation. Attribution is recorded in
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+[THIRD_PARTY_NOTICES.md](https://github.com/berkinet/phidgets22-indigo/blob/main/THIRD_PARTY_NOTICES.md).
 
 ## Phidget Addressing
 
-See the [Phidget Documentation](https://www.phidgets.com/docs/Addressing_Phidgets]) for details on how to address a Phidget.
+See the [Phidget Documentation](https://www.phidgets.com/docs/Addressing_Phidgets) for details on how to address a Phidget.
 
 ## Custom sensor formulas
 
@@ -210,12 +211,12 @@ and Phidget lifecycle, `device_factory.py` constructs channel wrappers,
 `actions.py` implements action callbacks, and `discovery_ui.py` implements
 configuration and discovery callbacks.
 
-- [Baseline architecture and assessment](docs/BASELINE_ASSESSMENT.md)
-- [Read-only discovery inventory](docs/DISCOVERY_INVENTORY.md)
-- [Read-only version collection](docs/VERSION_COLLECTION.md)
-- [Preparatory cleanup audit](docs/CLEANUP_AUDIT.md)
-- [Phidget class support roadmap](docs/PHIDGET_CLASS_ROADMAP.md)
-- [Indigo Plugin Store publication](docs/INDIGO_PLUGIN_STORE.md)
+- [Baseline architecture and assessment](https://github.com/berkinet/phidgets22-indigo/blob/main/docs/BASELINE_ASSESSMENT.md)
+- [Read-only discovery inventory](https://github.com/berkinet/phidgets22-indigo/blob/main/docs/DISCOVERY_INVENTORY.md)
+- [Read-only version collection](https://github.com/berkinet/phidgets22-indigo/blob/main/docs/VERSION_COLLECTION.md)
+- [Preparatory cleanup audit](https://github.com/berkinet/phidgets22-indigo/blob/main/docs/CLEANUP_AUDIT.md)
+- [Phidget class support roadmap](https://github.com/berkinet/phidgets22-indigo/blob/main/docs/PHIDGET_CLASS_ROADMAP.md)
+- [Indigo Plugin Store publication](https://github.com/berkinet/phidgets22-indigo/blob/main/docs/INDIGO_PLUGIN_STORE.md)
 
 ### Indigo 2025.1 compatibility
 

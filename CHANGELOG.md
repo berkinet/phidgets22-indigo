@@ -1,5 +1,15 @@
 # Release notes
 
+## 2026.1.8 — 2026-09-23
+
+### Documentation
+
+- Use absolute GitHub documentation and icon URLs in the README so links
+  work when the Indigo Plugin Store imports the description.
+- Correct the Phidget addressing link and separate the supported-device list
+  from its introductory paragraph for Markdown rendering.
+- No plugin runtime changes.
+
 ## 2026.1.7 — 2026-09-22
 
 ### Fixed
