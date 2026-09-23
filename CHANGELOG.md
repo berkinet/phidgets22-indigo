@@ -1,5 +1,15 @@
 # Release notes
 
+## 2026.1.10 — 2026-09-23
+
+### Documentation
+
+- Shorten the README for the Indigo Plugin Store description, retaining
+  attribution, installation, requirements, and the Indigo 2025.1 caveat.
+- Preserve the complete previous README in docs/LONG_DESCRIPTION.md and link
+  it from the short README and getting-started guide.
+- Keep absolute documentation and icon URLs for Store rendering. No runtime changes.
+
 ## 2026.1.9 — 2026-09-23
 
 ### Documentation

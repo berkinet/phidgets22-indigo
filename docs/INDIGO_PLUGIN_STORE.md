@@ -15,7 +15,7 @@ Phidgets 22 to the Indigo Plugin Store.
 - Compatibility wording: **Requires Indigo 2025.2. May work on 2025.1. However, some manual setup may be required.**
 - Store-generated minimum: **2022.1**, derived from `ServerApiVersion` **3.0**
 - First Store-compatible version: **0.3.0**
-- Current Store submission candidate: **2026.1.9**
+- Current Store submission candidate: **2026.1.10**
 
 Version 2026.1.0 adopts `year.major.minor`: the calendar year, major release
 within that year, and minor update. Increment to 2026.1.1 for the next minor
@@ -107,7 +107,7 @@ of the Indigo account:
    `phidgets22-indigo`.
 3. Set or verify the Store name, category, compatibility wording, summary,
    support URL, supported-device information, and release notes.
-4. Import the published, tested 2026.1.9 GitHub Release.
+4. Import the published, tested 2026.1.10 GitHub Release.
 5. Verify the Store page, icon, release information, download, installation,
    and version notification behavior.
 6. After the new listing is working, contact Indigo Domotics to retire or
@@ -121,3 +121,11 @@ complete.
 See Indigo's
 [Plugin Store submission guidance](https://docs.indigodomo.com/2025.2/plugin-dev/guide/#adding-your-plugins-to-the-plugin-store)
 for the current contribution-form requirements.
+
+## Store description source
+
+Keep the root `README.md` concise: the Store imports it as the plugin
+description. The full guide lives in `docs/LONG_DESCRIPTION.md`, linked from
+the README and getting-started guide. Use absolute GitHub URLs for all links
+and the icon in the README so they also work on the Store. A manually edited
+Store description may need refreshing or replacing to match the GitHub text.

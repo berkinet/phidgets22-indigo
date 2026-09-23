@@ -158,3 +158,8 @@ documented Python 3.11 runtime, use:
 
 The plugin's dependency messages detect the running Python version and provide
 the matching command. No additional Python version needs to be installed.
+
+## Further documentation
+
+See the [full guide](https://github.com/berkinet/phidgets22-indigo/blob/main/docs/LONG_DESCRIPTION.md)
+for supported devices, firmware reporting, sensor formulas, and advanced usage.
