@@ -1,5 +1,15 @@
 # Release notes
 
+## 2026.1.12 — 2026-09-23
+
+### Changed
+
+- Raise ServerApiVersion from 3.0 to 3.7 so the Store and installer require
+  Indigo 2025.1 or newer. Earlier Indigo releases cannot install this version.
+- Retain the support statement: Requires Indigo 2025.2. May work on 2025.1.
+  However, some manual setup may be required. Live 2025.1 validation is pending.
+- No runtime code changes.
+
 ## 2026.1.11 — 2026-09-23
 
 ### Revised documentation for Indigo plugin store publication

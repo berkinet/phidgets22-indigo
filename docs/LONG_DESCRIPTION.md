@@ -20,9 +20,9 @@ double-click `Phidgets22.indigoPlugin` to install it in Indigo.
 
 **Requires Indigo 2025.2. May work on 2025.1. However, some manual setup may be required.**
 
-The Store may display an older minimum based on the plugin API declaration.
-That is an installation compatibility threshold, not a claim of tested support
-for older Indigo releases.
+The Store displays Indigo 2025.1 as the installation minimum because the
+plugin declares API 3.7. Tested support remains Indigo 2025.2 or newer;
+live Indigo 2025.1 validation remains pending.
 
 - Supported runtime: [Indigo](https://www.indigodomo.com) 2025.2 or newer (Python 3.13)
 - The official [Phidget22 Python package](https://www.phidgets.com/docs/Language_-_Python), installed for Indigo's Python 3.13:

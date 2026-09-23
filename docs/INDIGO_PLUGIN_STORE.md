@@ -13,9 +13,9 @@ Phidgets 22 to the Indigo Plugin Store.
 - Category: **Digital/Analog I/O Modules**
 - Supported Indigo version: **2025.2** or newer (Python 3.13)
 - Compatibility wording: **Requires Indigo 2025.2. May work on 2025.1. However, some manual setup may be required.**
-- Store-generated minimum: **2022.1**, derived from `ServerApiVersion` **3.0**
+- Store-generated minimum: **2025.1**, derived from `ServerApiVersion` **3.7**
 - First Store-compatible version: **0.3.0**
-- Current Store submission candidate: **2026.1.11**
+- Current Store submission candidate: **2026.1.12**
 
 Version 2026.1.0 adopts `year.major.minor`: the calendar year, major release
 within that year, and minor update. Increment to 2026.1.1 for the next minor
@@ -32,8 +32,9 @@ manual dependency installation or updates may be necessary.
 
 The Store derives its displayed minimum Indigo version from `ServerApiVersion`
 in the released `Info.plist`; it does not infer it from GitHub history or the
-README. API 3.0 maps to Indigo 2022.1. Keep this API declaration unchanged to
-preserve installation on 2025.1. The API-derived installation threshold does
+README. API 3.7 maps to Indigo 2025.1. Version 2026.1.12 raises the declaration
+from 3.0 to 3.7, excluding earlier Indigo versions while preserving installation
+on 2025.1. API 3.8 would require 2025.2 and prevent installation on 2025.1. The API-derived installation threshold does
 not establish tested support for older Indigo releases. Put the agreed
 compatibility wording prominently in the description and release requirements.
 See the [Indigo plugin guide](https://docs.indigodomo.com/2025.2/plugin-dev/guide/)
@@ -107,7 +108,7 @@ of the Indigo account:
    `phidgets22-indigo`.
 3. Set or verify the Store name, category, compatibility wording, summary,
    support URL, supported-device information, and release notes.
-4. Import the published, tested 2026.1.11 GitHub Release.
+4. Import the published, tested 2026.1.12 GitHub Release.
 5. Verify the Store page, icon, release information, download, installation,
    and version notification behavior.
 6. After the new listing is working, contact Indigo Domotics to retire or
