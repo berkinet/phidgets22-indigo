@@ -18,7 +18,13 @@ double-click `Phidgets22.indigoPlugin` to install it in Indigo.
 
 ## Requirements
 
-- [Indigo](https://www.indigodomo.com) 2025.2 or newer (Python 3.13)
+**Requires Indigo 2025.2. May work on 2025.1. However, some manual setup may be required.**
+
+The Store may display an older minimum based on the plugin API declaration.
+That is an installation compatibility threshold, not a claim of tested support
+for older Indigo releases.
+
+- Supported runtime: [Indigo](https://www.indigodomo.com) 2025.2 or newer (Python 3.13)
 - The official [Phidget22 Python package](https://www.phidgets.com/docs/Language_-_Python), installed for Indigo's Python 3.13:
 
   ```zsh
@@ -222,11 +228,11 @@ configuration and discovery callbacks.
 
 Indigo 2025.1 uses Python 3.11, according to the
 [Indigo Python packages documentation](https://wiki.indigodomo.com/doku.php?id=indigo_2025.1_documentation%3Apython_packages).
-Use with Indigo 2025.1 may be possible, but remains unverified on a live
-installation and may require manual intervention, particularly installing or
-updating Phidget22 for Indigo's Python runtime. Indigo 2025.2 remains the
-supported minimum for the Store release. To test 2025.1, install the dependency
-for its documented Python 3.11 runtime with:
+**Requires Indigo 2025.2. May work on 2025.1. However, some manual setup may be required.**
+
+Live Indigo 2025.1 validation remains pending. Manual setup may include
+installing or updating Phidget22 for Indigo's Python runtime. For the
+documented Python 3.11 runtime, use:
 
 ```zsh
 "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11" -m pip install --upgrade phidget22

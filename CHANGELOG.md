@@ -1,5 +1,15 @@
 # Release notes
 
+## 2026.1.9 — 2026-09-23
+
+### Documentation
+
+- Clarify compatibility: Requires Indigo 2025.2. May work on 2025.1. However,
+  some manual setup may be required.
+- Explain that the Store derives its displayed minimum from the API declaration,
+  separately from our supported-version statement. Retain API 3.0 to preserve
+  installation on 2025.1. No runtime changes.
+
 ## 2026.1.8 — 2026-09-23
 
 ### Documentation

@@ -11,9 +11,11 @@ Phidgets 22 to the Indigo Plugin Store.
 - Developer identifier: `com.berkinet`
 - Indigo website / Plugin Store account: `berkinet2`
 - Category: **Digital/Analog I/O Modules**
-- Minimum Indigo version: **2025.2** (Python 3.13)
+- Supported Indigo version: **2025.2** or newer (Python 3.13)
+- Compatibility wording: **Requires Indigo 2025.2. May work on 2025.1. However, some manual setup may be required.**
+- Store-generated minimum: **2022.1**, derived from `ServerApiVersion` **3.0**
 - First Store-compatible version: **0.3.0**
-- Current Store submission candidate: **2026.1.8**
+- Current Store submission candidate: **2026.1.9**
 
 Version 2026.1.0 adopts `year.major.minor`: the calendar year, major release
 within that year, and minor update. Increment to 2026.1.1 for the next minor
@@ -25,9 +27,17 @@ Version 0.3.0 began the three-part version scheme; versions through 0.2.1.49
 remain part of development history. Before Store submission, verify current
 hardware behavior, the clean-install path, and the release notes. The plugin
 supports Indigo 2025.2's Python 3.13 and requires an externally installed
-official Phidget22 package. Use with Indigo 2025.1 (Python 3.11) may be possible,
-but live validation remains pending and manual dependency installation or
-updates may be necessary. Do not lower the Store minimum until validated.
+official Phidget22 package. Live Indigo 2025.1 validation remains pending;
+manual dependency installation or updates may be necessary.
+
+The Store derives its displayed minimum Indigo version from `ServerApiVersion`
+in the released `Info.plist`; it does not infer it from GitHub history or the
+README. API 3.0 maps to Indigo 2022.1. Keep this API declaration unchanged to
+preserve installation on 2025.1. The API-derived installation threshold does
+not establish tested support for older Indigo releases. Put the agreed
+compatibility wording prominently in the description and release requirements.
+See the [Indigo plugin guide](https://docs.indigodomo.com/2025.2/plugin-dev/guide/)
+for the API-to-minimum-version behavior.
 
 ## Permanent identity and compatibility
 
@@ -95,9 +105,9 @@ of the Indigo account:
    preserve existing Indigo objects.
 2. Add a GitHub-managed plugin using owner `berkinet` and repository
    `phidgets22-indigo`.
-3. Set or verify the Store name, category, minimum Indigo version, summary,
+3. Set or verify the Store name, category, compatibility wording, summary,
    support URL, supported-device information, and release notes.
-4. Import the published, tested 2026.1.8 GitHub Release.
+4. Import the published, tested 2026.1.9 GitHub Release.
 5. Verify the Store page, icon, release information, download, installation,
    and version notification behavior.
 6. After the new listing is working, contact Indigo Domotics to retire or
