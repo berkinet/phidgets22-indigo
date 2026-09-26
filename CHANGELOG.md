@@ -1,5 +1,14 @@
 # Release notes
 
+## 2026.1.13 — 2026-09-26
+
+### Fixed
+
+- Apply plugin logging level changes to the Indigo log and plugin log file
+  immediately when preferences are saved, without restarting the plugin.
+- Use a valid Info default and normalize legacy or invalid saved logging
+  levels to Info. Apply the saved level before startup diagnostics.
+
 ## 2026.1.12 — 2026-09-23
 
 ### Changed

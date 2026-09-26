@@ -63,6 +63,65 @@ import plugin
 
 
 class ConfigurationTests(unittest.TestCase):
+    def logging_plugin(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.pluginPrefs = IndigoLikeDict(phidgetPluginLoggingLevel="10")
+        instance.logger = logging.Logger("logging-preference-test", logging.DEBUG)
+        instance.plugin_file_handler = logging.StreamHandler()
+        instance.indigo_log_handler = logging.StreamHandler()
+        for handler in (instance.plugin_file_handler, instance.indigo_log_handler):
+            handler.emit = mock.Mock()
+            instance.logger.addHandler(handler)
+        instance._applyPluginLoggingLevel(instance.pluginPrefs)
+        return instance
+
+    def test_logging_changes_apply_immediately_and_survive_restart(self):
+        instance = self.logging_plugin()
+        for level in (20, 10, 50, 20, 30, 40):
+            with self.subTest(level=level):
+                values = IndigoLikeDict(phidgetPluginLoggingLevel=str(level))
+                instance.closedPrefsConfigUi(values, False)
+                self.assertEqual(instance.pluginPrefs["phidgetPluginLoggingLevel"], str(level))
+                for handler in instance.logger.handlers:
+                    handler.emit.reset_mock()
+                instance.logger.debug("debug")
+                instance.logger.info("info")
+                instance.logger.critical("critical")
+                expected = 3 if level == 10 else 2 if level == 20 else 1
+                for handler in instance.logger.handlers:
+                    self.assertEqual(handler.emit.call_count, expected)
+                restarted = self.logging_plugin()
+                restarted._applyPluginLoggingLevel(instance.pluginPrefs)
+                self.assertEqual(restarted.plugin_file_handler.level, level)
+                self.assertEqual(restarted.indigo_log_handler.level, level)
+
+    def test_cancelled_logging_change_preserves_current_and_saved_level(self):
+        instance = self.logging_plugin()
+        instance.closedPrefsConfigUi(
+            IndigoLikeDict(phidgetPluginLoggingLevel="20"), True)
+        self.assertEqual(instance.pluginPrefs["phidgetPluginLoggingLevel"], "10")
+        self.assertEqual(instance.plugin_file_handler.level, logging.DEBUG)
+        self.assertEqual(instance.indigo_log_handler.level, logging.DEBUG)
+
+    def test_missing_legacy_and_invalid_logging_levels_use_info(self):
+        for raw in (None, "0", "garbage", "15", "", float("inf")):
+            with self.subTest(raw=raw):
+                instance = self.logging_plugin()
+                values = IndigoLikeDict()
+                if raw is not None:
+                    values["phidgetPluginLoggingLevel"] = raw
+                instance._applyPluginLoggingLevel(values)
+                self.assertEqual(values["phidgetPluginLoggingLevel"], "20")
+                self.assertEqual(instance.plugin_file_handler.level, logging.INFO)
+                self.assertEqual(instance.indigo_log_handler.level, logging.INFO)
+
+    def test_logging_menu_default_is_info_and_a_valid_choice(self):
+        root = ElementTree.parse(SERVER_PLUGIN / "PluginConfig.xml").getroot()
+        field = root.find("Field[@id='phidgetPluginLoggingLevel']")
+        self.assertEqual(field.get("defaultValue"), "20")
+        self.assertIn(field.get("defaultValue"),
+                      [option.get("value") for option in field.findall("List/Option")])
+
     def test_detach_trigger_delay_is_cancellable_on_reattach(self):
         wrapper = types.SimpleNamespace(
             _state="detached",
@@ -244,7 +303,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>2026.1.12</string>", plist)
+        self.assertIn("<string>2026.1.13</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_detach_error_delay_is_conditionally_visible(self):

@@ -47,8 +47,9 @@
 
 	<Field id="simpleSeparator1" type="separator"/>
 
-	<Field id="phidgetPluginLoggingLevel" type="menu" defaultValue="0">
+	<Field id="phidgetPluginLoggingLevel" type="menu" defaultValue="20">
 		<Label>Phidget plugin logging level</Label>
+		<Description>Applies immediately when preferences are saved.</Description>
 		<List>
 			<Option value="10">Debug</Option>
 			<Option value="20">Info</Option>

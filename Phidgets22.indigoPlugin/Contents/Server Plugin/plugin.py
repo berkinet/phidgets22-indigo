@@ -68,7 +68,31 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             self.logger, self.runtimeRegistry.snapshot)
         self.versionCollector = VersionCollector(self, self.logger)
 
+    def _applyPluginLoggingLevel(self, preferences):
+        raw_level = preferences.get("phidgetPluginLoggingLevel", "20")
+        try:
+            level = int(raw_level)
+        except (TypeError, ValueError, OverflowError):
+            level = None
+        invalid = level not in (0, 10, 20, 30, 40, 50)
+        if invalid or level == 0:
+            level = logging.INFO
+        preferences["phidgetPluginLoggingLevel"] = str(level)
+        self.plugin_file_handler.setLevel(level)
+        self.indigo_log_handler.setLevel(level)
+        if invalid:
+            self.logger.warning(
+                "Invalid plugin logging level %r; using Info.", raw_level)
+
+    def closedPrefsConfigUi(self, valuesDict, userCancelled):
+        if userCancelled:
+            return
+        self._applyPluginLoggingLevel(valuesDict)
+        self.pluginPrefs["phidgetPluginLoggingLevel"] = valuesDict[
+            "phidgetPluginLoggingLevel"]
+
     def startup(self):
+        self._applyPluginLoggingLevel(self.pluginPrefs)
         if saved_bool(self.pluginPrefs.get("phidgetApiLogging", False)):
             self.phidgetApiLogLevel = int(self.pluginPrefs["phidgetApiLogLevel"])
             self.phidgetApiLogfile = self.pluginPrefs["phidgetApiLogfile"]
@@ -89,13 +113,6 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         else:
             Log.disable()
             self.phidgetApiLogLevel = 0
-
-        loglevel = int(self.pluginPrefs.get("phidgetPluginLoggingLevel", "0"))
-        if loglevel:
-            self.plugin_file_handler.setLevel(loglevel)
-            self.indigo_log_handler.setLevel(loglevel)
-            self.logger.debug(
-                "Setting log level to %s" % logging.getLevelName(loglevel))
 
         library_version = Phidget.getLibraryVersion()
         self.logger.debug("Using %s" % library_version)
