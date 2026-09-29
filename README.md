@@ -68,3 +68,23 @@ reader plugin does not maintain a feeder timer or enrol birds. Tag programming
 is not exposed by this reader/presence implementation.
 
 Reference: [Phidgets 1024_1 Python API](https://www.phidgets.com/?view=api&product_id=1024_1&lang=Python).
+
+### Simulated reader (no hardware)
+
+Create an **RFID Reader (1024)** device and check **Simulated reader (no
+hardware)** in its device configuration, then Save. No discovered reader or
+serial number is required. The connection states identify it as simulated.
+
+Use the device action **Simulate RFID tag detected**, enter a tag ID and choose
+its protocol. The tag stays present until **Simulate RFID tag lost**, a different
+simulated tag, or antenna disable. Repeating the same tag does not retrigger
+until it has been lost. Changing tags emits loss of the previous tag followed
+by detection of the new one. Enable/disable antenna actions work in simulation;
+scans with the antenna disabled report an error. Restart starts with no tag
+present and restores the configured antenna startup setting.
+
+Simulated scans update the normal states and execute real configured Indigo
+triggers. You can create two simulated readers to test independent automations.
+Simulation actions reject physical readers. To switch to hardware later,
+uncheck simulation and select a discovered reader. Allow/deny lists and tag
+management are not included yet.

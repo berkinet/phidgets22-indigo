@@ -251,7 +251,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_device_validation_uses_focused_dispatch_handlers(self):
         coordinator = inspect.getsource(
             discovery_ui.DiscoveryUiMixin.validateDeviceConfigUi)
-        self.assertLessEqual(len(coordinator.splitlines()), 16)
+        self.assertLessEqual(len(coordinator.splitlines()), 17)
         for name in (
                 "_validateSGP41Config", "_validateBME280Config",
                 "_validateAdapterGPIOConfig", "_validateLCDConfig",
@@ -303,7 +303,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>2026.1.14</string>", plist)
+        self.assertIn("<string>2026.1.15</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_detach_error_delay_is_conditionally_visible(self):

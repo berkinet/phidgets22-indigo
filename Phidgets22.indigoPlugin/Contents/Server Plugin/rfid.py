@@ -2,6 +2,7 @@
 """RFID presence sensing; every compatible tag is accepted without enrolment."""
 import datetime
 import threading
+from types import SimpleNamespace
 
 from Phidget22.Devices.RFID import RFID
 from phidget import PhidgetBase, PeripheralUnavailableError
@@ -110,3 +111,71 @@ class RFIDPhidget(PhidgetBase):
 
     def getDeviceDisplayStateId(self):
         return "tagPresent"
+
+
+class SimulatedRFIDPhidget(RFIDPhidget):
+    """Hardware-free reader using the same state and event publication path."""
+
+    def __init__(self, antennaEnabled=True, **kwargs):
+        # Do not construct or open a native RFID handle.
+        PhidgetBase.__init__(self, phidget=SimpleNamespace(), **kwargs)
+        self.antennaEnabled = antennaEnabled
+        self._tag_lock = threading.RLock()
+        self._present_tag = None
+
+    def start(self):
+        try:
+            with self._tag_lock:
+                self._state = "attached"
+                self._publish_tag(False)
+                self.updateStateOnServer("antennaEnabled", self.antennaEnabled)
+                for key in ("serverName", "serverUniqueName", "serverHost", "serverPeer"):
+                    self.updateStateOnServer(key, "")
+                for key in ("connectionType", "connection", "connectionPath"):
+                    self.updateStateOnServer(key, "Simulated RFID reader")
+                self.indigoDevice.setErrorStateOnServer(None)
+        except Exception as error:
+            self._state = "stopped"
+            self._report("simulation startup", error)
+
+    def stop(self):
+        try:
+            with self._tag_lock:
+                self._state = "stopped"
+                self._publish_tag(False)
+                self.updateStateOnServer("antennaEnabled", False)
+        except Exception as error:
+            self._report("simulation stop", error)
+
+    def setAntennaEnabled(self, enabled):
+        try:
+            with self._tag_lock:
+                if self._state != "attached":
+                    raise ValueError("simulated reader is not running")
+                self.antennaEnabled = bool(enabled)
+                self.updateStateOnServer("antennaEnabled", self.antennaEnabled)
+                if not enabled:
+                    self._publish_tag(False, notify=True)
+                self.indigoDevice.setErrorStateOnServer(None)
+        except Exception as error:
+            self._report("simulated antenna control", error)
+
+    def simulateTag(self, tag=None, protocol=1):
+        try:
+            with self._tag_lock:
+                if self._state != "attached":
+                    raise ValueError("simulated reader is not running")
+                if tag is not None:
+                    tag = str(tag).strip()
+                    if not tag or protocol not in (1, 2, 3, 4, 5):
+                        raise ValueError("enter a tag ID and select a supported protocol")
+                    if not self.antennaEnabled:
+                        raise ValueError("enable the simulated antenna before scanning a tag")
+                    if self._present_tag is not None and self._present_tag != (tag, protocol):
+                        self._publish_tag(False, notify=True)
+                    self._publish_tag(True, tag, protocol, notify=True)
+                else:
+                    self._publish_tag(False, notify=True)
+                self.indigoDevice.setErrorStateOnServer(None)
+        except Exception as error:
+            self._report("simulated tag scan", error)

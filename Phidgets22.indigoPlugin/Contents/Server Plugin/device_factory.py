@@ -10,7 +10,7 @@ from voltageratioinput import VoltageRatioInputPhidget
 from digitaloutput import DigitalOutputPhidget
 from temperaturesensor import TemperatureSensorPhidget
 from digitalinput import DigitalInputPhidget
-from rfid import RFIDPhidget
+from rfid import RFIDPhidget, SimulatedRFIDPhidget
 from frequencycounter import FrequencyCounterPhidget
 from humiditysensor import HumiditySensorPhidget
 from lcd import NativeLCDPhidget
@@ -271,7 +271,11 @@ def _network_server(plugin, device, common):
 
 
 def _rfid(plugin, device, common):
-    return RFIDPhidget(**common["base"], antennaEnabled=saved_bool(
+    reader_class = RFIDPhidget
+    if saved_bool(device.pluginProps.get("rfidSimulation", False)):
+        reader_class = SimulatedRFIDPhidget
+        common["base"]["channelInfo"] = ChannelInfo(netInfo=NetInfo(isRemote=False))
+    return reader_class(**common["base"], antennaEnabled=saved_bool(
         device.pluginProps.get("antennaEnabled", True)))
 
 

@@ -318,6 +318,8 @@ class DiscoveryUiMixin(object):
         """Initialize, safely migrate, and collapse discovery selections."""
         values = indigo.Dict(pluginProps)
         values["configurationMigrated"] = False
+        if typeId == "rfid" and saved_bool(values.get("rfidSimulation", False)):
+            return (self.menuChanged(values, typeId, devId), indigo.Dict())
         values["observedConnection"] = self._observedConnectionForDevice(devId)
         if typeId == "networkServer":
             saved_name = str(values.get("networkServerName", "")).strip()
@@ -507,6 +509,7 @@ class DiscoveryUiMixin(object):
         if typeId == "networkServer":
             return self._validateNetworkServerConfig(valuesDict, devId)
         validators = {
+            "rfid": self._validateRFIDConfig,
             "sgp41": self._validateSGP41Config,
             "bme280": self._validateBME280Config,
             "lcd": self._validateLCDConfig,
@@ -518,6 +521,18 @@ class DiscoveryUiMixin(object):
         if typeId in ("adapterGPIOInput", "adapterGPIOOutput"):
             return self._validateAdapterGPIOConfig(valuesDict, typeId, devId)
         return self._validateChannelConfig(valuesDict, typeId, devId)
+
+    def _validateRFIDConfig(self, valuesDict, devId):
+        if saved_bool(valuesDict.get("rfidSimulation", False)):
+            from uuid import uuid4
+            valuesDict["address"] = "simulated-rfid-%s" % (devId or uuid4().hex)
+            valuesDict["observedConnection"] = "Simulated RFID reader"
+            for key in ("serialNumber", "channel", "hubPort", "serverName"):
+                valuesDict[key] = ""
+            valuesDict["isVintHub"] = False
+            valuesDict["isVintDevice"] = False
+            return (True, valuesDict)
+        return self._validateChannelConfig(valuesDict, "rfid", devId)
 
     def _validateNetworkServerConfig(self, valuesDict, devId):
         errors = indigo.Dict()
@@ -1114,6 +1129,12 @@ class DiscoveryUiMixin(object):
 
     def menuChanged(self, valuesDict, typeId, devId):
         """Refresh dependent menus and auto-select every unambiguous level."""
+        if typeId == "rfid" and saved_bool(valuesDict.get("rfidSimulation", False)):
+            for key in ("vintSelected", "channelChoiceRequired", "configurationMigrated"):
+                valuesDict[key] = False
+            valuesDict["compatibleModelFound"] = True
+            valuesDict["isVintHub"] = False
+            return valuesDict
         inventory = self.discoveryInventory
         if inventory is None:
             valuesDict["compatibleModelFound"] = False

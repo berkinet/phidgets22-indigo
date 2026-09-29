@@ -1,5 +1,17 @@
 # Release notes
 
+## 2026.1.15 — 2026-09-29
+
+### Added
+
+- Per-device simulated RFID reader mode, allowing creation without hardware or
+  discovery. Each simulated reader maintains independent states and triggers.
+- Simulate RFID tag detected/lost device actions, including tag ID and protocol
+  selection, antenna behavior, and duplicate-detection suppression. Simulation
+  actions cannot inject tags into physical readers.
+- Hardware fields are hidden in simulation mode; switch back by selecting a
+  discovered reader. Tag management and allow/deny lists remain deferred.
+
 ## 2026.1.14 — 2026-09-29
 
 ### Added

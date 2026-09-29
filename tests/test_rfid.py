@@ -128,7 +128,7 @@ class RFIDTests(unittest.TestCase):
         devices = ElementTree.parse(SERVER_PLUGIN / "Devices.xml")
         self.assertIsNotNone(devices.find("./Device[@id='rfid']"))
         actions = ElementTree.parse(SERVER_PLUGIN / "Actions.xml")
-        self.assertEqual(len(actions.findall("./Action[@deviceFilter='self.rfid']")), 2)
+        self.assertEqual(len(actions.findall("./Action[@deviceFilter='self.rfid']")), 4)
         events = ElementTree.parse(SERVER_PLUGIN / "Events.xml")
         self.assertEqual(len(events.findall("./Event[@deviceFilter='self.rfid']")), 2)
 
@@ -137,3 +137,92 @@ class RFIDTests(unittest.TestCase):
         reader.addPhidgetHandlers()
         reader.phidget.setOnTagHandler.assert_called_once_with(reader.onTagHandler)
         reader.phidget.setOnTagLostHandler.assert_called_once_with(reader.onTagLostHandler)
+
+
+class SimulationTests(unittest.TestCase):
+    def reader(self, device_id=1):
+        from rfid import SimulatedRFIDPhidget
+        device = mock.Mock(id=device_id, pluginProps={}, states={})
+        device.name = "Dummy %s" % device_id
+        plugin = mock.Mock(pluginPrefs={})
+        reader = SimulatedRFIDPhidget(indigoDevice=device, indigo_plugin=plugin, logger=mock.Mock())
+        reader.states = {}
+        reader.updateStateOnServer = lambda key, value: reader.states.__setitem__(key, value)
+        reader.start()
+        return reader
+
+    def test_lifecycle_does_not_construct_hardware_or_start_timers(self):
+        with mock.patch("rfid.RFID", side_effect=AssertionError("native handle")):
+            reader = self.reader()
+            self.assertEqual(reader._state, "attached")
+            self.assertIsNone(reader.timer)
+            self.assertEqual(reader.states["connectionType"], "Simulated RFID reader")
+            reader.stop()
+            self.assertEqual(reader._state, "stopped")
+            self.assertFalse(reader.states["tagPresent"])
+
+    def test_two_readers_are_independent_and_preserve_ids(self):
+        first, second = self.reader(1), self.reader(2)
+        first.simulateTag("000001", 1)
+        self.assertEqual(first.states["lastTag"], "000001")
+        self.assertTrue(first.states["tagPresent"])
+        self.assertFalse(second.states["tagPresent"])
+        second.indigo_plugin.triggerEvent.assert_not_called()
+        first.simulateTag("000001", 1)
+        first.indigo_plugin.triggerEvent.assert_called_once_with(first, "rfidTagDetected")
+        first.simulateTag()
+        self.assertFalse(first.states["tagPresent"])
+        self.assertEqual(first.states["lastTag"], "000001")
+        first.indigo_plugin.triggerEvent.assert_called_with(first, "rfidTagLost")
+
+    def test_replacement_reports_loss_then_detection(self):
+        reader = self.reader()
+        reader.simulateTag("first", 3)
+        reader.indigo_plugin.triggerEvent.reset_mock()
+        reader.simulateTag("second", 3)
+        self.assertEqual(reader.indigo_plugin.triggerEvent.call_args_list,
+                         [mock.call(reader, "rfidTagLost"), mock.call(reader, "rfidTagDetected")])
+
+    def test_antenna_disabled_and_invalid_scan_report_errors(self):
+        reader = self.reader()
+        reader.setAntennaEnabled(False)
+        reader.simulateTag("123", 1)
+        reader.simulateTag("", 1)
+        reader.simulateTag("123", 99)
+        self.assertFalse(reader.states["tagPresent"])
+        self.assertEqual(reader.logger.error.call_count, 3)
+        reader.setAntennaEnabled(True)
+        reader.simulateTag("123", 1)
+        self.assertTrue(reader.states["tagPresent"])
+        reader.indigoDevice.setErrorStateOnServer.assert_called_with(None)
+
+    def test_config_can_save_without_discovery(self):
+        from discovery_ui import DiscoveryUiMixin
+        ui = object.__new__(DiscoveryUiMixin)
+        ui.discoveryInventory = None
+        with mock.patch.object(sys.modules["indigo"], "Dict", dict, create=True):
+            values, errors = ui.getDeviceConfigUiValues({"rfidSimulation": True}, "rfid", 0)
+            result = ui.validateDeviceConfigUi(values, "rfid", 0)
+        self.assertTrue(result[0])
+        self.assertEqual(result[1]["serialNumber"], "")
+        self.assertTrue(values["compatibleModelFound"])
+
+    def test_simulation_actions_reject_physical_readers(self):
+        from actions import ActionsMixin
+        from runtime_registry import RuntimeDeviceRegistry
+        ui = object.__new__(ActionsMixin)
+        ui.logger = mock.Mock()
+        ui.runtimeRegistry = RuntimeDeviceRegistry()
+        physical = mock.Mock(spec=RFIDPhidget)
+        ui.runtimeRegistry.register(1, physical)
+        ui.rfidSimulateTag(types.SimpleNamespace(deviceId=1, props={"tag": "123"}))
+        ui.logger.error.assert_called_once()
+
+    def test_factory_simulation_uses_no_native_handle(self):
+        from rfid import SimulatedRFIDPhidget
+        plugin = mock.Mock(pluginPrefs={})
+        device = mock.Mock(pluginProps={"rfidSimulation": True}, deviceTypeId="rfid")
+        with mock.patch("rfid.RFID", side_effect=AssertionError("native handle")):
+            reader = device_factory.create_phidget(plugin, device)
+        self.assertIsInstance(reader, SimulatedRFIDPhidget)
+        self.assertFalse(reader.channelInfo.netInfo.isRemote)

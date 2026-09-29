@@ -383,6 +383,12 @@ class ActionsMixin(object):
 
     def validateActionConfigUi(self, valuesDict, typeId, deviceId):
         errors = indigo.Dict()
+        if typeId == "rfidSimulateTag":
+            if not str(valuesDict.get("tag", "")).strip():
+                errors["tag"] = "Enter a tag ID."
+            if str(valuesDict.get("protocol", "1")) not in ("1", "2", "3", "4", "5"):
+                errors["protocol"] = "Select a supported protocol."
+            return (False, valuesDict, errors) if errors else (True, valuesDict)
         if typeId != "lcdStartAnimation":
             return (True, valuesDict)
         for field in (["virtualText", "graphicText"] +
@@ -416,3 +422,23 @@ class ActionsMixin(object):
 
     def rfidDisableAntenna(self, action, device=None):
         self._rfidAntenna(action, device, False)
+
+    def _simulateRFID(self, action, device, lost=False):
+        try:
+            from rfid import SimulatedRFIDPhidget
+            device_id = getattr(action, "deviceId", None) or getattr(device, "id", None)
+            reader = registry_for(self).get(int(device_id))
+            if not isinstance(reader, SimulatedRFIDPhidget):
+                raise ValueError("device %s is not an active simulated RFID reader" % device_id)
+            if lost:
+                reader.simulateTag()
+            else:
+                reader.simulateTag(action.props.get("tag", ""), int(action.props.get("protocol", 1)))
+        except Exception as error:
+            self.logger.error("RFID simulation action failed: %s", str(error).replace("\n", " "))
+
+    def rfidSimulateTag(self, action, device=None):
+        self._simulateRFID(action, device)
+
+    def rfidSimulateTagLost(self, action, device=None):
+        self._simulateRFID(action, device, lost=True)

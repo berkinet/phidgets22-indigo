@@ -95,4 +95,13 @@
 	</Action>
     <Action id="rfidEnableAntenna" deviceFilter="self.rfid" uiPath="DeviceActions"><Name>Enable RFID antenna</Name><CallbackMethod>rfidEnableAntenna</CallbackMethod></Action>
     <Action id="rfidDisableAntenna" deviceFilter="self.rfid" uiPath="DeviceActions"><Name>Disable RFID antenna</Name><CallbackMethod>rfidDisableAntenna</CallbackMethod></Action>
+    <Action id="rfidSimulateTag" deviceFilter="self.rfid" uiPath="DeviceActions">
+        <Name>Simulate RFID tag detected</Name><CallbackMethod>rfidSimulateTag</CallbackMethod>
+        <ConfigUI>
+            <Field id="tag" type="textfield" defaultValue="0000123456"><Label>Tag ID:</Label></Field>
+            <Field id="protocol" type="menu" defaultValue="1"><Label>Protocol:</Label><List><Option value="1">EM4100</Option><Option value="2">ISO11785 FDX-B</Option><Option value="3">PhidgetTAG</Option><Option value="4">HID Generic</Option><Option value="5">HID H10301</Option></List></Field>
+            <Field id="simulationNote" type="label"><Label>For simulated readers only. Fires real Indigo triggers; the tag remains present until simulated loss, another tag, or antenna disable.</Label></Field>
+        </ConfigUI>
+    </Action>
+    <Action id="rfidSimulateTagLost" deviceFilter="self.rfid" uiPath="DeviceActions"><Name>Simulate RFID tag lost</Name><CallbackMethod>rfidSimulateTagLost</CallbackMethod></Action>
 </Actions>  
