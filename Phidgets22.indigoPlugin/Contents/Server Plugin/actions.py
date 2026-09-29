@@ -399,3 +399,20 @@ class ActionsMixin(object):
             errors["showAlertText"] = "Correct the LCD action settings."
             return (False, valuesDict, errors)
         return (True, valuesDict)
+
+    def _rfidAntenna(self, action, device, enabled):
+        try:
+            from rfid import RFIDPhidget
+            device_id = getattr(action, "deviceId", None) or getattr(device, "id", None)
+            reader = registry_for(self).get(int(device_id))
+            if not isinstance(reader, RFIDPhidget):
+                raise ValueError("RFID reader %s is not active" % device_id)
+            reader.setAntennaEnabled(enabled)
+        except Exception as error:
+            self.logger.error("RFID antenna action failed: %s", str(error).replace("\n", " "))
+
+    def rfidEnableAntenna(self, action, device=None):
+        self._rfidAntenna(action, device, True)
+
+    def rfidDisableAntenna(self, action, device=None):
+        self._rfidAntenna(action, device, False)

@@ -37,3 +37,34 @@ device creation, and printing a Phidgets network map.
 
 See the [full guide](https://github.com/berkinet/phidgets22-indigo/blob/main/docs/LONG_DESCRIPTION.md) for supported devices, features, and advanced usage, and the
 [release notes](https://github.com/berkinet/phidgets22-indigo/blob/main/CHANGELOG.md) for changes.
+
+## RFID reader (1024_1)
+
+Create a **RFID Reader (1024)** device and select its discovered server and
+reader. The serial number identifies each reader independently. Leave
+**Enable antenna on startup** checked to begin reading automatically.
+No tag enrolment or allowlist is required: every tag the hardware can read is
+accepted. Tag IDs remain strings, preserving leading zeroes.
+
+Indigo states are `tagPresent`, `lastTag`, `protocol`, `antennaEnabled`, and
+`lastUpdate`. The last tag ID and protocol remain available after the tag leaves
+or the reader disconnects. Before the first detection those fields are empty.
+Use **RFID tag detected** and **RFID tag lost** triggers and select the specific
+reader. Repeated detection of the same present tag does not repeat the trigger;
+a new detection after loss does. State values are published before the trigger.
+
+**Enable RFID antenna** and **Disable RFID antenna** are device actions.
+Disabling the antenna clears presence and fires tag lost if a tag was present.
+The latest successful antenna setting is restored on hardware reconnect;
+a plugin restart reapplies the saved startup setting. A disconnect clears
+presence and antenna state without firing tag lost; use the existing Phidget
+detached/attached triggers for connection monitoring. A tag already present
+on attachment produces a detection. Errors identify the reader and operation.
+
+For the Chicken Feeder, use tag detected to open the feeder and restart an
+Indigo automation timer. Let that automation close it after 5–10 minutes.
+Do not close directly on tag lost if the hold-open period is desired. The
+reader plugin does not maintain a feeder timer or enrol birds. Tag programming
+is not exposed by this reader/presence implementation.
+
+Reference: [Phidgets 1024_1 Python API](https://www.phidgets.com/?view=api&product_id=1024_1&lang=Python).

@@ -303,7 +303,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>2026.1.13</string>", plist)
+        self.assertIn("<string>2026.1.14</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_detach_error_delay_is_conditionally_visible(self):
@@ -478,7 +478,7 @@ class ConfigurationTests(unittest.TestCase):
             "voltageInput", "voltageRatioInput", "digitalOutput", "digitalInput",
             "temperatureSensor", "frequencyCounter", "humiditySensor", "lcd",
             "dataAdapter", "adapterGPIOInput", "adapterGPIOOutput", "bme280",
-            "sgp41", "networkServer",
+            "sgp41", "networkServer", "rfid",
         })
 
     def test_factory_constructs_every_supported_wrapper(self):
@@ -968,7 +968,7 @@ class ConfigurationTests(unittest.TestCase):
         actions = ElementTree.parse(SERVER_PLUGIN / "Actions.xml").getroot()
         device_actions = [
             action for action in actions.findall("Action")
-            if action.get("deviceFilter")]
+            if action.get("deviceFilter") == "self.lcd"]
         action_ids = {action.get("id") for action in device_actions}
         self.assertEqual(action_ids, {"lcdClear", "lcdStartAnimation",
                                       "lcdStopAnimation", "lcdSleep", "lcdWake"})

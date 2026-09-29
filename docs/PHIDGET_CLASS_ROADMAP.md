@@ -4,7 +4,7 @@ This inventory is based on the hardware/channel classes exposed by the locally
 installed Phidget22 1.26 Python package. Recheck the package when Phidget22 is
 upgraded because new channel classes may be added.
 
-The plugin currently supports 9 of the 35 hardware/channel classes, leaving 26
+The plugin currently supports 10 of the 35 hardware/channel classes, leaving 25
 possible additions.
 
 | Phidget22 class | Plugin support |
@@ -35,7 +35,7 @@ possible additions.
 | PowerGuard | Not supported |
 | PressureSensor | Not supported |
 | RCServo | Not supported |
-| RFID | Not supported |
+| RFID | Supported: 1024_1 tag presence, identity/protocol, events, and antenna control; tag writing not exposed |
 | ResistanceInput | Not supported |
 | SoundSensor | Not supported |
 | Spatial | Not supported |
@@ -64,7 +64,7 @@ After the 1.0 Store publication, the suggested sequence is:
 
 1. `LightSensor`, `PressureSensor`, `SoundSensor`, and `PHSensor`:
    straightforward sensor-state devices.
-2. `CapacitiveTouch`, `DistanceSensor`, `Encoder`, and `RFID`: event-oriented
+2. `CapacitiveTouch`, `DistanceSensor`, and `Encoder`: event-oriented
    inputs.
 3. `Accelerometer`, `Gyroscope`, `Magnetometer`, `Spatial`, and `GPS`:
    multi-state motion and location devices.

@@ -1,5 +1,21 @@
 # Release notes
 
+## 2026.1.14 — 2026-09-29
+
+### Added
+
+- RFID Reader device support for the 1024_1: any compatible tag, without
+  enrolment; tag presence, last tag ID, protocol, and antenna state in Indigo.
+- Per-reader tag detected/lost triggers and antenna enable/disable actions.
+- Discovery by serial number and automatic reconnection with antenna settings
+  restored. Disconnect clears presence without firing a tag-lost trigger.
+- Chicken Feeder setup guidance; hold-open timing remains in Indigo automation.
+
+### Fixed
+
+- Shared plugin and channel lifecycle error reports now log concise error
+  details instead of Python tracebacks.
+
 ## 2026.1.13 — 2026-09-26
 
 ### Fixed

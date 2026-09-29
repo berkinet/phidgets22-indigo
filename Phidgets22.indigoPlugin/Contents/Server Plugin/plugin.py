@@ -5,7 +5,7 @@
 
 import logging
 import threading
-import traceback
+import sys
 
 import indigo
 
@@ -136,7 +136,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             self.discoveryInventory = None
             self.logger.warning(
                 "Unable to start Phidget discovery inventory:\n%s",
-                traceback.format_exc())
+                str(sys.exc_info()[1]).replace("\n", " "))
 
         self.versionCollector.start()
 
@@ -294,7 +294,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                                 "Unable to reinitialize I2C peripheral "
                                 "device='%s':\n%s",
                                 dependent.indigoDevice.name,
-                                traceback.format_exc())
+                                str(sys.exc_info()[1]).replace("\n", " "))
         if not detach_announced:
             self.logger.debug(
                 "Phidget %s in %.1f seconds (attach #%d): %s",
@@ -355,7 +355,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         except Exception:
             self.logger.error(
                 "Unable to export Indigo Phidget device states:\n%s",
-                traceback.format_exc())
+                str(sys.exc_info()[1]).replace("\n", " "))
             return None
 
     def deviceStartComm(self, device):
@@ -377,14 +377,14 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             self.logger.error(
                 "Unable to start Phidget device='%s' id=%s model=%s: %d: %s\n%s",
                 device.name, device.id, device.deviceTypeId,
-                error.code, error.details, traceback.format_exc())
+                error.code, error.details, str(sys.exc_info()[1]).replace("\n", " "))
         except Exception:
             self._runtime_registry().remove(device.id)
             device.setErrorStateOnServer("Unable to start")
             self.logger.error(
                 "Unable to start Phidget device='%s' id=%s model=%s:\n%s",
                 device.name, device.id, device.deviceTypeId,
-                traceback.format_exc())
+                str(sys.exc_info()[1]).replace("\n", " "))
 
     def triggerStartProcessing(self, trigger):
         self.eventCoordinator.start_processing(trigger)
@@ -445,7 +445,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         except Exception:
             self.logger.error(
                 "Unable to stop Phidget device='%s' id=%s:\n%s",
-                device.name, device.id, traceback.format_exc())
+                device.name, device.id, str(sys.exc_info()[1]).replace("\n", " "))
 
     def shutdown(self):
         collector = getattr(self, "versionCollector", None)
@@ -461,7 +461,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             except Exception:
                 self.logger.debug(
                     "Unable to stop Phidget server monitoring:\n%s",
-                    traceback.format_exc())
+                    str(sys.exc_info()[1]).replace("\n", " "))
             self.networkMonitor = None
 
         active = self._runtime_registry().items_snapshot()
@@ -480,7 +480,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
                     except Exception:
                         self.logger.warning(
                             "Unable to quiesce I2C dependent during shutdown:\n%s",
-                            traceback.format_exc())
+                            str(sys.exc_info()[1]).replace("\n", " "))
         # Stop providers last, after dependent timers and transactions settle.
         active.sort(key=lambda item: bool(
             getattr(item[1], "supportsFunction", None)))
@@ -490,7 +490,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             except Exception:
                 self.logger.warning(
                     "Unable to stop active Phidget id=%s during shutdown:\n%s",
-                    device_id, traceback.format_exc())
+                    device_id, str(sys.exc_info()[1]).replace("\n", " "))
         self._runtime_registry().clear()
 
         if self.discoveryInventory is not None:
@@ -499,7 +499,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
             except Exception:
                 self.logger.warning(
                     "Unable to stop Phidget discovery inventory:\n%s",
-                    traceback.format_exc())
+                    str(sys.exc_info()[1]).replace("\n", " "))
             self.discoveryInventory = None
 
         try:
@@ -507,7 +507,7 @@ class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
         except Exception:
             self.logger.warning(
                 "Unable to finalize Phidget library:\n%s",
-                traceback.format_exc())
+                str(sys.exc_info()[1]).replace("\n", " "))
 
     def collectVersionsNow(self):
         self.logger.info("Starting requested read-only Phidget version collection")

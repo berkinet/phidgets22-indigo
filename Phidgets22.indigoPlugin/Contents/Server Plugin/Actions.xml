@@ -93,4 +93,6 @@
 		<Name>Wake LCD</Name>
 		<CallbackMethod>lcdWake</CallbackMethod>
 	</Action>
+    <Action id="rfidEnableAntenna" deviceFilter="self.rfid" uiPath="DeviceActions"><Name>Enable RFID antenna</Name><CallbackMethod>rfidEnableAntenna</CallbackMethod></Action>
+    <Action id="rfidDisableAntenna" deviceFilter="self.rfid" uiPath="DeviceActions"><Name>Disable RFID antenna</Name><CallbackMethod>rfidDisableAntenna</CallbackMethod></Action>
 </Actions>  

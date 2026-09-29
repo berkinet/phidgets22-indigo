@@ -5,7 +5,7 @@
 
 import threading
 import time
-import traceback
+import sys
 
 import phidget_util
 from config_util import saved_bool
@@ -216,7 +216,7 @@ class PhidgetBase(object):
                 self.updateStateOnServer(key, value=value)
             except Exception:
                 self.logger.debug("Unable to update connection state %s for %s:\n%s",
-                                  key, self._identity(), traceback.format_exc())
+                                  key, self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
 
     def _cancel_attach_timer(self):
         with self._lifecycle_lock:
@@ -330,7 +330,7 @@ class PhidgetBase(object):
             self.indigo_plugin.triggerEvent(self, "deviceDetached")
         except Exception:
             self.logger.error("Detach grace handler failed: %s\n%s",
-                              self._identity(), traceback.format_exc())
+                              self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
 
     def start(self):
         with self._lifecycle_lock:
@@ -362,7 +362,7 @@ class PhidgetBase(object):
                 self.phidget.close()
             except Exception:
                 self.logger.debug("Cleanup close failed after start error: %s\n%s",
-                                  self._identity(), traceback.format_exc())
+                                  self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
             raise
 
     def connectionTimeoutHandler(self, generation):
@@ -418,7 +418,7 @@ class PhidgetBase(object):
                         detached_for, state, self._identity())
         except Exception:
             self.logger.error("Attach-timeout handler failed: %s\n%s",
-                              self._identity(), traceback.format_exc())
+                              self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
         finally:
             self._schedule_detached_reminder(generation)
 
@@ -460,7 +460,7 @@ class PhidgetBase(object):
                 self._concise_error_message(errorString))
         except Exception:
             self.logger.error("Phidget error handler failed: %s\n%s",
-                              self._identity(), traceback.format_exc())
+                              self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
     
     def onDetachHandler(self, ph):
         try:
@@ -483,17 +483,17 @@ class PhidgetBase(object):
                 except Exception:
                     self.logger.error(
                         "Unable to quiesce dependent devices after detach: %s\n%s",
-                        self._identity(), traceback.format_exc())
+                        self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
             self._schedule_detach_grace_timer()
             self._schedule_attach_timer()
             try:
                 phidget_util.logPhidgetEvent(ph, self.logger.debug, "Detached '" + self.indigoDevice.name + "'")
             except Exception:
                 self.logger.debug("Unable to format detach diagnostics: %s\n%s",
-                                  self._identity(), traceback.format_exc())
+                                  self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
         except Exception:
             self.logger.error("Detach handler failed: %s\n%s",
-                              self._identity(), traceback.format_exc())
+                              self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
 
     def onAttachHandler(self, ph):
         try:
@@ -537,7 +537,7 @@ class PhidgetBase(object):
             except Exception:
                 pass
             self.logger.error("Phidget attached but initialization failed: %s\n%s",
-                              self._identity(), traceback.format_exc())
+                              self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
             return
         except Exception:
             with self._lifecycle_lock:
@@ -549,7 +549,7 @@ class PhidgetBase(object):
             except Exception:
                 pass
             self.logger.error("Phidget attached but initialization failed: %s\n%s",
-                              self._identity(), traceback.format_exc())
+                              self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
             return
 
         try:
@@ -589,10 +589,10 @@ class PhidgetBase(object):
                 phidget_util.logPhidgetEvent(ph, self.logger.debug, "Attached '" + self.indigoDevice.name + "'")
             except Exception:
                 self.logger.debug("Unable to format attach diagnostics: %s\n%s",
-                                  self._identity(), traceback.format_exc())
+                                  self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
         except Exception:
             self.logger.error("Attach completion handler failed: %s\n%s",
-                              self._identity(), traceback.format_exc())
+                              self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
 
     def configureAttachedPhidget(self, ph):
         """Apply model-specific settings before declaring the channel healthy."""

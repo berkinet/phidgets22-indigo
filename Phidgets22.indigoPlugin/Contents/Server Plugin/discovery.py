@@ -13,6 +13,7 @@ from connection_identity import (ChannelIdentity, ServerIdentity,
 
 
 CHANNEL_CLASSES_BY_DEVICE_TYPE = {
+    "rfid": "PhidgetRFID",
     "voltageInput": "PhidgetVoltageInput",
     "voltageRatioInput": "PhidgetVoltageRatioInput",
     "digitalInput": "PhidgetDigitalInput",

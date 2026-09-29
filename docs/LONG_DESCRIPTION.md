@@ -54,6 +54,7 @@ The following Phidget classes are currently supported:
 * DigitalInput
 * DigitalOutput
 * FrequencyCounter
+* RFID (1024_1): tag presence, last ID/protocol, detected/lost triggers, and antenna control
 * HumiditySensor
 * BME280/BMP280 environmental sensors through an ADP0001 I2C adapter
 * SGP41 VOC/NOx gas sensors through an ADP0001 I2C adapter, including raw

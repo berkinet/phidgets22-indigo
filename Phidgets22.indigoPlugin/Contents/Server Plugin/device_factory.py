@@ -10,6 +10,7 @@ from voltageratioinput import VoltageRatioInputPhidget
 from digitaloutput import DigitalOutputPhidget
 from temperaturesensor import TemperatureSensorPhidget
 from digitalinput import DigitalInputPhidget
+from rfid import RFIDPhidget
 from frequencycounter import FrequencyCounterPhidget
 from humiditysensor import HumiditySensorPhidget
 from lcd import NativeLCDPhidget
@@ -269,7 +270,13 @@ def _network_server(plugin, device, common):
         logger=plugin.logger)
 
 
+def _rfid(plugin, device, common):
+    return RFIDPhidget(**common["base"], antennaEnabled=saved_bool(
+        device.pluginProps.get("antennaEnabled", True)))
+
+
 _BUILDERS = {
+    "rfid": _rfid,
     "voltageInput": _voltage_input,
     "voltageRatioInput": _voltage_ratio_input,
     "digitalOutput": _digital_output,
