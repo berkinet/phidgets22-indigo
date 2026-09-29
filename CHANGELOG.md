@@ -1,5 +1,17 @@
 # Release notes
 
+## 2026.1.17 — 2026-09-29
+
+### Fixed
+
+- Populate the RFID recent-tags menu with Indigo-compatible option IDs. Raw
+  JSON IDs previously caused Indigo to reject recorded tags from the menu.
+- Replace empty RFID menu placeholder IDs with a valid unselected option,
+  including variable selectors and error/empty-history menus. Unselected lists
+  remain optional when their checks are disabled.
+- Use compatible static list-edit option IDs and migrate saved selections.
+  Tag strings, protocols, history, and existing list-variable selections are preserved.
+
 ## 2026.1.16 — 2026-09-29
 
 ### Added

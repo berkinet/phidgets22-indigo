@@ -252,3 +252,59 @@ class TagManagementTests(unittest.TestCase):
         for field in root.findall("./Device[@id='rfid']/ConfigUI/Field[@type='button']"):
             self.assertTrue(field.findtext("Title"))
             self.assertTrue(hasattr(self.ui, field.findtext("CallbackMethod")))
+
+    def test_recent_menu_ids_are_indigo_safe_and_round_trip_tag_text(self):
+        # Indigo rejected the previous raw JSON IDs at runtime, despite a valid
+        # history lookup. Include punctuation and Unicode to protect PhidgetTAG.
+        for tag, protocol in (("0000123456", 1), ('hen "A" / é', 3)):
+            rfid_tags.remember(self.ui, 10, tag, protocol, "today")
+        menu = self.ui.getRFIDRecentTags(targetId=10)
+        for token, _ in menu:
+            self.assertRegex(token, r"^[A-Za-z0-9_]+$")
+        for token, _ in menu[1:]:
+            self.values["rfidRecentTag"] = token
+            result = self.ui.rfidRecentTagSelected(self.values, "rfid", 10)
+            self.assertEqual(result["rfidEditTag"], rfid_tags.history_selection(token)[0])
+        self.assertEqual({rfid_tags.history_selection(token) for token, _ in menu[1:]},
+                         {("0000123456", 1), ('hen "A" / é', 3)})
+
+    def test_placeholders_are_valid_for_empty_and_failed_menus(self):
+        menus = [self.ui.getRFIDRecentTags(targetId=99), self.ui.getRFIDVariableList()]
+        self.ui.pluginPrefs[rfid_tags.HISTORY_KEY] = "broken"
+        menus.append(self.ui.getRFIDRecentTags(targetId=10))
+        with mock.patch.object(indigo, "variables", None):
+            menus.append(self.ui.getRFIDVariableList())
+        for menu in menus:
+            for token, _ in menu:
+                self.assertRegex(token, r"^[A-Za-z0-9_]+$")
+
+    def test_unselected_variables_are_not_looked_up_or_treated_as_equal_lists(self):
+        values = self.ui.initializeRFIDManagement({})
+        self.assertEqual(values["rfidAllowedVariable"], "none")
+        self.assertEqual(values["rfidDeniedVariable"], "none")
+        self.assertEqual(rfid_tags.validate(values), {})
+        self.assertTrue(rfid_tags.evaluate(values, "0001"))
+        values["rfidCheckAllowed"] = True
+        self.assertIn("rfidAllowedVariable", rfid_tags.validate(values))
+        with self.assertRaises(ValueError):
+            rfid_tags.evaluate(values, "0001")
+
+    def test_stage_with_one_selected_variable_ignores_opposite_placeholder(self):
+        values = self.ui.initializeRFIDManagement({"rfidAllowedVariable": "1"})
+        self.stage("0009", "addAllowed", values)
+        self.assertEqual(rfid_tags.validate(values), {})
+        self.ui.closedDeviceConfigUi(values, False, "rfid", 10)
+        self.assertIn("0009", self.variables[1].value)
+        self.api.updateValue.assert_called_once()
+
+    def test_rfid_static_menu_values_and_defaults_are_indigo_safe(self):
+        root = ElementTree.parse(SERVER_PLUGIN / "Devices.xml")
+        for field in root.findall("./Device[@id='rfid']/ConfigUI/Field[@type='menu']"):
+            if field.get("id").startswith("rfid"):
+                self.assertRegex(field.get("defaultValue"), r"^[A-Za-z0-9_]+$")
+                for option in field.findall("./List/Option"):
+                    self.assertRegex(option.get("value"), r"^[A-Za-z0-9_]+$")
+
+    def test_old_saved_operation_is_migrated_to_valid_menu_id(self):
+        values = self.ui.initializeRFIDManagement({"rfidEditOperation": "move:Denied"})
+        self.assertEqual(values["rfidEditOperation"], "moveDenied")

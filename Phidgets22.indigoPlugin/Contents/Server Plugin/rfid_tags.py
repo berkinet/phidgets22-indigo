@@ -35,13 +35,31 @@ def entries(value):
     return list(dict.fromkeys(line.strip() for line in str(value).splitlines() if line.strip()))
 
 
+def selected_variable(values, side):
+    """Translate the Indigo menu placeholder without treating it as a variable."""
+    value = str(values.get("rfid" + side + "Variable", "") or "")
+    return "" if value == "none" else value
+
+
+def history_token(tag, protocol):
+    # Indigo menu IDs cannot contain JSON punctuation, spaces, or be empty.
+    return "tag_" + json.dumps([tag, protocol], ensure_ascii=False).encode("utf-8").hex()
+
+
+def history_selection(token):
+    if not token.startswith("tag_"):
+        raise ValueError("Select a recent tag again.")
+    tag, protocol = json.loads(bytes.fromhex(token[4:]).decode("utf-8"))
+    return tag_id(tag), int(protocol)
+
+
 def evaluate(props, tag):
     """Read current variable values on each detection, failing closed on errors."""
     lists = {}
     with LOCK:
         for side in SIDES:
             if saved_bool(props.get("rfidCheck" + side, False)):
-                lists[side] = entries(variable(props.get("rfid" + side + "Variable", "")).value)
+                lists[side] = entries(variable(selected_variable(props, side)).value)
     return (("Allowed" not in lists or tag in lists["Allowed"]) and
             ("Denied" not in lists or tag not in lists["Denied"]))
 
@@ -82,9 +100,9 @@ def build_edits(values):
         side, kind, tag = operation["side"], operation["kind"], tag_id(operation["tag"])
         if side not in SIDES or kind not in ("add", "remove", "move"):
             raise ValueError("Invalid pending edit; clear pending edits and try again.")
-        var_id = str(values.get("rfid" + side + "Variable", ""))
+        var_id = selected_variable(values, side)
         opposite = "Denied" if side == "Allowed" else "Allowed"
-        other_id = str(values.get("rfid" + opposite + "Variable", ""))
+        other_id = selected_variable(values, opposite)
         if var_id != operation["variable"] or other_id != operation["opposite"]:
             raise ValueError("List selections changed. Clear pending edits before selecting different variables.")
         target = get_contents(var_id)
@@ -113,13 +131,13 @@ def validate(values):
     errors = indigo.Dict()
     for side in SIDES:
         key = "rfid" + side + "Variable"
-        if saved_bool(values.get("rfidCheck" + side, False)) or values.get(key):
+        if saved_bool(values.get("rfidCheck" + side, False)) or selected_variable(values, side):
             try:
-                variable(values.get(key, ""))
+                variable(selected_variable(values, side))
             except Exception as error:
                 errors[key] = str(error)
-    if (values.get("rfidAllowedVariable") and
-            values.get("rfidAllowedVariable") == values.get("rfidDeniedVariable")):
+    if (selected_variable(values, "Allowed") and
+            selected_variable(values, "Allowed") == selected_variable(values, "Denied")):
         errors["rfidDeniedVariable"] = "Select a different variable for each list."
     try:
         with LOCK:

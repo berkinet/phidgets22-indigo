@@ -9,37 +9,40 @@ from runtime_registry import registry_for
 
 class RFIDManagementMixin(object):
     def initializeRFIDManagement(self, values):
+        values["rfidEditOperation"] = str(values.get("rfidEditOperation", "addAllowed")).replace(":", "")
         values["rfidPendingEdits"] = "[]"
         values["rfidEditStatus"] = "No pending list edits."
-        values["rfidRecentTag"] = ""
+        values["rfidRecentTag"] = "none"
+        for side in rfid_tags.SIDES:
+            values["rfid" + side + "Variable"] = rfid_tags.selected_variable(values, side) or "none"
         values["rfidEditTag"] = ""
         values["rfidMembership"] = "Select a recent tag or enter an ID."
         return values
 
     def getRFIDVariableList(self, filter="", valuesDict=None, typeId="", targetId=0):
         try:
-            return [("", "Select a variable")] + sorted(
+            return [("none", "Select a variable")] + sorted(
                 [(str(var.id), var.name) for var in indigo.variables
                  if not getattr(var, "readOnly", False)], key=lambda row: row[1].lower())
         except Exception as error:
             self.logger.error("Unable to list RFID variables: %s", str(error).replace("\n", " "))
-            return [("", "Variables unavailable; see Indigo log")]
+            return [("none", "Variables unavailable; see Indigo log")]
 
     def getRFIDRecentTags(self, filter="", valuesDict=None, typeId="", targetId=0):
         try:
             rows = rfid_tags.recent(self, targetId)
-            return [("", "Select a recent tag" if rows else "No recent tags for this reader")] + [
-                (json.dumps([row["tag"], row["protocol"]]), "%s | %s | %s" %
+            return [("none", "Select a recent tag" if rows else "No recent tags for this reader")] + [
+                (rfid_tags.history_token(row["tag"], row["protocol"]), "%s | %s | %s" %
                  (row["tag"], rfid_tags.PROTOCOLS.get(row["protocol"], str(row["protocol"])), row["seen"]))
                 for row in rows]
         except Exception as error:
             self.logger.error("Unable to read RFID history for device %s: %s", targetId, str(error).replace("\n", " "))
-            return [("", "History unavailable; see Indigo log")]
+            return [("none", "History unavailable; see Indigo log")]
 
     def rfidRecentTagSelected(self, valuesDict, typeId, devId):
         try:
-            if valuesDict.get("rfidRecentTag"):
-                valuesDict["rfidEditTag"] = json.loads(valuesDict["rfidRecentTag"])[0]
+            if valuesDict.get("rfidRecentTag") not in (None, "", "none"):
+                valuesDict["rfidEditTag"] = rfid_tags.history_selection(valuesDict["rfidRecentTag"])[0]
             return self.rfidRefreshTags(valuesDict, typeId, devId)
         except Exception as error:
             valuesDict["rfidEditStatus"] = str(error)
@@ -53,7 +56,7 @@ class RFIDManagementMixin(object):
                 projected = {str(var.id): rfid_tags.entries(value)
                              for var, value in rfid_tags.build_edits(valuesDict)}
                 for side in rfid_tags.SIDES:
-                    var_id = str(valuesDict.get("rfid" + side + "Variable", ""))
+                    var_id = rfid_tags.selected_variable(valuesDict, side)
                     if var_id:
                         var = rfid_tags.variable(var_id)
                         contents = projected.get(var_id, rfid_tags.entries(var.value))
@@ -66,14 +69,19 @@ class RFIDManagementMixin(object):
 
     def rfidStageEdit(self, valuesDict, typeId, devId):
         try:
-            kind, side = valuesDict.get("rfidEditOperation", "add:Allowed").split(":")
+            operations = {kind + side: (kind, side)
+                          for kind in ("add", "remove", "move") for side in rfid_tags.SIDES}
+            operation = valuesDict.get("rfidEditOperation", "addAllowed").replace(":", "")
+            if operation not in operations:
+                raise ValueError("Select a list edit operation.")
+            kind, side = operations[operation]
             tag = rfid_tags.tag_id(valuesDict.get("rfidEditTag", ""))
             opposite = "Denied" if side == "Allowed" else "Allowed"
-            var_id = str(valuesDict.get("rfid" + side + "Variable", ""))
+            var_id = rfid_tags.selected_variable(valuesDict, side)
             rfid_tags.variable(var_id)
             edits = rfid_tags.pending(valuesDict)
             edits.append({"kind": kind, "side": side, "tag": tag, "variable": var_id,
-                          "opposite": str(valuesDict.get("rfid" + opposite + "Variable", ""))})
+                          "opposite": rfid_tags.selected_variable(valuesDict, opposite)})
             proposed = indigo.Dict(valuesDict)
             proposed["rfidPendingEdits"] = json.dumps(edits)
             with rfid_tags.LOCK:
