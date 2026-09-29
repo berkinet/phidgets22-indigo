@@ -3,6 +3,7 @@
 """Indigo configuration callbacks backed by the live discovery inventory."""
 
 import indigo
+import rfid_tags
 
 from discovery import (CHANNEL_CLASSES_BY_DEVICE_TYPE, device_token,
                        channel_token, format_channel, format_network_diagram,
@@ -318,6 +319,9 @@ class DiscoveryUiMixin(object):
         """Initialize, safely migrate, and collapse discovery selections."""
         values = indigo.Dict(pluginProps)
         values["configurationMigrated"] = False
+        if typeId == "rfid":
+            from rfid_ui import RFIDManagementMixin
+            RFIDManagementMixin.initializeRFIDManagement(self, values)
         if typeId == "rfid" and saved_bool(values.get("rfidSimulation", False)):
             return (self.menuChanged(values, typeId, devId), indigo.Dict())
         values["observedConnection"] = self._observedConnectionForDevice(devId)
@@ -523,6 +527,9 @@ class DiscoveryUiMixin(object):
         return self._validateChannelConfig(valuesDict, typeId, devId)
 
     def _validateRFIDConfig(self, valuesDict, devId):
+        errors = rfid_tags.validate(valuesDict)
+        if errors:
+            return (False, valuesDict, errors)
         if saved_bool(valuesDict.get("rfidSimulation", False)):
             from uuid import uuid4
             valuesDict["address"] = "simulated-rfid-%s" % (devId or uuid4().hex)

@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
-"""RFID presence sensing; every compatible tag is accepted without enrolment."""
+"""RFID presence sensing with optional per-reader tag policy."""
 import datetime
 import threading
 from types import SimpleNamespace
+
+import rfid_tags
 
 from Phidget22.Devices.RFID import RFID
 from phidget import PhidgetBase, PeripheralUnavailableError
@@ -14,6 +16,7 @@ class RFIDPhidget(PhidgetBase):
         self.antennaEnabled = antennaEnabled
         self._tag_lock = threading.RLock()
         self._present_tag = None
+        self.rfidPolicyProps = dict(self.indigoDevice.pluginProps)
 
     def addPhidgetHandlers(self):
         self.phidget.setOnErrorHandler(self.onErrorHandler)
@@ -34,18 +37,43 @@ class RFIDPhidget(PhidgetBase):
     def _publish_tag(self, present, tag=None, protocol=None, notify=False):
         previous = self._present_tag
         current = (str(tag), protocol) if present else None
+        permission_event = None
+        if present and previous != current:
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            try:
+                rfid_tags.remember(self.indigo_plugin, self.indigoDevice.id, str(tag), protocol, timestamp)
+            except Exception as error:
+                self.logger.error("RFID history update failed for '%s': %s", self.indigoDevice.name,
+                                  str(error).replace("\n", " "))
+            try:
+                allowed = rfid_tags.evaluate(getattr(self, "rfidPolicyProps", {}), str(tag))
+                policy_error = ""
+                status = "Allowed" if allowed else "Denied"
+                permission_event = "rfidAllowedTagDetected" if allowed else "rfidDeniedTagDetected"
+            except Exception as error:
+                allowed, status = False, "Error"
+                policy_error = str(error).replace("\n", " ")
+                self.logger.error("RFID list check failed for '%s': %s", self.indigoDevice.name, policy_error)
+            self.updateStateOnServer("lastTagAllowed", allowed)
+            self.updateStateOnServer("tagPolicyResult", status)
+            self.updateStateOnServer("tagPolicyError", policy_error)
         if tag is not None:
             self.updateStateOnServer("lastTag", str(tag))
-            label = {1: "EM4100", 2: "ISO11785 FDX-B", 3: "PhidgetTAG",
-                     4: "HID Generic", 5: "HID H10301"}.get(
+            label = rfid_tags.PROTOCOLS.get(
                 protocol, "Unknown (%s)" % protocol)
             self.updateStateOnServer("protocol", label)
         self.updateStateOnServer("tagPresent", bool(present))
         self.updateStateOnServer("lastUpdate", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         self._present_tag = current
         if notify and previous != current:
-            self.indigo_plugin.triggerEvent(
-                self, "rfidTagDetected" if present else "rfidTagLost")
+            events = ["rfidTagDetected" if present else "rfidTagLost"]
+            if permission_event:
+                events.append(permission_event)
+            for event in events:
+                try:
+                    self.indigo_plugin.triggerEvent(self, event)
+                except Exception as error:
+                    self._report(event, error)
 
     def configureAttachedPhidget(self, ph):
         try:
@@ -106,6 +134,9 @@ class RFIDPhidget(PhidgetBase):
             ("bool", "tagPresent", "Tag present"),
             ("string", "lastTag", "Last tag ID"),
             ("string", "protocol", "Last tag protocol"),
+            ("bool", "lastTagAllowed", "Last tag allowed"),
+            ("string", "tagPolicyResult", "Last tag policy result"),
+            ("string", "tagPolicyError", "Tag policy error"),
             ("bool", "antennaEnabled", "Antenna enabled"),
             ("string", "lastUpdate", "Last update"))
 
@@ -122,6 +153,7 @@ class SimulatedRFIDPhidget(RFIDPhidget):
         self.antennaEnabled = antennaEnabled
         self._tag_lock = threading.RLock()
         self._present_tag = None
+        self.rfidPolicyProps = dict(self.indigoDevice.pluginProps)
 
     def start(self):
         try:

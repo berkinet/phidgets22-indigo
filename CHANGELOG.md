@@ -1,5 +1,21 @@
 # Release notes
 
+## 2026.1.16 — 2026-09-29
+
+### Added
+
+- Per-reader allowed/denied tag checks using selected Indigo variables, with
+  exact tag IDs stored one per line. Denial wins when both checks are enabled.
+- Device-config tag management: 50 recent tag/protocol pairs per reader,
+  last-seen times, list membership, and add/remove/move operations. Edits are
+  staged until Save; Cancel leaves variables unchanged. History survives normal
+  plugin restarts through Indigo's saved plugin preferences.
+- `lastTagAllowed`, `tagPolicyResult`, and `tagPolicyError` states, plus allowed
+  and denied RFID tag-detected triggers. Missing list variables fail closed and
+  report an error while preserving raw tag detection.
+- Policy-only configuration changes keep the reader running and do not create
+  new detection events. All tag-management features work with simulated readers.
+
 ## 2026.1.15 — 2026-09-29
 
 ### Added

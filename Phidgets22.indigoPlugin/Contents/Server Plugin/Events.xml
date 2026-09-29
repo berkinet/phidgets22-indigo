@@ -37,4 +37,6 @@
     </Event>
     <Event id="rfidTagDetected" deviceFilter="self.rfid"><Name>RFID tag detected</Name><Label>RFID tag detected</Label><ConfigUI><Field id="indigoDevice" type="menu"><Label>RFID reader:</Label><List class="self" method="getRFIDReaderList"/></Field></ConfigUI></Event>
     <Event id="rfidTagLost" deviceFilter="self.rfid"><Name>RFID tag lost</Name><Label>RFID tag lost</Label><ConfigUI><Field id="indigoDevice" type="menu"><Label>RFID reader:</Label><List class="self" method="getRFIDReaderList"/></Field></ConfigUI></Event>
+    <Event id="rfidAllowedTagDetected" deviceFilter="self.rfid"><Name>Allowed RFID tag detected</Name><Label>Allowed RFID tag detected</Label><ConfigUI><Field id="indigoDevice" type="menu"><Label>RFID reader:</Label><List class="self" method="getRFIDReaderList"/></Field></ConfigUI></Event>
+    <Event id="rfidDeniedTagDetected" deviceFilter="self.rfid"><Name>Denied RFID tag detected</Name><Label>Denied RFID tag detected</Label><ConfigUI><Field id="indigoDevice" type="menu"><Label>RFID reader:</Label><List class="self" method="getRFIDReaderList"/></Field></ConfigUI></Event>
 </Events>

@@ -43,8 +43,8 @@ See the [full guide](https://github.com/berkinet/phidgets22-indigo/blob/main/doc
 Create a **RFID Reader (1024)** device and select its discovered server and
 reader. The serial number identifies each reader independently. Leave
 **Enable antenna on startup** checked to begin reading automatically.
-No tag enrolment or allowlist is required: every tag the hardware can read is
-accepted. Tag IDs remain strings, preserving leading zeroes.
+Every tag the hardware can read is reported. Optional allowed/denied lists
+classify detections without suppressing the original detection events. Tag IDs remain strings, preserving leading zeroes.
 
 Indigo states are `tagPresent`, `lastTag`, `protocol`, `antennaEnabled`, and
 `lastUpdate`. The last tag ID and protocol remain available after the tag leaves
@@ -86,5 +86,56 @@ present and restores the configured antenna startup setting.
 Simulated scans update the normal states and execute real configured Indigo
 triggers. You can create two simulated readers to test independent automations.
 Simulation actions reject physical readers. To switch to hardware later,
-uncheck simulation and select a discovered reader. Allow/deny lists and tag
-management are not included yet.
+uncheck simulation and select a discovered reader. Tag management below also works with simulated readers.
+
+### Per-reader tag management
+
+1. Create one or two **Indigo variables** for this reader, for example
+   `FeederA_AllowedTags` and `FeederA_DeniedTags`. They may initially be empty.
+2. Edit the RFID device configuration. Select its **Allowed tags variable**
+   and/or **Denied tags variable**. Enable **Check for allowed tag** and/or
+   **Check for denied tag** when you want those checks active.
+3. Scan a tag (or use **Device Actions → Phidgets Actions → Simulate RFID tag
+   detected**). Open the device configuration and check **Manage this reader's
+   tags**. Select a recent tag, or enter its ID manually. **Refresh recent tags**
+   reloads detections and list membership while the dialog is open.
+4. Select an operation in **List edit**, then click **Stage list edit**. Review
+   the pending edits and destination variable names. Click **Save** to apply;
+   **Cancel** leaves all variables unchanged. **Clear pending edits** discards
+   staged changes without closing the dialog.
+
+Each variable contains one exact tag ID per line. Blank lines are ignored;
+matching is case-sensitive and preserves leading zeroes. Protocol is shown in
+history but is not part of list matching. A tag ID listed here matches that ID
+across protocols. Every reader selects its own variables; deliberately sharing
+variables shares the list. Avoid using unrelated variables for tag lists.
+
+| Enabled checks | Allowed result |
+| --- | --- |
+| Neither | Every tag |
+| Allowed only | ID appears in the allowed variable |
+| Denied only | ID does not appear in the denied variable |
+| Both | ID appears in allowed and does not appear in denied |
+
+An empty allowed list permits no tags; an empty denied list blocks none.
+The variables are read again on each new detection. **Allowed RFID tag detected** and **Denied RFID tag detected** are additional per-reader triggers.
+Use the allowed trigger for feeder opening; the original **RFID tag detected**
+continues to fire for every tag, including denied tags and policy lookup errors.
+
+`lastTagAllowed` is the decision for the last detection. `tagPolicyResult` is
+`Allowed`, `Denied`, or `Error`; `tagPolicyError` contains lookup error details.
+These states are published before detection triggers and retained after loss.
+On lookup failure, allowed is false and neither policy trigger fires; the raw
+trigger still fires and the error is logged. Editing lists does not reassess a
+currently present tag or generate a new detection: simulate loss and detection
+to test a changed policy.
+
+History keeps the 50 most recent unique tag/protocol pairs per reader, with
+repeat visits updating last-seen time. It is kept in plugin preferences across
+normal restarts. Add ignores duplicates; Remove deletes the ID from that list.
+If a tag is in the opposite selected list, Add asks you to choose the explicit
+**Move** operation, which removes it there and adds it to the target list.
+Pending edits merge into current variable contents on Save, preserving unrelated
+changes. If you change variable selections after staging, clear and restage the
+edits. Save failures identify the variable in Indigo's log; because Indigo does
+not offer atomic multi-variable writes, review both lists if a Move partly fails.

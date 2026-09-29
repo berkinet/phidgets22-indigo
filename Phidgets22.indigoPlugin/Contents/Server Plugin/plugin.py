@@ -30,6 +30,7 @@ except ModuleNotFoundError as error:
 
 from PhidgetInfo import PhidgetInfo
 from actions import ActionsMixin
+from rfid_ui import RFIDManagementMixin
 from config_util import saved_bool
 from connection_identity import PhysicalDeviceIdentity, ServerIdentity
 from device_state_export import write_device_state_snapshot
@@ -45,7 +46,7 @@ from phidget import PeripheralUnavailableError
 from runtime_registry import RuntimeDeviceRegistry, registry_for
 
 
-class Plugin(ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
+class Plugin(RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin, indigo.PluginBase):
     """Indigo lifecycle coordinator for the Phidgets 22 plugin."""
 
     def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):

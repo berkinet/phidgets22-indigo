@@ -694,6 +694,24 @@
 			<Field id="observedConnection" type="textfield" visibleBindingId="rfidSimulation" visibleBindingValue="false" alwaysUseInDialogHeightCalc="true"><Label>Phidgets path:</Label></Field>
 			<Field id="discoverySeparator" type="separator" visibleBindingId="rfidSimulation" visibleBindingValue="false" alwaysUseInDialogHeightCalc="true"/>
 			<Field id="antennaEnabled" type="checkbox" defaultValue="true"><Label>Enable antenna on startup:</Label></Field>
+            <Field id="rfidPolicySeparator" type="separator"/>
+            <Field id="rfidCheckAllowed" type="checkbox" defaultValue="false"><Label>Check for allowed tag:</Label></Field>
+            <Field id="rfidAllowedVariable" type="menu" defaultValue=""><Label>Allowed tags variable:</Label><List class="self" method="getRFIDVariableList" dynamicReload="true"/><CallbackMethod>rfidRefreshTags</CallbackMethod></Field>
+            <Field id="rfidCheckDenied" type="checkbox" defaultValue="false"><Label>Check for denied tag:</Label></Field>
+            <Field id="rfidDeniedVariable" type="menu" defaultValue=""><Label>Denied tags variable:</Label><List class="self" method="getRFIDVariableList" dynamicReload="true"/><CallbackMethod>rfidRefreshTags</CallbackMethod></Field>
+            <Field id="rfidPolicyHelp" type="label"><Label>Select existing Indigo variables containing one exact tag ID per line. With both checks enabled, a tag must be allowed and not denied. Neither checked accepts all tags. Missing variables prevent an allowed event.</Label></Field>
+            <Field id="rfidManageTags" type="checkbox" defaultValue="false"><Label>Manage this reader's tags:</Label></Field>
+            <Field id="rfidPendingEdits" type="textfield" defaultValue="[]" hidden="true"/>
+            <Field id="rfidRecentTag" type="menu" defaultValue="" visibleBindingId="rfidManageTags" visibleBindingValue="true"><Label>Recent tags (this reader):</Label><List class="self" method="getRFIDRecentTags" dynamicReload="true"/><CallbackMethod>rfidRecentTagSelected</CallbackMethod></Field>
+            <Field id="rfidRefresh" type="button" visibleBindingId="rfidManageTags" visibleBindingValue="true"><Label></Label><Title>Refresh recent tags</Title><CallbackMethod>rfidRefreshTags</CallbackMethod></Field>
+            <Field id="rfidEditTag" type="textfield" visibleBindingId="rfidManageTags" visibleBindingValue="true"><Label>Tag ID to manage:</Label></Field>
+            <Field id="rfidMembership" type="textfield" readonly="true" visibleBindingId="rfidManageTags" visibleBindingValue="true"><Label>List membership:</Label></Field>
+            <Field id="rfidEditOperation" type="menu" defaultValue="add:Allowed" visibleBindingId="rfidManageTags" visibleBindingValue="true"><Label>List edit:</Label><List><Option value="add:Allowed">Add to allowed list</Option><Option value="add:Denied">Add to denied list</Option><Option value="move:Allowed">Move to allowed list (remove from denied)</Option><Option value="move:Denied">Move to denied list (remove from allowed)</Option><Option value="remove:Allowed">Remove from allowed list</Option><Option value="remove:Denied">Remove from denied list</Option></List></Field>
+            <Field id="rfidStage" type="button" visibleBindingId="rfidManageTags" visibleBindingValue="true"><Label></Label><Title>Stage list edit</Title><CallbackMethod>rfidStageEdit</CallbackMethod></Field>
+            <Field id="rfidEditStatus" type="textfield" readonly="true" visibleBindingId="rfidManageTags" visibleBindingValue="true"><Label>Pending edits:</Label></Field>
+            <Field id="rfidClear" type="button" visibleBindingId="rfidManageTags" visibleBindingValue="true"><Label></Label><Title>Clear pending edits</Title><CallbackMethod>rfidClearEdits</CallbackMethod></Field>
+            <Field id="rfidSaveHelp" type="label" visibleBindingId="rfidManageTags" visibleBindingValue="true"><Label>Save applies pending edits to the selected variables. Cancel discards them. Changes affect the next tag detection. Variables shared with other readers affect those readers too.</Label></Field>
+
 		</ConfigUI>
 	</Device>
 </Devices>

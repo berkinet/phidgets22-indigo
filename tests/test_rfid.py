@@ -27,7 +27,7 @@ class RFIDTests(unittest.TestCase):
         reader.phidget = mock.Mock()
         reader.indigoDevice = mock.Mock(id=device_id)
         reader.indigoDevice.name = "Reader %s" % device_id
-        reader.indigo_plugin = mock.Mock()
+        reader.indigo_plugin = mock.Mock(pluginPrefs={})
         reader.logger = mock.Mock()
         reader.states = {}
         reader.updateStateOnServer = lambda key, value: reader.states.__setitem__(key, value)
@@ -43,7 +43,7 @@ class RFIDTests(unittest.TestCase):
         self.assertEqual(reader.states["protocol"], "EM4100")
         self.assertFalse(reader.states["tagPresent"])
         self.assertEqual(reader.indigo_plugin.triggerEvent.call_args_list,
-                         [mock.call(reader, "rfidTagDetected"), mock.call(reader, "rfidTagLost")])
+                         [mock.call(reader, "rfidTagDetected"), mock.call(reader, "rfidAllowedTagDetected"), mock.call(reader, "rfidTagLost")])
 
     def test_old_loss_does_not_clear_new_tag(self):
         reader = self.reader()
@@ -69,12 +69,12 @@ class RFIDTests(unittest.TestCase):
         self.assertFalse(reader.states["tagPresent"])
         self.assertFalse(reader.states["antennaEnabled"])
         self.assertEqual(reader.states["lastTag"], "chicken")
-        self.assertEqual(reader.indigo_plugin.triggerEvent.call_count, 1)
+        self.assertEqual(reader.indigo_plugin.triggerEvent.call_count, 2)
         reader.phidget.getTagPresent.return_value = True
         reader.phidget.getLastTag.return_value = ("chicken", 3)
         reader.configureAttachedPhidget(reader.phidget)
         self.assertTrue(reader.states["tagPresent"])
-        self.assertEqual(reader.indigo_plugin.triggerEvent.call_count, 2)
+        self.assertEqual(reader.indigo_plugin.triggerEvent.call_count, 4)
 
     def test_antenna_disable_clears_presence_and_survives_reattach(self):
         reader = self.reader()
@@ -101,7 +101,7 @@ class RFIDTests(unittest.TestCase):
         reader = self.reader()
         reader.indigo_plugin.triggerEvent.side_effect = RuntimeError("trigger unavailable")
         reader.onTagHandler(None, "tag", 1)
-        reader.logger.error.assert_called_once()
+        self.assertEqual(reader.logger.error.call_count, 2)
         reader._state = "stopped"
         reader.onTagHandler(None, "ignored", 1)
         self.assertEqual(reader.states["lastTag"], "tag")
@@ -130,7 +130,7 @@ class RFIDTests(unittest.TestCase):
         actions = ElementTree.parse(SERVER_PLUGIN / "Actions.xml")
         self.assertEqual(len(actions.findall("./Action[@deviceFilter='self.rfid']")), 4)
         events = ElementTree.parse(SERVER_PLUGIN / "Events.xml")
-        self.assertEqual(len(events.findall("./Event[@deviceFilter='self.rfid']")), 2)
+        self.assertEqual(len(events.findall("./Event[@deviceFilter='self.rfid']")), 4)
 
     def test_handlers_registered_before_open(self):
         reader = self.reader()
@@ -169,7 +169,8 @@ class SimulationTests(unittest.TestCase):
         self.assertFalse(second.states["tagPresent"])
         second.indigo_plugin.triggerEvent.assert_not_called()
         first.simulateTag("000001", 1)
-        first.indigo_plugin.triggerEvent.assert_called_once_with(first, "rfidTagDetected")
+        self.assertEqual(first.indigo_plugin.triggerEvent.call_args_list,
+                         [mock.call(first, "rfidTagDetected"), mock.call(first, "rfidAllowedTagDetected")])
         first.simulateTag()
         self.assertFalse(first.states["tagPresent"])
         self.assertEqual(first.states["lastTag"], "000001")
@@ -181,7 +182,7 @@ class SimulationTests(unittest.TestCase):
         reader.indigo_plugin.triggerEvent.reset_mock()
         reader.simulateTag("second", 3)
         self.assertEqual(reader.indigo_plugin.triggerEvent.call_args_list,
-                         [mock.call(reader, "rfidTagLost"), mock.call(reader, "rfidTagDetected")])
+                         [mock.call(reader, "rfidTagLost"), mock.call(reader, "rfidTagDetected"), mock.call(reader, "rfidAllowedTagDetected")])
 
     def test_antenna_disabled_and_invalid_scan_report_errors(self):
         reader = self.reader()
