@@ -1,5 +1,23 @@
 # Release notes
 
+## 2026.1.19 — 2026-09-29
+
+### Added
+
+- Per-reader `presenceActive` state and configurable presence clear delay in
+  minutes, including simulated readers. Allowed detections activate presence
+  immediately and hold it while the tag remains present. Loss starts the delay;
+  another allowed detection cancels it. Denied tags cannot extend presence.
+- Two Indigo state-change triggers can open and close feeder access; door
+  actions remain in Indigo automation, separate from reader timing.
+- Disconnect/antenna disable starts the loss delay. Device stop/restart clears
+  presence and cancels pending timers. Delay edits apply to the next loss.
+
+### Fixed
+
+- Refresh dynamic device states before startup publishes initial values, so
+  newly added states are available immediately after upgrading.
+
 ## 2026.1.18 — 2026-09-29
 
 ### Added

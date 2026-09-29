@@ -363,8 +363,9 @@ class Plugin(RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin, indigo.PluginB
         try:
             new_phidget = create_phidget(self, device)
             self._runtime_registry().register(device.id, new_phidget)
-            new_phidget.start()
+            # Install dynamic states before startup publishes initial values.
             device.stateListOrDisplayStateIdChanged()
+            new_phidget.start()
         except PeripheralUnavailableError as error:
             self._runtime_registry().remove(device.id)
             device.setErrorStateOnServer("Initialization failed")

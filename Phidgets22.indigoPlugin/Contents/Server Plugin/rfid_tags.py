@@ -5,6 +5,7 @@ import threading
 
 import indigo
 from config_util import saved_bool
+from rfid_presence import clear_delay_seconds
 
 LOCK = threading.RLock()
 PROTOCOLS = {1: "EM4100", 2: "ISO11785 FDX-B", 3: "PhidgetTAG",
@@ -138,6 +139,10 @@ def build_edits(values):
 
 def validate(values):
     errors = indigo.Dict()
+    try:
+        clear_delay_seconds(values)
+    except (TypeError, ValueError, OverflowError):
+        errors["rfidPresenceClearMinutes"] = "Enter a delay from 0 through 1440 minutes. Decimals are allowed."
     for side in SIDES:
         key = "rfid" + side + "Variable"
         if saved_bool(values.get("rfidCheck" + side, False)) or selected_variable(values, side):

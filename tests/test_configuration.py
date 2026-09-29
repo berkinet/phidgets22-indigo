@@ -303,7 +303,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>2026.1.18</string>", plist)
+        self.assertIn("<string>2026.1.19</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_detach_error_delay_is_conditionally_visible(self):
@@ -1179,6 +1179,8 @@ class ConfigurationTests(unittest.TestCase):
             "lcdInitialY": "0",
         }
         wrapper = mock.Mock()
+        wrapper.start.side_effect = lambda: (
+            device.stateListOrDisplayStateIdChanged.assert_called_once_with())
         device.stateListOrDisplayStateIdChanged.side_effect = lambda: (
             self.assertIs(instance._runtime_registry().get(device.id), wrapper))
         with mock.patch.object(

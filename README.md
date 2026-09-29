@@ -46,7 +46,7 @@ reader. The serial number identifies each reader independently. Leave
 Every tag the hardware can read is reported. Optional allowed/denied lists
 classify detections without suppressing the original detection events. Tag IDs remain strings, preserving leading zeroes.
 
-Indigo states are `tagPresent`, `lastTag`, `protocol`, `antennaEnabled`, and
+Indigo states include `tagPresent`, `presenceActive`, `lastTag`, `protocol`, `antennaEnabled`, and
 `lastUpdate`. The last tag ID and protocol remain available after the tag leaves
 or the reader disconnects. Before the first detection those fields are empty.
 Use **RFID tag detected** and **RFID tag lost** triggers and select the specific
@@ -54,18 +54,42 @@ reader. Repeated detection of the same present tag does not repeat the trigger;
 a new detection after loss does. State values are published before the trigger.
 
 **Enable RFID antenna** and **Disable RFID antenna** are device actions.
-Disabling the antenna clears presence and fires tag lost if a tag was present.
+Disabling the antenna clears `tagPresent` and fires tag lost if a tag was present.
 The latest successful antenna setting is restored on hardware reconnect;
 a plugin restart reapplies the saved startup setting. A disconnect clears
-presence and antenna state without firing tag lost; use the existing Phidget
+`tagPresent` and antenna state without firing tag lost; use the existing Phidget
 detached/attached triggers for connection monitoring. A tag already present
 on attachment produces a detection. Errors identify the reader and operation.
 
-For the Chicken Feeder, use tag detected to open the feeder and restart an
-Indigo automation timer. Let that automation close it after 5–10 minutes.
-Do not close directly on tag lost if the hold-open period is desired. The
-reader plugin does not maintain a feeder timer or enrol birds. Tag programming
-is not exposed by this reader/presence implementation.
+### Delayed presence for feeder access
+
+Set **Presence clear delay (minutes)** in each reader's device configuration,
+for example `5`. The default is `0` (clear immediately on loss); decimals are
+accepted, so `0.1` gives a six-second delay for simulation testing.
+
+`presenceActive` becomes true on an allowed detection and stays true as long
+as that tag remains present. Tag loss starts the configured countdown. A new
+allowed detection cancels the countdown; the next loss starts a full new delay.
+Denied tags and policy lookup errors cannot activate or extend this presence.
+With both list checks disabled, every compatible tag qualifies.
+
+For the Chicken Feeder, create two Indigo **device state change** triggers:
+
+- **Presence active** changes to true → run the action/script that opens the door.
+- **Presence active** changes to false → run the action/script that closes the door.
+
+The plugin maintains presence and its timer; Indigo triggers control the door.
+`tagPresent` continues to show immediate physical detection, including denied
+tags. Each reader has its own timer. Changing the configured delay affects the
+next loss, leaving an already-running countdown at its original deadline.
+
+Disconnecting the reader or disabling its antenna starts the same loss delay.
+Stopping, disabling, or restarting the device/plugin clears delayed presence
+and cancels its timer; a fresh allowed detection activates it again. Countdowns
+are not saved across restarts. Clearing an active state can fire the close
+trigger. Simulated readers follow the same rules.
+
+Tag programming is not exposed by this reader/presence implementation.
 
 Reference: [Phidgets 1024_1 Python API](https://www.phidgets.com/?view=api&product_id=1024_1&lang=Python).
 
@@ -119,8 +143,9 @@ variables shares the list. Avoid using unrelated variables for tag lists.
 
 An empty allowed list permits no tags; an empty denied list blocks none.
 The variables are read again on each new detection. **Allowed RFID tag detected** and **Denied RFID tag detected** are additional per-reader triggers.
-Use the allowed trigger for feeder opening; the original **RFID tag detected**
-continues to fire for every tag, including denied tags and policy lookup errors.
+For feeder hold-open control, use the `presenceActive` state-change triggers
+described above. The original **RFID tag detected** continues to fire for every
+tag, including denied tags and policy lookup errors.
 
 `lastTagAllowed` is the decision for the last detection. `tagPolicyResult` is
 `Allowed`, `Denied`, or `Error`; `tagPolicyError` contains lookup error details.

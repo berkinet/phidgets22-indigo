@@ -694,6 +694,7 @@
 			<Field id="observedConnection" type="textfield" visibleBindingId="rfidSimulation" visibleBindingValue="false" alwaysUseInDialogHeightCalc="true"><Label>Phidgets path:</Label></Field>
 			<Field id="discoverySeparator" type="separator" visibleBindingId="rfidSimulation" visibleBindingValue="false" alwaysUseInDialogHeightCalc="true"/>
 			<Field id="antennaEnabled" type="checkbox" defaultValue="true"><Label>Enable antenna on startup:</Label></Field>
+            <Field id="rfidPresenceClearMinutes" type="textfield" defaultValue="0"><Label>Presence clear delay (minutes):</Label><Description>Presence active stays true while an allowed tag is present, then clears this many minutes after loss. A returning allowed tag cancels the countdown. Use 0 for immediate clearing.</Description></Field>
             <Field id="rfidPolicySeparator" type="separator"/>
             <Field id="rfidCheckAllowed" type="checkbox" defaultValue="false"><Label>Check for allowed tag:</Label></Field>
             <Field id="rfidAllowedVariable" type="menu" defaultValue="none"><Label>Allowed tags variable:</Label><List class="self" method="getRFIDVariableList" dynamicReload="true"/><CallbackMethod>rfidRefreshTags</CallbackMethod></Field>

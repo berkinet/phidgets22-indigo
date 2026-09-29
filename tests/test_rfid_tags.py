@@ -59,7 +59,7 @@ class TagManagementTests(unittest.TestCase):
         indigo.devices[device_id] = device
         plugin = types.SimpleNamespace(pluginPrefs=self.ui.pluginPrefs, triggerEvent=mock.Mock())
         reader = SimulatedRFIDPhidget(indigoDevice=device, indigo_plugin=plugin, logger=mock.Mock())
-        reader.updateStateOnServer = lambda key, value: device.states.__setitem__(key, value)
+        reader.updateStateOnServer = lambda key, value, **kwargs: device.states.__setitem__(key, value)
         reader.start()
         return reader
 

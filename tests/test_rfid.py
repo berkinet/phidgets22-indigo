@@ -22,6 +22,7 @@ class RFIDTests(unittest.TestCase):
         reader = object.__new__(RFIDPhidget)
         reader._tag_lock = threading.RLock()
         reader._present_tag = None
+        reader.rfidPolicyProps = {}
         reader._state = "attached"
         reader.antennaEnabled = True
         reader.phidget = mock.Mock()
@@ -30,7 +31,7 @@ class RFIDTests(unittest.TestCase):
         reader.indigo_plugin = mock.Mock(pluginPrefs={})
         reader.logger = mock.Mock()
         reader.states = {}
-        reader.updateStateOnServer = lambda key, value: reader.states.__setitem__(key, value)
+        reader.updateStateOnServer = lambda key, value, **kwargs: reader.states.__setitem__(key, value)
         return reader
 
     def test_any_tag_preserves_leading_zeroes_and_last_tag_after_loss(self):
@@ -147,7 +148,7 @@ class SimulationTests(unittest.TestCase):
         plugin = mock.Mock(pluginPrefs={})
         reader = SimulatedRFIDPhidget(indigoDevice=device, indigo_plugin=plugin, logger=mock.Mock())
         reader.states = {}
-        reader.updateStateOnServer = lambda key, value: reader.states.__setitem__(key, value)
+        reader.updateStateOnServer = lambda key, value, **kwargs: reader.states.__setitem__(key, value)
         reader.start()
         return reader
 

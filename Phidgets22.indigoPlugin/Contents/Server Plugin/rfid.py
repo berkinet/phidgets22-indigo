@@ -5,6 +5,7 @@ import threading
 from types import SimpleNamespace
 
 import rfid_tags
+from rfid_presence import RFIDPresence
 
 from Phidget22.Devices.RFID import RFID
 from phidget import PhidgetBase, PeripheralUnavailableError
@@ -17,6 +18,29 @@ class RFIDPhidget(PhidgetBase):
         self._tag_lock = threading.RLock()
         self._present_tag = None
         self.rfidPolicyProps = dict(self.indigoDevice.pluginProps)
+
+    def _presence_for(self, reset=False):
+        presence = getattr(self, "_presence", None)
+        if presence is None:
+            self._presence = presence = RFIDPresence(self)
+        elif reset:
+            presence.reset()
+        return presence
+
+    def start(self):
+        with self._tag_lock:
+            self._present_tag = None
+            self._presence_for(reset=True)
+        super(RFIDPhidget, self).start()
+
+    def stop(self):
+        with self._tag_lock:
+            self._state = "stopping"
+            try:
+                self._presence_for().stop()
+            except Exception as error:
+                self._report("presence stop", error)
+        super(RFIDPhidget, self).stop()
 
     def addPhidgetHandlers(self):
         self.phidget.setOnErrorHandler(self.onErrorHandler)
@@ -34,10 +58,12 @@ class RFIDPhidget(PhidgetBase):
             self.logger.error("Unable to report RFID error for '%s': %s",
                               self.indigoDevice.name, str(state_error).replace("\n", " "))
 
-    def _publish_tag(self, present, tag=None, protocol=None, notify=False):
+    def _publish_tag(self, present, tag=None, protocol=None, notify=False, updatePresence=True):
         previous = self._present_tag
         current = (str(tag), protocol) if present else None
+        presence = self._presence_for()
         permission_event = None
+        qualifying = presence.qualifying_tag_present if present else False
         if present and previous != current:
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             try:
@@ -63,6 +89,7 @@ class RFIDPhidget(PhidgetBase):
                     "RFID list check failed: reader=%r id=%s tag=%r protocol=%s: %s",
                     self.indigoDevice.name, self.indigoDevice.id, str(tag),
                     rfid_tags.PROTOCOLS.get(protocol, str(protocol)), policy_error)
+            qualifying = allowed
             self.updateStateOnServer("lastTagAllowed", allowed)
             self.updateStateOnServer("tagPolicyResult", status)
             self.updateStateOnServer("tagPolicyError", policy_error)
@@ -74,6 +101,8 @@ class RFIDPhidget(PhidgetBase):
         self.updateStateOnServer("tagPresent", bool(present))
         self.updateStateOnServer("lastUpdate", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         self._present_tag = current
+        if updatePresence:
+            presence.update(qualifying)
         if notify and previous != current:
             events = ["rfidTagDetected" if present else "rfidTagLost"]
             if permission_event:
@@ -141,6 +170,7 @@ class RFIDPhidget(PhidgetBase):
     def getDeviceStateList(self):
         return self.stateList(
             ("bool", "tagPresent", "Tag present"),
+            ("bool", "presenceActive", "Presence active"),
             ("string", "lastTag", "Last tag ID"),
             ("string", "protocol", "Last tag protocol"),
             ("bool", "lastTagAllowed", "Last tag allowed"),
@@ -167,6 +197,8 @@ class SimulatedRFIDPhidget(RFIDPhidget):
     def start(self):
         try:
             with self._tag_lock:
+                self._present_tag = None
+                self._presence_for(reset=True)
                 self._state = "attached"
                 self._publish_tag(False)
                 self.updateStateOnServer("antennaEnabled", self.antennaEnabled)
@@ -183,6 +215,7 @@ class SimulatedRFIDPhidget(RFIDPhidget):
         try:
             with self._tag_lock:
                 self._state = "stopped"
+                self._presence_for().stop()
                 self._publish_tag(False)
                 self.updateStateOnServer("antennaEnabled", False)
         except Exception as error:
@@ -213,7 +246,7 @@ class SimulatedRFIDPhidget(RFIDPhidget):
                     if not self.antennaEnabled:
                         raise ValueError("enable the simulated antenna before scanning a tag")
                     if self._present_tag is not None and self._present_tag != (tag, protocol):
-                        self._publish_tag(False, notify=True)
+                        self._publish_tag(False, notify=True, updatePresence=False)
                     self._publish_tag(True, tag, protocol, notify=True)
                 else:
                     self._publish_tag(False, notify=True)
