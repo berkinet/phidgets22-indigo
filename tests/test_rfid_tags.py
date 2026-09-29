@@ -308,3 +308,45 @@ class TagManagementTests(unittest.TestCase):
     def test_old_saved_operation_is_migrated_to_valid_menu_id(self):
         values = self.ui.initializeRFIDManagement({"rfidEditOperation": "move:Denied"})
         self.assertEqual(values["rfidEditOperation"], "moveDenied")
+
+    def test_denied_detection_logs_reader_tag_protocol_and_reason_once_per_visit(self):
+        reader = self.reader(props=self.values)
+        reader.simulateTag("0002", 1)
+        reader.simulateTag("0002", 1)
+        reader.logger.warning.assert_called_once()
+        message = reader.logger.warning.call_args.args[0] % reader.logger.warning.call_args.args[1:]
+        for detail in ("RFID tag denied", "Reader 10", "id=10", "0002", "EM4100", "listed in denied variable 'Feeder A denied'"):
+            self.assertIn(detail, message)
+        reader.simulateTag()
+        self.assertEqual(reader.logger.warning.call_count, 1)
+        reader.simulateTag("0002", 1)
+        self.assertEqual(reader.logger.warning.call_count, 2)
+        self.assertEqual(reader.indigoDevice.states["tagPolicyResult"], "Denied")
+        reader.indigo_plugin.triggerEvent.assert_called_with(reader, "rfidDeniedTagDetected")
+        reader.logger.error.assert_not_called()
+
+    def test_not_allowlisted_logs_reason_and_allowed_tags_do_not_warn(self):
+        reader = self.reader(props=self.values)
+        reader.simulateTag("0001", 1)
+        reader.logger.warning.assert_not_called()
+        reader.simulateTag("0009", 3)
+        reader.logger.warning.assert_called_once()
+        message = reader.logger.warning.call_args.args[0] % reader.logger.warning.call_args.args[1:]
+        self.assertIn("not listed in allowed variable 'Feeder A allowed'", message)
+        self.assertIn("PhidgetTAG", message)
+        self.assertIn("0009", message)
+
+    def test_lookup_error_log_has_tag_context_without_denial_warning(self):
+        reader = self.reader(props=self.values)
+        del self.variables[1]
+        reader.simulateTag("0009", 1)
+        reader.logger.warning.assert_not_called()
+        reader.logger.error.assert_called_once()
+        message = reader.logger.error.call_args.args[0] % reader.logger.error.call_args.args[1:]
+        for detail in ("RFID list check failed", "Reader 10", "0009", "EM4100", "missing"):
+            self.assertIn(detail, message)
+
+    def test_denial_reason_prioritizes_denied_list(self):
+        allowed, reason = rfid_tags.evaluate_with_reason(self.values, "0003")
+        self.assertFalse(allowed)
+        self.assertEqual(reason, "listed in denied variable 'Feeder A denied'")

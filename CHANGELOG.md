@@ -1,5 +1,16 @@
 # Release notes
 
+## 2026.1.18 — 2026-09-29
+
+### Added
+
+- Log each denied RFID detection at Warning level with reader name/Indigo ID,
+  tag ID, protocol, and the reason: present in the denied variable or absent
+  from the allowed variable. Repeated reports while the same tag remains present
+  do not repeat the warning; a fresh detection after loss logs again.
+- Include tag ID and protocol in list-lookup error reports. A denied tag remains
+  an ordinary policy result, with the existing denied trigger and state updates.
+
 ## 2026.1.17 — 2026-09-29
 
 ### Fixed

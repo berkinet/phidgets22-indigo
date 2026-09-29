@@ -46,14 +46,23 @@ class RFIDPhidget(PhidgetBase):
                 self.logger.error("RFID history update failed for '%s': %s", self.indigoDevice.name,
                                   str(error).replace("\n", " "))
             try:
-                allowed = rfid_tags.evaluate(getattr(self, "rfidPolicyProps", {}), str(tag))
+                allowed, reason = rfid_tags.evaluate_with_reason(
+                    getattr(self, "rfidPolicyProps", {}), str(tag))
                 policy_error = ""
                 status = "Allowed" if allowed else "Denied"
                 permission_event = "rfidAllowedTagDetected" if allowed else "rfidDeniedTagDetected"
+                if not allowed:
+                    self.logger.warning(
+                        "RFID tag denied: reader=%r id=%s tag=%r protocol=%s: %s",
+                        self.indigoDevice.name, self.indigoDevice.id, str(tag),
+                        rfid_tags.PROTOCOLS.get(protocol, str(protocol)), reason)
             except Exception as error:
                 allowed, status = False, "Error"
                 policy_error = str(error).replace("\n", " ")
-                self.logger.error("RFID list check failed for '%s': %s", self.indigoDevice.name, policy_error)
+                self.logger.error(
+                    "RFID list check failed: reader=%r id=%s tag=%r protocol=%s: %s",
+                    self.indigoDevice.name, self.indigoDevice.id, str(tag),
+                    rfid_tags.PROTOCOLS.get(protocol, str(protocol)), policy_error)
             self.updateStateOnServer("lastTagAllowed", allowed)
             self.updateStateOnServer("tagPolicyResult", status)
             self.updateStateOnServer("tagPolicyError", policy_error)

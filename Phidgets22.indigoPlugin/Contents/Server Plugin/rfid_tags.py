@@ -54,14 +54,23 @@ def history_selection(token):
 
 
 def evaluate(props, tag):
-    """Read current variable values on each detection, failing closed on errors."""
-    lists = {}
+    """Return the policy decision; variable lookup failures propagate."""
+    return evaluate_with_reason(props, tag)[0]
+
+
+def evaluate_with_reason(props, tag):
+    """Return the decision and denial reason from one snapshot of live lists."""
+    lists, names = {}, {}
     with LOCK:
         for side in SIDES:
             if saved_bool(props.get("rfidCheck" + side, False)):
-                lists[side] = entries(variable(selected_variable(props, side)).value)
-    return (("Allowed" not in lists or tag in lists["Allowed"]) and
-            ("Denied" not in lists or tag not in lists["Denied"]))
+                source = variable(selected_variable(props, side))
+                lists[side], names[side] = entries(source.value), source.name
+    if "Denied" in lists and tag in lists["Denied"]:
+        return False, "listed in denied variable %r" % names["Denied"]
+    if "Allowed" in lists and tag not in lists["Allowed"]:
+        return False, "not listed in allowed variable %r" % names["Allowed"]
+    return True, ""
 
 
 def recent(plugin, device_id):

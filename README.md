@@ -125,6 +125,8 @@ continues to fire for every tag, including denied tags and policy lookup errors.
 `lastTagAllowed` is the decision for the last detection. `tagPolicyResult` is
 `Allowed`, `Denied`, or `Error`; `tagPolicyError` contains lookup error details.
 These states are published before detection triggers and retained after loss.
+Denied detections log a Warning naming the reader, tag, protocol, and list-based
+reason. Each visit logs once; repeated reports while present do not repeat it.
 On lookup failure, allowed is false and neither policy trigger fires; the raw
 trigger still fires and the error is logged. Editing lists does not reassess a
 currently present tag or generate a new detection: simulate loss and detection
