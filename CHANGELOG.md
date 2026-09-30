@@ -1,5 +1,18 @@
 # Release notes
 
+## 2026.1.20 — 2026-09-30
+
+### Tests and maintenance
+
+- Review RFID coverage following the feature releases. Consolidate duplicate
+  failed-lookup/logging coverage and replace action/event counts with required
+  entry checks, retaining the Indigo menu regression tests.
+- Strengthen overlapping reader countdowns, state-trigger publication, live
+  delay edits, denied/error presence behavior, callback startup ordering,
+  protocol-specific history, and partial tag-list save failures.
+- Document scope, pruning decisions, verification, and live-testing limits in
+  `docs/RFID_TEST_REVIEW.md`. Reader behavior is unchanged.
+
 ## 2026.1.19 — 2026-09-29
 
 ### Added

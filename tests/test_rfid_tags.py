@@ -47,7 +47,7 @@ class TagManagementTests(unittest.TestCase):
             "rfidCheckAllowed": True, "rfidCheckDenied": True,
             "rfidAllowedVariable": "1", "rfidDeniedVariable": "2"})
 
-    def stage(self, tag, operation="add:Allowed", values=None):
+    def stage(self, tag, operation="addAllowed", values=None):
         values = self.values if values is None else values
         values["rfidEditTag"], values["rfidEditOperation"] = tag, operation
         return self.ui.rfidStageEdit(values, "rfid", 10)
@@ -118,6 +118,12 @@ class TagManagementTests(unittest.TestCase):
         self.assertIn("missing", reader.indigoDevice.states["tagPolicyError"])
         reader.indigo_plugin.triggerEvent.assert_called_once_with(reader, "rfidTagDetected")
         self.assertEqual(rfid_tags.recent(self.ui, 10)[0]["tag"], "0001")
+        self.assertFalse(reader.indigoDevice.states["presenceActive"])
+        reader.logger.warning.assert_not_called()
+        reader.logger.error.assert_called_once()
+        message = reader.logger.error.call_args.args[0] % reader.logger.error.call_args.args[1:]
+        for detail in ("RFID list check failed", "Reader 10", "0001", "EM4100", "missing"):
+            self.assertIn(detail, message)
 
     def test_disabled_checks_ignore_missing_variable(self):
         self.assertTrue(rfid_tags.evaluate({"rfidAllowedVariable": "999"}, "0001"))
@@ -131,6 +137,12 @@ class TagManagementTests(unittest.TestCase):
         self.assertEqual(len(rows), 50)
         self.assertEqual(rows[0]["seen"], "again")
         self.assertEqual(rows[-1]["tag"], "0005")
+        rfid_tags.remember(self.ui, 10, "0054", 3, "different protocol")
+        rows = rfid_tags.recent(self.ui, 10)
+        self.assertEqual(len(rows), 50)
+        self.assertEqual([(row["tag"], row["protocol"]) for row in rows[:2]],
+                         [("0054", 3), ("0054", 1)])
+        self.assertEqual(rows[1]["seen"], "again")
         restarted = types.SimpleNamespace(pluginPrefs=copy.deepcopy(self.ui.pluginPrefs))
         self.assertEqual(rfid_tags.recent(restarted, 10), rows)
         self.assertEqual(rfid_tags.recent(restarted, 11)[0]["tag"], "other-reader")
@@ -175,17 +187,17 @@ class TagManagementTests(unittest.TestCase):
         self.assertIsInstance(result, tuple)
         self.assertIn("Move", result[1]["showAlertText"])
         self.assertEqual(rfid_tags.pending(self.values), [])
-        self.stage("0003", "move:Allowed")
+        self.stage("0003", "moveAllowed")
         self.ui.closedDeviceConfigUi(self.values, False, "rfid", 10)
         self.assertIn("0003", rfid_tags.entries(self.variables[1].value))
         self.assertNotIn("0003", rfid_tags.entries(self.variables[2].value))
 
     def test_remove_and_clear_pending_edits(self):
-        self.stage("0001", "remove:Allowed")
+        self.stage("0001", "removeAllowed")
         self.ui.rfidClearEdits(self.values, "rfid", 10)
         self.ui.closedDeviceConfigUi(self.values, False, "rfid", 10)
         self.assertIn("0001", self.variables[1].value)
-        self.stage("0001", "remove:Allowed")
+        self.stage("0001", "removeAllowed")
         self.ui.closedDeviceConfigUi(self.values, False, "rfid", 10)
         self.assertNotIn("0001", self.variables[1].value)
 
@@ -212,13 +224,30 @@ class TagManagementTests(unittest.TestCase):
         self.ui.logger.error.assert_called_once()
         reader.indigoDevice.setErrorStateOnServer.assert_called_with("RFID list save failed; see log")
 
-    def test_api_write_failure_is_reported(self):
-        self.reader(props=self.values)
-        self.stage("0009")
-        self.api.updateValue.side_effect = RuntimeError("server unavailable")
+    def test_api_write_failure_reports_destination_and_possible_partial_save(self):
+        reader = self.reader(props=self.values)
+        # A move writes both lists. Exercise failure after one successful write,
+        # since Indigo cannot update two variables as an atomic transaction.
+        self.stage("0003", "moveAllowed")
+        saved = []
+        def write_then_fail(var_id, value):
+            if saved:
+                raise RuntimeError("server unavailable")
+            saved.append(var_id)
+            self.variables[var_id].value = value
+        original = {key: var.value for key, var in self.variables.items()}
+        self.api.updateValue.side_effect = write_then_fail
         self.ui.closedDeviceConfigUi(self.values, False, "rfid", 10)
-        self.assertIn("Feeder A allowed", self.ui.logger.error.call_args.args[-1])
-        self.assertNotIn("0009", self.variables[1].value)
+        self.assertEqual(len(saved), 1)
+        failed_id = self.api.updateValue.call_args.args[0]
+        self.assertNotEqual(saved[0], failed_id)
+        self.assertNotEqual(self.variables[saved[0]].value, original[saved[0]])
+        self.assertEqual(self.variables[failed_id].value, original[failed_id])
+        self.ui.logger.error.assert_called_once()
+        message = self.ui.logger.error.call_args.args[0] % self.ui.logger.error.call_args.args[1:]
+        self.assertIn(self.variables[failed_id].name, message)
+        self.assertIn("Earlier list edits may have saved; review both variables", message)
+        reader.indigoDevice.setErrorStateOnServer.assert_called_with("RFID list save failed; see log")
 
     def test_recent_menu_scopes_and_copies_id(self):
         rfid_tags.remember(self.ui, 10, "0001", 1, "today")
@@ -335,16 +364,6 @@ class TagManagementTests(unittest.TestCase):
         self.assertIn("not listed in allowed variable 'Feeder A allowed'", message)
         self.assertIn("PhidgetTAG", message)
         self.assertIn("0009", message)
-
-    def test_lookup_error_log_has_tag_context_without_denial_warning(self):
-        reader = self.reader(props=self.values)
-        del self.variables[1]
-        reader.simulateTag("0009", 1)
-        reader.logger.warning.assert_not_called()
-        reader.logger.error.assert_called_once()
-        message = reader.logger.error.call_args.args[0] % reader.logger.error.call_args.args[1:]
-        for detail in ("RFID list check failed", "Reader 10", "0009", "EM4100", "missing"):
-            self.assertIn(detail, message)
 
     def test_denial_reason_prioritizes_denied_list(self):
         allowed, reason = rfid_tags.evaluate_with_reason(self.values, "0003")

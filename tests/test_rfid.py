@@ -129,15 +129,44 @@ class RFIDTests(unittest.TestCase):
         devices = ElementTree.parse(SERVER_PLUGIN / "Devices.xml")
         self.assertIsNotNone(devices.find("./Device[@id='rfid']"))
         actions = ElementTree.parse(SERVER_PLUGIN / "Actions.xml")
-        self.assertEqual(len(actions.findall("./Action[@deviceFilter='self.rfid']")), 4)
+        required_actions = {"rfidEnableAntenna", "rfidDisableAntenna",
+                            "rfidSimulateTag", "rfidSimulateTagLost"}
+        for action_id in required_actions:
+            action = actions.find("./Action[@id='%s']" % action_id)
+            self.assertIsNotNone(action)
+            self.assertEqual(action.get("deviceFilter"), "self.rfid")
+            self.assertEqual(action.get("uiPath"), "DeviceActions")
+            self.assertEqual(action.findtext("CallbackMethod"), action_id)
         events = ElementTree.parse(SERVER_PLUGIN / "Events.xml")
-        self.assertEqual(len(events.findall("./Event[@deviceFilter='self.rfid']")), 4)
+        for event_id in ("rfidTagDetected", "rfidTagLost",
+                         "rfidAllowedTagDetected", "rfidDeniedTagDetected"):
+            event = events.find("./Event[@id='%s']" % event_id)
+            self.assertIsNotNone(event)
+            self.assertEqual(event.get("deviceFilter"), "self.rfid")
+            self.assertIsNotNone(event.find("./ConfigUI/Field[@id='indigoDevice']"))
 
     def test_handlers_registered_before_open(self):
-        reader = self.reader()
-        reader.addPhidgetHandlers()
-        reader.phidget.setOnTagHandler.assert_called_once_with(reader.onTagHandler)
-        reader.phidget.setOnTagLostHandler.assert_called_once_with(reader.onTagLostHandler)
+        native = mock.Mock()
+        device = types.SimpleNamespace(id=1, name="Reader", pluginProps={},
+                                       updateStateOnServer=mock.Mock())
+        with mock.patch("rfid.RFID", return_value=native):
+            reader = RFIDPhidget(indigoDevice=device,
+                                 indigo_plugin=mock.Mock(pluginPrefs={}), logger=mock.Mock())
+        def check_handlers():
+            for setter, handler in (
+                    ("setOnTagHandler", reader.onTagHandler),
+                    ("setOnTagLostHandler", reader.onTagLostHandler),
+                    ("setOnAttachHandler", reader.onAttachHandler),
+                    ("setOnDetachHandler", reader.onDetachHandler),
+                    ("setOnErrorHandler", reader.onErrorHandler)):
+                getattr(native, setter).assert_called_once_with(handler)
+        native.open.side_effect = check_handlers
+        with mock.patch("phidget.threading.Timer"):
+            try:
+                reader.start()
+                native.open.assert_called_once_with()
+            finally:
+                reader.stop()
 
 
 class SimulationTests(unittest.TestCase):

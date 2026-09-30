@@ -13,6 +13,8 @@ from phidget import PhidgetBase
 from rfid import RFIDPhidget, SimulatedRFIDPhidget
 from rfid_presence import RFIDPresence, clear_delay_seconds
 import rfid_tags
+from rfid_ui import RFIDManagementMixin
+from runtime_registry import RuntimeDeviceRegistry
 
 
 class FakeTimer:
@@ -123,14 +125,32 @@ class PresenceTests(unittest.TestCase):
         old.fire()
         self.assertTrue(self.presence.active)
 
-    def test_delay_change_applies_to_next_loss_not_pending_timer(self):
-        self.presence.update(True)
-        self.presence.update(False)
-        self.owner.rfidPolicyProps["rfidPresenceClearMinutes"] = "10"
-        self.assertEqual(self.presence.deadline, 300)
-        self.presence.update(True)
-        self.presence.update(False)
-        self.assertEqual(self.presence.deadline, 600)
+    def test_config_delay_change_applies_to_next_loss_without_restarting_reader(self):
+        reader = self.reader()
+        reader.simulateTag("0001", 1)
+        reader.simulateTag()
+        pending = self.timers[-1]
+        ui = RFIDManagementMixin()
+        ui.logger = mock.Mock()
+        ui.runtimeRegistry = RuntimeDeviceRegistry()
+        ui.runtimeRegistry.register(10, reader)
+        before = types.SimpleNamespace(id=10, deviceTypeId="rfid",
+                                       pluginProps=dict(reader.rfidPolicyProps))
+        after = types.SimpleNamespace(id=10, deviceTypeId="rfid",
+                                      pluginProps=dict(before.pluginProps, rfidPresenceClearMinutes="10"))
+        self.assertFalse(ui.didDeviceCommPropertyChange(before, after))
+        self.time = 300
+        pending.fire()
+        self.assertFalse(reader.indigoDevice.states["presenceActive"])
+        reader.simulateTag("0001", 1)
+        reader.simulateTag()
+        self.time = 899
+        self.timers[-1].fire()
+        self.assertTrue(reader.indigoDevice.states["presenceActive"])
+        self.time = 900
+        self.timers[-1].fire()
+        self.assertFalse(reader.indigoDevice.states["presenceActive"])
+        ui.logger.error.assert_not_called()
 
     def test_timeout_publication_failure_is_reported_and_retried(self):
         self.presence.update(True)
@@ -172,20 +192,33 @@ class PresenceTests(unittest.TestCase):
         reader.start()
         return reader
 
-    def test_indigo_first_detection_fires_state_events_and_two_readers_are_independent(self):
+    def test_two_active_readers_have_independent_countdowns_and_state_triggers(self):
         first, second = self.reader(10), self.reader(11)
+        for reader in (first, second):
+            reader.indigoDevice.updateStateOnServer.reset_mock()
         first.simulateTag("0001", 1)
-        self.assertTrue(first.indigoDevice.states["presenceActive"])
-        self.assertFalse(second.indigoDevice.states["presenceActive"])
-        self.assertIn(mock.call("presenceActive", value=True, triggerEvents=True),
-                      first.indigoDevice.updateStateOnServer.call_args_list)
         first.simulateTag()
+        first_timer = self.timers[-1]
         self.assertFalse(first.indigoDevice.states["tagPresent"])
         self.assertTrue(first.indigoDevice.states["presenceActive"])
+        self.assertFalse(second.indigoDevice.states["presenceActive"])
+        self.time = 100
+        second.simulateTag("0001", 1)
+        second.simulateTag()
+        second_timer = self.timers[-1]
         self.time = 300
-        self.timers[-1].fire()
+        first_timer.fire()
         self.assertFalse(first.indigoDevice.states["presenceActive"])
-        second.indigo_plugin.triggerEvent.assert_not_called()
+        self.assertTrue(second.indigoDevice.states["presenceActive"])
+        first.simulateTag("0001", 1)
+        self.time = 400
+        second_timer.fire()
+        self.assertTrue(first.indigoDevice.states["presenceActive"])
+        self.assertFalse(second.indigoDevice.states["presenceActive"])
+        for reader in (first, second):
+            publications = reader.indigoDevice.updateStateOnServer.call_args_list
+            self.assertIn(mock.call("presenceActive", value=True, triggerEvents=True), publications)
+            self.assertIn(mock.call("presenceActive", value=False, triggerEvents=True), publications)
 
     def test_disconnect_uses_delay_and_reattach_cancels_it(self):
         reader = self.reader()
@@ -226,15 +259,31 @@ class PresenceTests(unittest.TestCase):
         self.assertTrue(reader.indigoDevice.states["presenceActive"])
         self.assertFalse(any(call.args[0] == "presenceActive" for call in reader.indigoDevice.updateStateOnServer.call_args_list))
 
-    def test_denied_replacement_does_not_hold_presence_past_countdown(self):
-        reader = self.reader()
-        reader.simulateTag("allowed", 1)
-        with mock.patch("rfid_tags.evaluate_with_reason", return_value=(False, "denied")):
-            reader.simulateTag("denied", 1)
-        self.assertTrue(reader.indigoDevice.states["tagPresent"])
-        self.time = 300
-        self.timers[-1].fire()
-        self.assertFalse(reader.indigoDevice.states["presenceActive"])
+    def test_denied_and_lookup_error_tags_cannot_activate_or_extend_presence(self):
+        for failure in ("Denied", "Error"):
+            with self.subTest(failure=failure):
+                self.time = 0
+                reader = self.reader()
+                reader.rfidPolicyProps.update(rfidCheckAllowed=True, rfidAllowedVariable="1")
+                allowed = types.SimpleNamespace(name="Allowed tags", value="allowed", readOnly=False)
+                variables = {1: allowed}
+                with mock.patch.object(indigo, "variables", variables, create=True):
+                    reader.simulateTag("allowed", 1)
+                    reader.simulateTag()
+                    timer = self.timers[-1]
+                    self.time = 100
+                    if failure == "Error":
+                        variables.clear()
+                    reader.simulateTag("unrecognized", 1)
+                    self.assertEqual(reader.indigoDevice.states["tagPolicyResult"], failure)
+                    self.assertTrue(reader.indigoDevice.states["presenceActive"])
+                    self.time = 300
+                    timer.fire()
+                    self.assertTrue(reader.indigoDevice.states["tagPresent"])
+                    self.assertFalse(reader.indigoDevice.states["presenceActive"])
+                    reader.simulateTag()
+                    reader.simulateTag("unrecognized", 1)
+                    self.assertFalse(reader.indigoDevice.states["presenceActive"])
 
     def test_native_stop_cancels_presence_even_when_close_fails(self):
         reader = self.reader()
