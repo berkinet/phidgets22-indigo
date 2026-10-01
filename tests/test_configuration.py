@@ -63,6 +63,97 @@ import plugin
 
 
 class ConfigurationTests(unittest.TestCase):
+    def test_on_requests_repeat_and_isolate_devices_events_and_failures(self):
+        coordinator = event_coordinator.EventCoordinator()
+        instance = object.__new__(plugin.Plugin)
+        instance.eventCoordinator = coordinator
+        instance.logger = mock.Mock()
+        output = mock.Mock()
+        instance.activePhidgets = {42: output}
+        device = types.SimpleNamespace(
+            id=42, name="Lamp", deviceTypeId="digitalOutput", onState=True)
+        triggers = [
+            types.SimpleNamespace(id=i, pluginTypeId=event,
+                                  pluginProps={"indigoDevice": str(device_id)})
+            for i, event, device_id in (
+                (1, "turnOnRequested", 42), (2, "turnOnRequested", 99),
+                (3, "deviceAttached", 42), (4, "turnOnRequested", 42))]
+        for trigger in triggers:
+            coordinator.start_processing(trigger)
+        commands = types.SimpleNamespace(
+            TurnOn="on", TurnOff="off", Toggle="toggle",
+            SetBrightness="brightness", RequestStatus="status")
+        with mock.patch.object(indigo, "kDeviceAction", commands, create=True), \
+                mock.patch.object(indigo, "trigger", create=True) as api:
+            def execute(trigger_id):
+                if trigger_id == 1:
+                    raise RuntimeError("trigger unavailable")
+            api.execute.side_effect = execute
+            for kind in ("digitalOutput", "adapterGPIOOutput"):
+                device.deviceTypeId = kind
+                for unused in range(2):
+                    instance.actionControlDevice(
+                        types.SimpleNamespace(deviceAction="on"), device)
+            self.assertEqual(api.execute.call_args_list,
+                             [mock.call(1), mock.call(4)] * 4)
+            self.assertEqual(output.actionControlDevice.call_count, 4)
+            self.assertEqual(instance.logger.error.call_count, 4)
+            api.execute.reset_mock()
+            for command in ("off", "toggle", "brightness", "status"):
+                instance.actionControlDevice(
+                    types.SimpleNamespace(deviceAction=command), device)
+            api.execute.assert_not_called()
+            coordinator.stop_processing(triggers[0])
+            coordinator.stop_processing(triggers[3])
+            instance.actionControlDevice(
+                types.SimpleNamespace(deviceAction="on"), device)
+            api.execute.assert_not_called()
+
+    def test_on_request_reports_receipt_even_when_output_unavailable(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.eventCoordinator = event_coordinator.EventCoordinator()
+        instance.logger = mock.Mock()
+        instance.activePhidgets = {}
+        instance.eventCoordinator.start_processing(types.SimpleNamespace(
+            id=1, pluginTypeId="turnOnRequested",
+            pluginProps={"indigoDevice": "42"}))
+        device = types.SimpleNamespace(
+            id=42, name="Lamp", deviceTypeId="digitalOutput")
+        with mock.patch.object(indigo, "kDeviceAction",
+                               types.SimpleNamespace(TurnOn="on"), create=True), \
+                mock.patch.object(indigo, "trigger", create=True) as api:
+            instance.actionControlDevice(
+                types.SimpleNamespace(deviceAction="on"), device)
+            api.execute.assert_called_once_with(1)
+            instance.logger.error.assert_called_once()
+            self.assertIn("device is not active",
+                          instance.logger.error.call_args.args)
+            output = mock.Mock()
+            output.actionControlDevice.side_effect = RuntimeError("disconnected")
+            instance.runtimeRegistry.register(42, output)
+            instance.actionControlDevice(
+                types.SimpleNamespace(deviceAction="on"), device)
+            self.assertEqual(api.execute.call_args_list, [mock.call(1)] * 2)
+            self.assertIn("disconnected", instance.logger.error.call_args.args)
+
+    def test_on_request_menu_and_validation(self):
+        instance = object.__new__(plugin.Plugin)
+        devices = [
+            types.SimpleNamespace(id=i, name=str(i), pluginId=owner,
+                                  deviceTypeId=kind)
+            for i, owner, kind in (
+                (1, "com.yikes.eric.phidgets-indigo", "digitalOutput"),
+                (2, "com.yikes.eric.phidgets-indigo", "adapterGPIOOutput"),
+                (3, "com.yikes.eric.phidgets-indigo", "digitalInput"),
+                (4, "other.plugin", "digitalOutput"))]
+        with mock.patch.object(indigo, "devices", devices, create=True):
+            self.assertEqual(instance.getOnRequestDeviceList(),
+                             [(1, "1"), (2, "2")])
+            for selected in ("1", "2", "", "3", "4", "deleted"):
+                result = instance.validateEventConfigUi(
+                    {"indigoDevice": selected}, "turnOnRequested", 0)
+                self.assertEqual(result[0], selected in ("1", "2"))
+
     def logging_plugin(self):
         instance = object.__new__(plugin.Plugin)
         instance.pluginPrefs = IndigoLikeDict(phidgetPluginLoggingLevel="10")
@@ -303,7 +394,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>2026.1.20</string>", plist)
+        self.assertIn("<string>2026.1.21</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_detach_error_delay_is_conditionally_visible(self):

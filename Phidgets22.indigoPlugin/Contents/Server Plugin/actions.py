@@ -18,10 +18,19 @@ SUBSTITUTION_PATTERN = re.compile(
 
 class ActionsMixin(object):
     def actionControlDevice(self, action, device):
-        runtime_device = registry_for(self).get(device.id)
-        if runtime_device is not None:
+        if (device.deviceTypeId in ("digitalOutput", "adapterGPIOOutput")
+                and action.deviceAction == indigo.kDeviceAction.TurnOn):
+            self.eventCoordinator.turn_on_requested(device, self.logger)
+        try:
+            runtime_device = registry_for(self).get(device.id)
+            if runtime_device is None:
+                raise ValueError("device is not active")
             return runtime_device.actionControlDevice(action)
-        raise Exception("Unexpected device: %s" % device.id)
+        except Exception as error:
+            self.logger.error(
+                "Unable to process device command: device='%s' id=%s action=%s: %s",
+                device.name, device.id, action.deviceAction,
+                str(error).replace("\n", " "))
 
     def actionControlSensor(self, action, device):
         runtime_device = registry_for(self).get(device.id)

@@ -1,6 +1,16 @@
 <?xml version="1.0"?>
 <Events>
     <SupportURL>https://github.com/berkinet/phidgets22-indigo</SupportURL>
+    <Event id="turnOnRequested" deviceFilter="self">
+        <Name>Turn On request received</Name>
+        <Label>A Turn On command was received, even if the output is already on</Label>
+        <ConfigUI>
+            <Field id="indigoDevice" type="menu">
+                <Label>Output device:</Label>
+                <List class="self" method="getOnRequestDeviceList"/>
+            </Field>
+        </ConfigUI>
+    </Event>
     <Event id="firmwareUpdateAvailable">
         <Name>Device firmware update available</Name>
         <Label>The list of Indigo Phidget devices with available firmware updates changed</Label>

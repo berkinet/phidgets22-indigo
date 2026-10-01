@@ -15,6 +15,19 @@ On the [GitHub repository](https://github.com/berkinet/phidgets22-indigo), click
 **Code**, select **Download ZIP**, unzip the downloaded repository, and
 double-click `Phidgets22.indigoPlugin` to install it in Indigo.
 
+## Restart an auto-off delay on every On request
+
+Choose the Phidgets 22 plugin event **Turn On request received**, then select
+the Digital Output or I2C Adapter GPIO Output device. Add a Turn Off action
+with a five-minute delay and **Override previous delay** enabled. Each explicit
+Turn On request restarts that countdown, including requests while already on,
+from scripts, actions, or manual controls.
+
+For an existing auto-off trigger, replace its "state becomes On" event with
+this plugin event and keep its delayed action. The event reports command
+receipt, not hardware success; Toggle, brightness, and status requests do not
+fire it. Indigo owns the delay; no additional plugin timer is created.
+
 ## Requirements
 
 **Requires Indigo 2025.2. May work on 2025.1. However, some manual setup may be required.**

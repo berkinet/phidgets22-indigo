@@ -1,5 +1,16 @@
 # Release notes
 
+## 2026.1.21 — 2026-10-01
+
+### Added
+
+- Turn On request received event for Digital Output and adapter GPIO Output
+  devices. Every explicit On command fires the event, including when already
+  on, so Indigo delayed actions can restart their countdown.
+- Events report receipt, independently of hardware success. Off, Toggle,
+  brightness changes, and status requests do not fire this event. Trigger
+  failures are logged individually without blocking the output command.
+
 ## 2026.1.20 — 2026-09-30
 
 ### Tests and maintenance

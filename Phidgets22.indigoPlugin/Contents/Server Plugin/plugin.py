@@ -405,6 +405,14 @@ class Plugin(RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin, indigo.PluginB
         return (values, indigo.Dict())
 
     def validateEventConfigUi(self, valuesDict, typeId, eventId):
+        if typeId == "turnOnRequested":
+            selected = str(valuesDict.get("indigoDevice", ""))
+            if selected not in {str(device_id) for device_id, name
+                                in self.getOnRequestDeviceList()}:
+                errors = indigo.Dict()
+                errors["indigoDevice"] = "Select a Phidgets output device."
+                return (False, valuesDict, errors)
+            return (True, valuesDict)
         if typeId != "deviceDetached":
             return (True, valuesDict)
         try:

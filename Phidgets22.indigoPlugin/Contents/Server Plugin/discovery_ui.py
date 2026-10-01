@@ -1276,6 +1276,12 @@ class DiscoveryUiMixin(object):
                 result.append((device.id, device.name))
         return result
 
+    def getOnRequestDeviceList(self, filter="", valuesDict=None,
+                               typeId="", targetId=0):
+        return [(device.id, device.name) for device in indigo.devices
+                if device.pluginId == "com.yikes.eric.phidgets-indigo"
+                and device.deviceTypeId in ("digitalOutput", "adapterGPIOOutput")]
+
     def getRFIDReaderList(self, filter="", valuesDict=None, typeId="", targetId=0):
         return [(device.id, device.name) for device in indigo.devices
                 if device.pluginId == "com.yikes.eric.phidgets-indigo"

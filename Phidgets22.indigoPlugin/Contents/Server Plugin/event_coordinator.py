@@ -110,6 +110,23 @@ class EventCoordinator(object):
                         self._reported_detaches.add(device_id)
                 indigo.trigger.execute(trigger_id)
 
+    def turn_on_requested(self, device, logger):
+        """Report command receipt, independently of state or hardware success."""
+        with self._lock:
+            trigger_ids = [trigger_id for trigger_id, details
+                           in self.triggers.items()
+                           if details["devid"] == device.id and
+                           details["event"] == "turnOnRequested"]
+        for trigger_id in trigger_ids:
+            try:
+                indigo.trigger.execute(trigger_id)
+            except Exception as error:
+                logger.error(
+                    "Unable to execute Turn On request trigger %s: "
+                    "device='%s' id=%s: %s",
+                    trigger_id, device.name, device.id,
+                    str(error).replace("\n", " "))
+
     def trigger_global_event(self, event):
         with self._lock:
             trigger_ids = [trigger_id for trigger_id, details
