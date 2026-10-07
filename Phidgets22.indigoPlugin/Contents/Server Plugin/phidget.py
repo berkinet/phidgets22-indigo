@@ -422,6 +422,9 @@ class PhidgetBase(object):
         finally:
             self._schedule_detached_reminder(generation)
 
+    def suppressSaturationErrors(self):
+        return False
+
     def onErrorHandler(self, ph, errorCode, errorString):
         try:
             with self._lifecycle_lock:
@@ -452,7 +455,8 @@ class PhidgetBase(object):
             deviceSuppressErrors = saved_bool(
                 self.indigoDevice.pluginProps.get("suppressErrors", False))
             suppressed = ((deviceSuppressErrors and errorCode == 4103) or
-                          (self.pluginSuppressErrors and errorCode in (4098, 4099)))
+                          (self.pluginSuppressErrors and errorCode in (4098, 4099)) or
+                          (errorCode == 4105 and self.suppressSaturationErrors()))
             log = self.logger.debug if suppressed else self.logger.error
             log("%s%s on %s",
                 self._error_identity(),

@@ -135,6 +135,11 @@
 				<Label>Suppress out of range errors for this device?</Label>
 			</Field>
 
+			<Field id="suppressSaturationErrors" type="checkbox" defaultValue="False" visibleBindingId="voltageRatioSensorType" visibleBindingValue="0" alwaysUseInDialogHeightCalc="true">
+				<Label>Suppress saturation error messages</Label>
+				<Description>Suppress saturation errors when reaching the input limit is expected. This hides the error message; it does not extend the measurement range or change readings.</Description>
+			</Field>
+
 			<Field id="useCustomFormula" type="checkbox" defaultValue="False" visibleBindingId="voltageRatioSensorType" visibleBindingValue="0" alwaysUseInDialogHeightCalc="true">
 				<Label>Use custom formula?</Label>
 			</Field>

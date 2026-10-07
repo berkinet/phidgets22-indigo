@@ -31,6 +31,7 @@ except ModuleNotFoundError as error:
 from PhidgetInfo import PhidgetInfo
 from actions import ActionsMixin
 from rfid_ui import RFIDManagementMixin
+from signed_value import add_signed_value_state
 from config_util import saved_bool
 from connection_identity import PhysicalDeviceIdentity, ServerIdentity
 from device_state_export import write_device_state_snapshot
@@ -308,6 +309,7 @@ class Plugin(RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin, indigo.PluginB
         runtime_device = self._runtime_registry().get(device.id)
         if runtime_device is not None:
             states = runtime_device.getDeviceStateList()
+            add_signed_value_state(self, runtime_device, states)
         else:
             states = indigo.List()
         if device.deviceTypeId == "networkServer":

@@ -1,5 +1,20 @@
 # Release notes
 
+## 2026.1.23 — 2026-10-07
+
+### Added
+
+- `signedValue` text state for numeric device displays, including custom numeric
+  formulas and selected temperature, frequency/count, BME280, and SGP41 values.
+  Positive values and zero have a plus sign; negative values have a minus sign.
+  Display precision is preserved and rounded negative zero becomes positive zero.
+  Text and On/Off displays are excluded; original numeric states are unchanged.
+
+- Optional **Suppress saturation error messages** checkbox for generic/raw
+  Voltage Ratio Input devices. Disabled by default, it routes only saturation
+  error 4105 to debug logging for that device. Specific sensor types ignore
+  the setting. Readings, formulas, triggers, and other error handling are unchanged.
+
 ## 2026.1.22 — 2026-10-07
 
 ### Added

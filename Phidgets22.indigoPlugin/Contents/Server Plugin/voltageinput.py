@@ -15,6 +15,7 @@ import sensortypes
 #       but not others (e.g. temperature sensor used in voltage mode.)
 
 class VoltageInputPhidget(PhidgetBase):
+    NUMERIC_DISPLAY = True
     def __init__(self, sensorType, dataInterval, voltageChangeTrigger, sensorValueChangeTrigger, customState, customFormula, *args, **kwargs):
         self.customOutputType = kwargs.pop("customOutputType", "number")
         super(VoltageInputPhidget, self).__init__(phidget=VoltageInput(), *args, **kwargs)

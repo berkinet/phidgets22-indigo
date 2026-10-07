@@ -21,6 +21,7 @@ class SensorResponseError(RuntimeError):
 
 
 class SGP41Phidget(I2CPeripheralBase):
+    NUMERIC_DISPLAY = True
     PROVIDER_FUNCTION = "sgp41"
     ADDRESS = 0x59
     CONDITIONING_COMMAND = b"\x26\x12"

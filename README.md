@@ -205,3 +205,35 @@ Pending edits merge into current variable contents on Save, preserving unrelated
 changes. If you change variable selections after staging, clear and restage the
 edits. Save failures identify the variable in Indigo's log; because Indigo does
 not offer atomic multi-variable writes, review both lists if a Move partly fails.
+
+### Expected saturation on generic voltage-ratio inputs
+
+For a generic/raw **Voltage Ratio Input** (no numbered sensor selected), enable
+**Suppress saturation error messages** in that device's configuration when
+reaching the input limit is expected. The default is unchecked. Custom formulas
+can still be used. Only saturation error 4105 moves to debug logging; other
+errors keep their existing handling. Selecting a specific sensor hides the
+checkbox and ignores its saved value. The option does not change readings,
+formulas, triggers, or the hardware measurement range.
+
+### Signed numeric display
+
+Devices with a numeric primary display now include a **Signed display value (+/-)**
+text state, `signedValue`. Use it directly in a control-page display instead of
+triggers that add a sign to a variable. For example, a numeric reading of `7.66`
+becomes `+7.66`, and `-7.66` stays `-7.66`. Zero at two decimal places is `+0.00`,
+including small negative values that round to zero.
+
+The state follows the chosen numeric display: a custom numeric formula, voltage,
+voltage ratio, temperature unit, humidity, frequency/count/time, or selected
+BME280/SGP41 measurement. It uses the reading's decimal precision or the device's
+configured precision; “No limit” preserves the supplied number's precision.
+It updates with new readings after startup. Text and On/Off displays do not get
+this companion state. Numeric states remain unchanged for calculations and
+triggers. Non-finite or nonnumeric readings clear the companion text; this is
+formatting, not a new sensor-validity or freshness indicator. `signedValue` is
+reserved and cannot be used as a custom formula's state name.
+
+For Pool water level, use `cmBelowFull` for numeric comparisons and `signedValue`
+for signed display. Once the display uses that state, the sign-formatting triggers
+and variable are no longer needed. The plugin does not edit those automations.

@@ -6,6 +6,7 @@ from Phidget22.Devices.FrequencyCounter import FrequencyCounter
 from phidget import PhidgetBase
 
 class FrequencyCounterPhidget(PhidgetBase):
+    NUMERIC_DISPLAY = True
     def __init__(self, filterType, dataInterval, displayStateName, frequencyCutoff, isDAQ1400, inputType, powerSupply, *args, **kwargs):
         super(FrequencyCounterPhidget, self).__init__(phidget=FrequencyCounter(), *args, **kwargs)
         self.filterType = filterType

@@ -6,6 +6,7 @@ from Phidget22.Devices.TemperatureSensor import TemperatureSensor
 from phidget import PhidgetBase
 
 class TemperatureSensorPhidget(PhidgetBase):
+    NUMERIC_DISPLAY = True
     def __init__(self, thermocoupleType, dataInterval, temperatureChangeTrigger, displayTempUnit, *args, **kwargs):
         super(TemperatureSensorPhidget, self).__init__(phidget=TemperatureSensor(), *args, **kwargs)
         self.thermocoupleType = thermocoupleType

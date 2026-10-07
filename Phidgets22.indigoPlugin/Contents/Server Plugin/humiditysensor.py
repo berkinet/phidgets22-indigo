@@ -6,6 +6,7 @@ from Phidget22.Devices.HumiditySensor import HumiditySensor
 from phidget import PhidgetBase
 
 class HumiditySensorPhidget(PhidgetBase):
+    NUMERIC_DISPLAY = True
     def __init__(self, dataInterval, humidityChangeTrigger, *args, **kwargs):
         super(HumiditySensorPhidget, self).__init__(phidget=HumiditySensor(), *args, **kwargs)
         self.dataInterval = dataInterval

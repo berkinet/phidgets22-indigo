@@ -4,6 +4,8 @@
 
 import traceback
 
+from signed_value import publish_signed_value
+
 
 def update_indigo_state(owner, key, value, **kwargs):
     """Publish one state while treating its first value as a silent baseline."""
@@ -15,6 +17,8 @@ def update_indigo_state(owner, key, value, **kwargs):
         kwargs["triggerEvents"] = key in initialized
     owner.indigoDevice.updateStateOnServer(key, value=value, **kwargs)
     initialized.add(key)
+    if key == getattr(owner, "_signedValueSource", None):
+        publish_signed_value(owner, value, kwargs)
 
 
 def update_indigo_states(owner, values, logger=None, ui_values=None):

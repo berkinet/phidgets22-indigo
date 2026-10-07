@@ -16,6 +16,7 @@ from i2c_peripheral import I2CPeripheralBase
 
 
 class BME280Phidget(I2CPeripheralBase):
+    NUMERIC_DISPLAY = True
     PROVIDER_FUNCTION = "bme280"
     CHIP_IDS = {0x60: "BME280", 0x58: "BMP280"}
 

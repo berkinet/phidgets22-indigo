@@ -490,6 +490,8 @@ class DiscoveryUiMixin(object):
                 values.get("useCustomFormula", False)):
             try:
                 values["customState"] = state_id(values.get("customState", ""))
+                if values["customState"] == "signedValue":
+                    errors["customState"] = "signedValue is reserved for the signed display; choose another state name."
             except ValueError:
                 errors["customState"] = (
                     "Use a state name beginning with a letter and containing "

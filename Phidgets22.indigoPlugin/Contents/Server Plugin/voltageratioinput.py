@@ -6,10 +6,12 @@ from Phidget22.VoltageRatioSensorType import VoltageRatioSensorType
 
 from phidget import PhidgetBase
 from formula import Formula
+from config_util import saved_bool
 
 import sensortypes
 
 class VoltageRatioInputPhidget(PhidgetBase):
+    NUMERIC_DISPLAY = True
     def __init__(self, sensorType, dataInterval, voltageRatioChangeTrigger, sensorValueChangeTrigger, customState, customFormula, *args, **kwargs):
         self.customOutputType = kwargs.pop("customOutputType", "number")
         super(VoltageRatioInputPhidget, self).__init__(phidget=VoltageRatioInput(), *args, **kwargs)
@@ -26,6 +28,11 @@ class VoltageRatioInputPhidget(PhidgetBase):
 
         self.sensorUnit = sensortypes.getVoltageRatioSensorUnit(sensorType)
         (self.sensorStateName, self.sensorSymbol) = sensortypes.getNameAndSymbol(self.sensorUnit)
+
+    def suppressSaturationErrors(self):
+        return (self.sensorType == VoltageRatioSensorType.SENSOR_TYPE_VOLTAGERATIO and
+                saved_bool(self.indigoDevice.pluginProps.get(
+                    "suppressSaturationErrors", False)))
 
     def addPhidgetHandlers(self):
         self.phidget.setOnErrorHandler(self.onErrorHandler)

@@ -391,10 +391,33 @@ class ConfigurationTests(unittest.TestCase):
             self.assertIn("and/or/not", label)
             self.assertIn("round, clamp", label)
 
+    def test_signed_display_is_installed_with_dynamic_device_states(self):
+        instance = object.__new__(plugin.Plugin)
+        instance.getDeviceStateDictForStringType = lambda *args: args
+        instance.getDeviceStateDictForBoolOnOffType = lambda *args: args
+        runtime = types.SimpleNamespace(
+            NUMERIC_DISPLAY=True, getDeviceStateList=lambda: [],
+            getDeviceDisplayStateId=lambda: "cmBelowFull",
+            customState="cmBelowFull", customOutputType="number")
+        instance.activePhidgets = {42: runtime}
+        device = types.SimpleNamespace(id=42, deviceTypeId="voltageRatioInput")
+        states = instance.getDeviceStateList(device)
+        self.assertIn(("signedValue", "Signed display value (+/-)", "signedValue"), states)
+        self.assertEqual(runtime._signedValueSource, "cmBelowFull")
+
+    def test_signed_display_state_name_is_reserved_for_custom_formulas(self):
+        instance = object.__new__(plugin.Plugin)
+        values = {"dataInterval": "1000", "decimalPlaces": "2",
+                  "voltageRatioSensorType": "0", "voltageRatioChangeTrigger": "0",
+                  "sensorValueChangeTrigger": "0", "useCustomFormula": True,
+                  "customState": "signedValue", "customFormula": "x"}
+        errors = instance._validateNativeSettings(values, "voltageRatioInput")
+        self.assertIn("reserved", errors["customState"])
+
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>2026.1.22</string>", plist)
+        self.assertIn("<string>2026.1.23</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_detach_error_delay_is_conditionally_visible(self):
