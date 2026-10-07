@@ -1,5 +1,16 @@
 # Release notes
 
+## 2026.1.24 — 2026-10-07
+
+### Fixed
+
+- Initialize `signedValue` from the retained numeric display state at startup,
+  after dynamic states are installed and before hardware callbacks begin.
+  Saturated or quiet sensors no longer need a fresh reading to populate it.
+  Initialization preserves configured precision, does not fire triggers, and
+  does not change the numeric reading or imply that it is fresh. Missing or
+  invalid retained values leave the signed text blank.
+
 ## 2026.1.23 — 2026-10-07
 
 ### Added

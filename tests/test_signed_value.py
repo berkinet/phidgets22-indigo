@@ -7,7 +7,7 @@ from unittest import mock
 SERVER_PLUGIN = pathlib.Path(__file__).parents[1] / "Phidgets22.indigoPlugin" / "Contents" / "Server Plugin"
 sys.path.insert(0, str(SERVER_PLUGIN))
 sys.modules.setdefault("indigo", types.ModuleType("indigo"))
-from signed_value import add_signed_value_state, format_signed_value
+from signed_value import add_signed_value_state, format_signed_value, initialize_signed_value
 from state_publisher import update_indigo_state
 
 
@@ -24,6 +24,43 @@ class SignedValueTests(unittest.TestCase):
         states = []
         add_signed_value_state(plugin, owner, states)
         return states
+
+    def test_startup_uses_retained_value_silently_then_accepts_live_reading(self):
+        owner = self.owner()
+        self.enable(owner)
+        owner.indigoDevice.states = {"cmBelowFull": -7.6433, "signedValue": ""}
+        initialize_signed_value(owner)
+        owner.indigoDevice.updateStateOnServer.assert_called_once_with(
+            "signedValue", value="-7.64", triggerEvents=False)
+        self.assertEqual(owner.indigoDevice.states["cmBelowFull"], -7.6433)
+        update_indigo_state(owner, "cmBelowFull", 1.23)
+        owner.indigoDevice.updateStateOnServer.assert_called_with(
+            "signedValue", value="+1.23", triggerEvents=False)
+        update_indigo_state(owner, "cmBelowFull", 2.34)
+        owner.indigoDevice.updateStateOnServer.assert_called_with(
+            "signedValue", value="+2.34", triggerEvents=True)
+
+    def test_startup_missing_invalid_or_nonnumeric_source(self):
+        owner = self.owner()
+        self.enable(owner)
+        for retained in ({}, {"cmBelowFull": None}, {"cmBelowFull": float("nan")},
+                         {"cmBelowFull": True}, {"cmBelowFull": "unknown"}):
+            owner.indigoDevice.states = retained
+            initialize_signed_value(owner)
+            owner.indigoDevice.updateStateOnServer.assert_called_with(
+                "signedValue", value="", triggerEvents=False)
+        owner._signedValueSource = None
+        owner.indigoDevice.updateStateOnServer.reset_mock()
+        initialize_signed_value(owner)
+        owner.indigoDevice.updateStateOnServer.assert_not_called()
+
+    def test_initialization_failure_is_logged_without_aborting_startup(self):
+        owner = self.owner()
+        self.enable(owner)
+        owner.indigoDevice.states = mock.Mock()
+        owner.indigoDevice.states.get.side_effect = RuntimeError("read failed")
+        initialize_signed_value(owner)
+        owner.logger.error.assert_called_once()
 
     def test_sign_precision_zero_and_invalid_values(self):
         cases = [(7.66, 2, "+7.66"), (-7.66, 2, "-7.66"),

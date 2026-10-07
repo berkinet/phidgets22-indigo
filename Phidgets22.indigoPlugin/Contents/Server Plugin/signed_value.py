@@ -45,3 +45,16 @@ def publish_signed_value(owner, value, arguments):
     except Exception as error:
         owner.logger.error("Signed display update failed for '%s': %s",
                            owner.indigoDevice.name, str(error).replace("\n", " "))
+
+
+def initialize_signed_value(owner):
+    """Seed the companion after schema installation, before live callbacks start."""
+    source = getattr(owner, "_signedValueSource", None)
+    if not isinstance(source, str) or not source:
+        return
+    try:
+        value = owner.indigoDevice.states.get(source)
+        publish_signed_value(owner, value, {"triggerEvents": False})
+    except Exception as error:
+        owner.logger.error("Signed display initialization failed for '%s': %s",
+                           owner.indigoDevice.name, str(error).replace("\n", " "))

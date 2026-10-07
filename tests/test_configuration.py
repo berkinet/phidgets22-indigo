@@ -405,6 +405,39 @@ class ConfigurationTests(unittest.TestCase):
         self.assertIn(("signedValue", "Signed display value (+/-)", "signedValue"), states)
         self.assertEqual(runtime._signedValueSource, "cmBelowFull")
 
+    def test_startup_seeds_signed_display_after_schema_before_live_callbacks(self):
+        from state_publisher import update_indigo_state
+        instance = object.__new__(plugin.Plugin)
+        instance.logger = mock.Mock()
+        instance.getDeviceStateDictForStringType = lambda *args: args
+        instance.getDeviceStateDictForBoolOnOffType = lambda *args: args
+        device = mock.Mock(id=42, deviceTypeId="voltageRatioInput")
+        device.states = {"cmBelowFull": 7.66}
+        runtime = types.SimpleNamespace(
+            NUMERIC_DISPLAY=True, getDeviceStateList=lambda: [],
+            getDeviceDisplayStateId=lambda: "cmBelowFull",
+            customState="cmBelowFull", customOutputType="number", decimalPlaces=2,
+            indigoDevice=device, logger=instance.logger)
+        installed = []
+        def install():
+            installed.extend(instance.getDeviceStateList(device))
+        device.stateListOrDisplayStateIdChanged.side_effect = install
+        def publish(key, **kwargs):
+            self.assertTrue(any(state[0] == key for state in installed) or key == "cmBelowFull")
+            device.states[key] = kwargs["value"]
+        device.updateStateOnServer.side_effect = publish
+        def start():
+            self.assertEqual(device.states["signedValue"], "+7.66")
+            device.updateStateOnServer.assert_called_once_with(
+                "signedValue", value="+7.66", triggerEvents=False)
+            update_indigo_state(runtime, "cmBelowFull", -2.5)
+        runtime.start = mock.Mock(side_effect=start)
+        with mock.patch.object(plugin, "create_phidget", return_value=runtime):
+            instance.deviceStartComm(device)
+        runtime.start.assert_called_once_with()
+        self.assertEqual(device.states["signedValue"], "-2.50")
+        instance.logger.error.assert_not_called()
+
     def test_signed_display_state_name_is_reserved_for_custom_formulas(self):
         instance = object.__new__(plugin.Plugin)
         values = {"dataInterval": "1000", "decimalPlaces": "2",
@@ -417,7 +450,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>2026.1.23</string>", plist)
+        self.assertIn("<string>2026.1.24</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_detach_error_delay_is_conditionally_visible(self):

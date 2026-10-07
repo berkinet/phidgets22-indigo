@@ -228,7 +228,9 @@ The state follows the chosen numeric display: a custom numeric formula, voltage,
 voltage ratio, temperature unit, humidity, frequency/count/time, or selected
 BME280/SGP41 measurement. It uses the reading's decimal precision or the device's
 configured precision; “No limit” preserves the supplied number's precision.
-It updates with new readings after startup. Text and On/Off displays do not get
+At startup it initializes from the retained numeric display state without firing
+triggers, then follows new readings. The initial text represents the retained
+reading and does not imply a fresh hardware measurement. Text and On/Off displays do not get
 this companion state. Numeric states remain unchanged for calculations and
 triggers. Non-finite or nonnumeric readings clear the companion text; this is
 formatting, not a new sensor-validity or freshness indicator. `signedValue` is

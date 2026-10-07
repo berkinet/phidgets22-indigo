@@ -31,7 +31,7 @@ except ModuleNotFoundError as error:
 from PhidgetInfo import PhidgetInfo
 from actions import ActionsMixin
 from rfid_ui import RFIDManagementMixin
-from signed_value import add_signed_value_state
+from signed_value import add_signed_value_state, initialize_signed_value
 from config_util import saved_bool
 from connection_identity import PhysicalDeviceIdentity, ServerIdentity
 from device_state_export import write_device_state_snapshot
@@ -367,6 +367,7 @@ class Plugin(RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin, indigo.PluginB
             self._runtime_registry().register(device.id, new_phidget)
             # Install dynamic states before startup publishes initial values.
             device.stateListOrDisplayStateIdChanged()
+            initialize_signed_value(new_phidget)
             new_phidget.start()
         except PeripheralUnavailableError as error:
             self._runtime_registry().remove(device.id)
