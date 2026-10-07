@@ -74,6 +74,32 @@ a plugin restart reapplies the saved startup setting. A disconnect clears
 detached/attached triggers for connection monitoring. A tag already present
 on attachment produces a detection. Errors identify the reader and operation.
 
+### RFID output actions and states
+
+On an **RFID Reader (1024)** device, select one of these device actions and
+choose **On** or **Off**:
+
+| Action | Channel | On/Off state |
+| --- | --- | --- |
+| Set RFID digital output | 0 | `digitalOutput` |
+| Set RFID LED driver | 1 | `ledDriver` |
+| Set RFID onboard LED | 2 | `onboardLED` |
+
+The channel mapping follows the [Phidgets 1024 documentation](https://www.phidgets.com/?prodid=23).
+Each output also has an availability state (`digitalOutputAvailable`,
+`ledDriverAvailable`, `onboardLEDAvailable`). State reads happen on attachment,
+after a command, and every second. When unavailable, the On/Off value is the
+last known reading, not a confirmed current state. A failed command is logged
+with the reader and output name. A channel that fails to initialize requires
+a device restart; open channels automatically reconnect through the SDK.
+
+The RFID device owns all three output channels. Close their Control Panel test
+windows and avoid creating separate Indigo Digital Output devices for these
+same channels. Output actions do not change antenna or tag-presence states.
+Reconnects read the hardware state without replaying previous output commands.
+Simulated readers offer the same actions and states, starting with outputs Off.
+Tag writing is not supported.
+
 ### Delayed presence for feeder access
 
 Set **Presence clear delay (minutes)** in each reader's device configuration,

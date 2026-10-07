@@ -432,6 +432,21 @@ class ActionsMixin(object):
     def rfidDisableAntenna(self, action, device=None):
         self._rfidAntenna(action, device, False)
 
+    def rfidSetOutput(self, action, device=None):
+        try:
+            from rfid import RFIDPhidget
+            device_id = getattr(action, "deviceId", None) or getattr(device, "id", None)
+            reader = registry_for(self).get(int(device_id))
+            if not isinstance(reader, RFIDPhidget):
+                raise ValueError("RFID reader %s is not active" % device_id)
+            channels = {"rfidDigitalOutput": 0, "rfidLEDDriver": 1, "rfidOnboardLED": 2}
+            state = action.props.get("outputState")
+            if state not in ("on", "off"):
+                raise ValueError("select On or Off")
+            reader.setOutput(channels[action.pluginTypeId], state == "on")
+        except Exception as error:
+            self.logger.error("RFID output action failed: %s", str(error).replace("\n", " "))
+
     def _simulateRFID(self, action, device, lost=False):
         try:
             from rfid import SimulatedRFIDPhidget

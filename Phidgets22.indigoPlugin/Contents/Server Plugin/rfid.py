@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import rfid_tags
 from rfid_presence import RFIDPresence
+from rfid_outputs import RFIDOutputs, OUTPUTS
 
 from Phidget22.Devices.RFID import RFID
 from phidget import PhidgetBase, PeripheralUnavailableError
@@ -15,6 +16,7 @@ class RFIDPhidget(PhidgetBase):
     def __init__(self, antennaEnabled=True, **kwargs):
         super(RFIDPhidget, self).__init__(phidget=RFID(), **kwargs)
         self.antennaEnabled = antennaEnabled
+        self.outputs = RFIDOutputs(self)
         self._tag_lock = threading.RLock()
         self._present_tag = None
         self.rfidPolicyProps = dict(self.indigoDevice.pluginProps)
@@ -40,6 +42,8 @@ class RFIDPhidget(PhidgetBase):
                 self._presence_for().stop()
             except Exception as error:
                 self._report("presence stop", error)
+        if getattr(self, "outputs", None) is not None:
+            self.outputs.stop()
         super(RFIDPhidget, self).stop()
 
     def addPhidgetHandlers(self):
@@ -116,6 +120,8 @@ class RFIDPhidget(PhidgetBase):
     def configureAttachedPhidget(self, ph):
         try:
             with self._tag_lock:
+                if getattr(self, "outputs", None) is not None:
+                    self.outputs.start(ph)
                 ph.setAntennaEnabled(self.antennaEnabled)
                 self.updateStateOnServer("antennaEnabled", ph.getAntennaEnabled())
                 if ph.getTagPresent():
@@ -167,6 +173,9 @@ class RFIDPhidget(PhidgetBase):
         except Exception as error:
             self._report("antenna control", error)
 
+    def setOutput(self, channel, enabled):
+        self.outputs.set(channel, enabled)
+
     def getDeviceStateList(self):
         return self.stateList(
             ("bool", "tagPresent", "Tag present"),
@@ -177,7 +186,9 @@ class RFIDPhidget(PhidgetBase):
             ("string", "tagPolicyResult", "Last tag policy result"),
             ("string", "tagPolicyError", "Tag policy error"),
             ("bool", "antennaEnabled", "Antenna enabled"),
-            ("string", "lastUpdate", "Last update"))
+            ("string", "lastUpdate", "Last update"),
+            *[("bool", key, label) for key, label in OUTPUTS],
+            *[("bool", key + "Available", label + " available") for key, label in OUTPUTS])
 
     def getDeviceDisplayStateId(self):
         return "tagPresent"
@@ -187,9 +198,10 @@ class SimulatedRFIDPhidget(RFIDPhidget):
     """Hardware-free reader using the same state and event publication path."""
 
     def __init__(self, antennaEnabled=True, **kwargs):
-        # Do not construct or open a native RFID handle.
+        # Do not construct or open native handles.
         PhidgetBase.__init__(self, phidget=SimpleNamespace(), **kwargs)
         self.antennaEnabled = antennaEnabled
+        self.outputs = RFIDOutputs(self, simulated=True)
         self._tag_lock = threading.RLock()
         self._present_tag = None
         self.rfidPolicyProps = dict(self.indigoDevice.pluginProps)
@@ -200,6 +212,7 @@ class SimulatedRFIDPhidget(RFIDPhidget):
                 self._present_tag = None
                 self._presence_for(reset=True)
                 self._state = "attached"
+                self.outputs.start()
                 self._publish_tag(False)
                 self.updateStateOnServer("antennaEnabled", self.antennaEnabled)
                 for key in ("serverName", "serverUniqueName", "serverHost", "serverPeer"):
@@ -215,6 +228,7 @@ class SimulatedRFIDPhidget(RFIDPhidget):
         try:
             with self._tag_lock:
                 self._state = "stopped"
+                self.outputs.stop()
                 self._presence_for().stop()
                 self._publish_tag(False)
                 self.updateStateOnServer("antennaEnabled", False)

@@ -1,5 +1,19 @@
 # Release notes
 
+## 2026.1.22 — 2026-10-07
+
+### Added
+
+- RFID 1024 device actions to set the digital output (channel 0), LED driver
+  (channel 1), and onboard LED (channel 2) On or Off.
+- Independent On/Off and availability states, refreshed from hardware after
+  commands, on attachment, and every second. Output failures preserve the last
+  reading and mark it unavailable; reconnects do not replay commands.
+- Matching output actions and states for simulated readers. Tag writing
+  remains unsupported.
+- Focused coverage for output routing, readback, errors, reconnects, cleanup,
+  and simulation; existing tag and presence regression coverage retained.
+
 ## 2026.1.21 — 2026-10-01
 
 ### Added
