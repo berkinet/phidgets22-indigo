@@ -1,5 +1,21 @@
 # Release notes
 
+## 2026.1.28 — 2026-10-08
+
+### Added
+
+- Calibrated scales offer a Change trigger units menu: weight in the selected
+  calibration units or voltage ratio (V/V). Uncalibrated inputs offer V/V only.
+- Mode changes preserve the equivalent threshold. Weight thresholds are converted
+  internally on startup/reconnect and recomputed after recalibration. Clearing
+  calibration preserves the equivalent V/V threshold. Zero remains supported.
+- Existing calibrated configurations display an equivalent weight threshold when
+  first edited; existing runtime behavior stays unchanged until Save.
+- Ounces (oz) added to calibration units. Non-finite, negative, and out-of-range
+  weight thresholds are rejected with contextual errors.
+- Regression coverage for migration, switching, recalibration, clearing, units,
+  input validation, and hardware configuration on attachment/reconnect.
+
 ## 2026.1.27 — 2026-10-08
 
 ### Added

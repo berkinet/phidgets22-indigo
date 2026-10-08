@@ -120,7 +120,7 @@
             <Field id="bridgeCaptureZero" type="button" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label></Label><Title>Capture unloaded zero</Title><CallbackMethod>bridgeCaptureZero</CallbackMethod></Field>
             <Field id="bridgeZeroRatio" type="textfield" readonly="true" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Captured zero (V/V):</Label></Field>
             <Field id="bridgeKnownWeight" type="textfield" defaultValue="" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Known weight:</Label></Field>
-            <Field id="bridgeUnits" type="menu" defaultValue="kg" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Weight/force units:</Label><List><Option value="kg">kg</Option><Option value="g">g</Option><Option value="lb">lb</Option><Option value="N">N</Option></List></Field>
+            <Field id="bridgeUnits" type="menu" defaultValue="kg" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Weight/force units:</Label><List><Option value="kg">kg</Option><Option value="g">g</Option><Option value="lb">lb</Option><Option value="oz">oz</Option><Option value="N">N</Option></List></Field>
             <Field id="bridgeCalibrate" type="button" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label></Label><Title>Calibrate with known weight</Title><CallbackMethod>bridgeCalibrate</CallbackMethod></Field>
             <Field id="bridgeCalibrated" type="checkbox" defaultValue="false" hidden="true"/>
             <Field id="bridgeScale" type="textfield" defaultValue="1" readonly="true" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Calibration gain:</Label></Field>
@@ -136,8 +136,11 @@
 			<Field id="dataInterval" type="textfield" defaultValue="1000">
 					<Label>Data interval (ms):</Label>
 			</Field>
-			<Field id="voltageRatioChangeTrigger" type="textfield" defaultValue="0.0">
-					<Label>Voltage ratio change trigger:</Label>
+			<Field id="bridgeTriggerMode" type="menu" defaultValue="ratio" visibleBindingId="bridgeCalibrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Change trigger units:</Label><List class="self" method="getBridgeTriggerUnits" dynamicReload="true"/><CallbackMethod>bridgeTriggerUnitsChanged</CallbackMethod></Field>
+            <Field id="bridgeTriggerPreviousMode" type="textfield" defaultValue="ratio" hidden="true"/>
+            <Field id="bridgeWeightChangeTrigger" type="textfield" defaultValue="0.0" visibleBindingId="bridgeTriggerMode" visibleBindingValue="weight" alwaysUseInDialogHeightCalc="true"><Label>Weight change (units selected above):</Label></Field>
+            <Field id="voltageRatioChangeTrigger" type="textfield" defaultValue="0.0" visibleBindingId="bridgeTriggerMode" visibleBindingValue="ratio" alwaysUseInDialogHeightCalc="true">
+					<Label>Voltage ratio change (V/V):</Label>
 			</Field>
 			<Field id="sensorValueChangeTrigger" type="textfield" defaultValue="0.0" visibleBindingId="isDAQ1500" visibleBindingValue="false" alwaysUseInDialogHeightCalc="true">
 					<Label>Sensor value change trigger:</Label>

@@ -323,6 +323,7 @@ class DiscoveryUiMixin(object):
         if typeId == "voltageRatioInput":
             values["bridgeZeroSignature"] = ""
             values["bridgeCalibrationStatus"] = "Save and enable the device before capturing calibration readings."
+            self.initializeBridgeTrigger(values)
         if typeId == "rfid":
             from rfid_ui import RFIDManagementMixin
             RFIDManagementMixin.initializeRFIDManagement(self, values)
@@ -462,8 +463,13 @@ class DiscoveryUiMixin(object):
                     message="Select a DAQ1500 gain of 1, 2, 64, or 128.")
             integer("voltageRatioSensorType", 0,
                     message="Select a valid voltage-ratio sensor type.")
-            number("voltageRatioChangeTrigger", 0,
-                   message="Enter a non-negative ratio change trigger.")
+            try:
+                values["voltageRatioChangeTrigger"] = repr(bridge.ratio_trigger(values))
+            except (ValueError, TypeError, OverflowError) as error:
+                field = ("bridgeWeightChangeTrigger" if values.get("bridgeTriggerMode") == "weight"
+                         and saved_bool(values.get("bridgeCalibrated", False))
+                         else "voltageRatioChangeTrigger")
+                errors[field] = str(error)
             number("sensorValueChangeTrigger", 0,
                    message="Enter a non-negative sensor-value trigger.")
         elif type_id == "temperatureSensor":

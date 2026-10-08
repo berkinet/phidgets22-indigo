@@ -304,3 +304,127 @@ class BridgeTests(unittest.TestCase):
                 host.bridgeKeepCalibration(moved, 'voltageRatioInput', 42)
                 self.assertEqual(moved['bridgeCalibrationSignature'], previous)
                 self.assertNotIn('retained', moved['bridgeCalibrationStatus'])
+
+    def test_trigger_choices_only_offer_weight_after_calibration(self):
+        import bridge
+        host = bridge.BridgeUiMixin()
+        self.assertEqual(host.getBridgeTriggerUnits(valuesDict={}), [('ratio', 'Voltage ratio (V/V)')])
+        for unit in ('g', 'kg', 'lb', 'oz', 'N'):
+            choices = host.getBridgeTriggerUnits(valuesDict=dict(bridgeCalibrated=True, bridgeUnits=unit))
+            self.assertEqual(choices, [('ratio', 'Voltage ratio (V/V)'), ('weight', 'Weight (%s)' % unit)])
+
+    def test_legacy_trigger_migration_and_mode_switch_preserve_threshold(self):
+        import bridge
+        values = dict(self.calibrated_settings(), voltageRatioChangeTrigger='4.86422575873813e-7',
+                      bridgeScale='-20558256.33100176', bridgeUnits='g', bridgeCalibrationUnits='g')
+        bridge.initialize_trigger(values)
+        self.assertEqual(values['bridgeTriggerMode'], 'weight')
+        self.assertAlmostEqual(float(values['bridgeWeightChangeTrigger']), 10)
+        host = bridge.BridgeUiMixin()
+        host.logger = mock.Mock()
+        values['bridgeTriggerMode'] = 'ratio'
+        host.bridgeTriggerUnitsChanged(values, 'voltageRatioInput', 42)
+        self.assertAlmostEqual(float(values['voltageRatioChangeTrigger']), 4.86422575873813e-7, places=18)
+        values['voltageRatioChangeTrigger'] = '0'
+        values['bridgeTriggerMode'] = 'weight'
+        host.bridgeTriggerUnitsChanged(values, 'voltageRatioInput', 42)
+        self.assertEqual(float(values['bridgeWeightChangeTrigger']), 0)
+        host.logger.error.assert_not_called()
+
+    def test_invalid_trigger_conversion_preserves_previous_mode_and_values(self):
+        import bridge
+        host = bridge.BridgeUiMixin()
+        host.logger = mock.Mock()
+        for value in ('-1', 'nan', 'inf', 'not a number'):
+            values = dict(self.calibrated_settings(), bridgeTriggerMode='ratio',
+                          bridgeTriggerPreviousMode='weight', bridgeWeightChangeTrigger=value,
+                          voltageRatioChangeTrigger='0.0001')
+            host.bridgeTriggerUnitsChanged(values, 'voltageRatioInput', 42)
+            self.assertEqual(values['bridgeTriggerMode'], 'weight')
+            self.assertEqual(values['voltageRatioChangeTrigger'], '0.0001')
+            self.assertEqual(values['bridgeWeightChangeTrigger'], value)
+        with self.assertRaises(ValueError):
+            bridge.ratio_trigger(dict(bridgeCalibrated=False, bridgeTriggerMode='weight',
+                                      bridgeWeightChangeTrigger='10'))
+
+    def test_weight_threshold_recomputed_after_recalibration_and_cleared_to_ratio(self):
+        import bridge
+        values = dict(self.calibrated_settings(), bridgeTriggerMode='weight',
+                      bridgeWeightChangeTrigger='10', voltageRatioChangeTrigger='0.999')
+        self.assertEqual(bridge.ratio_trigger(values), 0.001)
+        values['bridgeScale'] = '-20000'
+        self.assertEqual(bridge.ratio_trigger(values), 0.0005)
+        host = bridge.BridgeUiMixin()
+        host.logger = mock.Mock()
+        host.bridgeClearCalibration(values, 'voltageRatioInput', 42)
+        self.assertFalse(values['bridgeCalibrated'])
+        self.assertEqual(values['bridgeTriggerMode'], 'ratio')
+        self.assertEqual(bridge.ratio_trigger(values), 0.0005)
+        self.assertEqual(host.getBridgeTriggerUnits(valuesDict=values), [('ratio', 'Voltage ratio (V/V)')])
+
+    def test_weight_threshold_is_applied_to_hardware_on_attach_and_reconnect(self):
+        import device_factory
+        settings = dict(self.calibrated_settings(), bridgeTriggerMode='weight',
+                        bridgeWeightChangeTrigger='10', voltageRatioChangeTrigger='0.999',
+                        isVintHub=True, isVintDevice=True, dataInterval='1000', decimalPlaces='3')
+        _, channel = self.wrapper()
+        host = mock.Mock(pluginPrefs={})
+        device = mock.Mock(pluginProps=settings)
+        with mock.patch.object(voltageratioinput, 'VoltageRatioInput', return_value=channel):
+            runtime = device_factory._voltage_ratio_input(host, device, device_factory._common(host, device))
+        for unused in range(2):
+            runtime.configureAttachedPhidget(channel)
+        self.assertEqual(channel.setVoltageRatioChangeTrigger.call_args_list, [mock.call(0.001)] * 2)
+
+    def test_oz_calibration_and_trigger_validation(self):
+        import bridge
+        from discovery_ui import DiscoveryUiMixin
+        values = dict(self.calibrated_settings(), bridgeUnits='oz', bridgeCalibrationUnits='oz',
+                      bridgeTriggerMode='weight', bridgeWeightChangeTrigger='2',
+                      voltageRatioSensorType='0', dataInterval='1000', decimalPlaces='2',
+                      sensorValueChangeTrigger='0', voltageRatioChangeTrigger='invalid hidden value')
+        ui = object.__new__(DiscoveryUiMixin)
+        self.assertEqual(ui._validateNativeSettings(values, 'voltageRatioInput'), {})
+        self.assertEqual(float(values['voltageRatioChangeTrigger']), 0.0002)
+        self.assertEqual(bridge.validate(values), {})
+        values['bridgeWeightChangeTrigger'] = '-2'
+        self.assertIn('bridgeWeightChangeTrigger', ui._validateNativeSettings(values, 'voltageRatioInput'))
+
+    def test_uncalibrated_trigger_initialization_shows_only_ratio(self):
+        import bridge
+        values = dict(bridgeCalibrated=False, voltageRatioChangeTrigger='0.0005')
+        bridge.initialize_trigger(values)
+        self.assertEqual(values['bridgeTriggerMode'], 'ratio')
+        self.assertEqual(values['voltageRatioChangeTrigger'], '0.0005')
+
+    def test_recalibrate_button_retains_weight_entry_with_new_conversion(self):
+        import bridge
+        values = dict(self.calibrated_settings(), bridgeTriggerMode='weight',
+                      bridgeWeightChangeTrigger='10', bridgeKnownWeight='5', bridgeZeroRatio='0.0001')
+        values['bridgeZeroSignature'] = bridge.signature(values)
+        host = bridge.BridgeUiMixin()
+        host.logger = mock.Mock()
+        host._bridgeReading = mock.Mock(return_value=0.00035)
+        host.bridgeCalibrate(values, 'voltageRatioInput', 42)
+        self.assertEqual(values['bridgeWeightChangeTrigger'], '10')
+        self.assertAlmostEqual(float(values['bridgeScale']), 20000)
+        self.assertAlmostEqual(bridge.ratio_trigger(values), 0.0005)
+        host.logger.error.assert_not_called()
+
+    def test_hardware_rejects_weight_threshold_outside_supported_range(self):
+        wrapper, channel = self.wrapper()
+        wrapper.bridgeSettings = dict(bridgeTriggerMode='weight')
+        wrapper.voltageRatioChangeTrigger = 2
+        with self.assertRaisesRegex(ValueError, 'outside the hardware range'):
+            wrapper.configureAttachedPhidget(channel)
+        self.assertFalse(wrapper._bridgeConfigured)
+        channel.setVoltageRatioChangeTrigger.assert_not_called()
+
+    def test_trigger_xml_visibility_matches_calibration_and_mode(self):
+        import xml.etree.ElementTree as ET
+        fields = {field.get('id'): field for field in ET.parse(SERVER_PLUGIN / 'Devices.xml')
+                  .findall(".//Device[@id='voltageRatioInput']/ConfigUI/Field")}
+        self.assertEqual(fields['bridgeTriggerMode'].get('visibleBindingId'), 'bridgeCalibrated')
+        self.assertEqual(fields['bridgeTriggerMode'].get('visibleBindingValue'), 'true')
+        self.assertEqual(fields['voltageRatioChangeTrigger'].get('visibleBindingValue'), 'ratio')
+        self.assertEqual(fields['bridgeWeightChangeTrigger'].get('visibleBindingValue'), 'weight')

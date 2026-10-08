@@ -21,6 +21,7 @@ from bme280 import BME280Phidget
 from sgp41 import SGP41Phidget
 from network_server import NetworkServerDevice
 from config_util import saved_bool
+from bridge import ratio_trigger
 from runtime_registry import registry_for
 
 
@@ -99,7 +100,7 @@ def _voltage_ratio_input(plugin, device, common):
         bridgeGain=int(props.get("bridgeGain", 128)),
         bridgeSettings=props,
         dataInterval=common["dataInterval"],
-        voltageRatioChangeTrigger=float(props.get("voltageRatioChangeTrigger", 0)),
+        voltageRatioChangeTrigger=ratio_trigger(props),
         sensorValueChangeTrigger=float(props.get("sensorValueChangeTrigger", 0)),
         customState=custom_state, customFormula=custom_formula,
         customOutputType=custom_output_type)

@@ -104,6 +104,8 @@ class VoltageRatioInputPhidget(PhidgetBase):
             fieldname="voltageRatioChangeTrigger", value=self.voltageRatioChangeTrigger,
                 minValue=setup("getMinVoltageRatioChangeTrigger"),
             maxValue=setup("getMaxVoltageRatioChangeTrigger"))
+        if newVoltageRatioChangeTrigger is None and is_bridge and self.bridgeSettings.get("bridgeTriggerMode") == "weight":
+            raise ValueError("Weight change threshold converts to a V/V value outside the hardware range; reduce the threshold")
         if newVoltageRatioChangeTrigger is not None:
             setup("setVoltageRatioChangeTrigger", newVoltageRatioChangeTrigger)
 

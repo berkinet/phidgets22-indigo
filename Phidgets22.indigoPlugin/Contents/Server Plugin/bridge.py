@@ -47,8 +47,8 @@ def validate(values):
             errors[field] = str(error)
     if values.get("bridgeCalibrationUnits") != values.get("bridgeUnits", "kg"):
         errors["bridgeUnits"] = "Units changed. Recalibrate using a known weight in the new units."
-    if values.get("bridgeUnits", "kg") not in ("kg", "g", "lb", "N"):
-        errors["bridgeUnits"] = "Select kg, g, lb, or N."
+    if values.get("bridgeUnits", "kg") not in ("kg", "g", "lb", "oz", "N"):
+        errors["bridgeUnits"] = "Select kg, g, lb, oz, or N."
     if values.get("bridgeCalibrationSignature") != signature(values):
         field = "bridgeGain" if saved_bool(values.get("isDAQ1500", False)) else "discoveredServer"
         errors[field] = ("Connection or bridge gain changed. If you moved the same scale without changing "
@@ -57,7 +57,98 @@ def validate(values):
     return errors
 
 
+def nonnegative(value):
+    result = finite(value)
+    if result < 0:
+        raise ValueError("Enter a non-negative change threshold")
+    return result
+
+
+def trigger_scale(values):
+    if not saved_bool(values.get("bridgeCalibrated", False)):
+        raise ValueError("Weight change thresholds require calibration")
+    scale = abs(finite(values.get("bridgeScale", 0)))
+    if scale == 0:
+        raise ValueError("Calibration gain must not be zero")
+    return scale
+
+
+def ratio_trigger(values):
+    mode = values.get("bridgeTriggerMode", "ratio")
+    if mode == "ratio":
+        return nonnegative(values.get("voltageRatioChangeTrigger", 0))
+    if mode != "weight":
+        raise ValueError("Select voltage ratio or weight change units")
+    weight = nonnegative(values.get("bridgeWeightChangeTrigger", ""))
+    ratio = finite(weight / trigger_scale(values))
+    if weight > 0 and ratio == 0:
+        raise ValueError("Weight threshold is too small to represent in V/V")
+    return ratio
+
+
+def switch_trigger(values, previous, target):
+    """Stage equivalent values; never mutate the source on failed conversion."""
+    if target not in ("ratio", "weight") or previous not in ("ratio", "weight"):
+        raise ValueError("Select voltage ratio or weight change units")
+    if target == "weight":
+        scale = trigger_scale(values)
+        if previous == "ratio":
+            ratio = nonnegative(values.get("voltageRatioChangeTrigger", 0))
+            weight = finite(ratio * scale)
+            if ratio > 0 and weight == 0:
+                raise ValueError("V/V threshold is too small to represent in weight units")
+            values["bridgeWeightChangeTrigger"] = repr(weight)
+    elif previous == "weight":
+        proposed = dict(values)
+        proposed["bridgeTriggerMode"] = "weight"
+        values["voltageRatioChangeTrigger"] = repr(ratio_trigger(proposed))
+    values["bridgeTriggerMode"] = target
+    values["bridgeTriggerPreviousMode"] = target
+
+
+def initialize_trigger(values):
+    mode = values.get("bridgeTriggerMode")
+    if mode is None:
+        # Old configurations only stored V/V. Change the display, not sensitivity.
+        mode = "weight" if saved_bool(values.get("bridgeCalibrated", False)) else "ratio"
+        switch_trigger(values, "ratio", mode)
+    elif not saved_bool(values.get("bridgeCalibrated", False)):
+        # A valid clear operation already converted to V/V. Ignore stale UI mode.
+        values["bridgeTriggerMode"] = "ratio"
+        mode = "ratio"
+    values["bridgeTriggerPreviousMode"] = mode
+
+
 class BridgeUiMixin:
+    def initializeBridgeTrigger(self, values):
+        try:
+            initialize_trigger(values)
+        except Exception as error:
+            values["bridgeTriggerMode"] = "ratio"
+            values["bridgeTriggerPreviousMode"] = "ratio"
+            values["bridgeCalibrationStatus"] = str(error).replace("\n", " ")
+            self.logger.error("Unable to initialize bridge threshold: %s",
+                              values["bridgeCalibrationStatus"])
+        return values
+
+    def getBridgeTriggerUnits(self, filter="", valuesDict=None, typeId="", targetId=0):
+        values = valuesDict if valuesDict is not None else {}
+        choices = [("ratio", "Voltage ratio (V/V)")]
+        if saved_bool(values.get("bridgeCalibrated", False)):
+            choices.append(("weight", "Weight (%s)" % values.get("bridgeUnits", "kg")))
+        return choices
+
+    def bridgeTriggerUnitsChanged(self, valuesDict, typeId, devId):
+        previous = valuesDict.get("bridgeTriggerPreviousMode", "ratio")
+        try:
+            switch_trigger(valuesDict, previous, valuesDict.get("bridgeTriggerMode", "ratio"))
+        except Exception as error:
+            valuesDict["bridgeTriggerMode"] = previous
+            valuesDict["bridgeCalibrationStatus"] = str(error).replace("\n", " ")
+            self.logger.error("Bridge threshold conversion failed for device %s: %s",
+                              devId, valuesDict["bridgeCalibrationStatus"])
+        return valuesDict
+
     def _bridgeReading(self, values, dev_id):
         from voltageratioinput import VoltageRatioInputPhidget
         runtime = registry_for(self).get(int(dev_id))
@@ -90,6 +181,7 @@ class BridgeUiMixin:
                     "Existing calibration and tare retained for the moved scale. Click Save to apply.")
                 return values
             if operation == "clear":
+                switch_trigger(values, values.get("bridgeTriggerMode", "ratio"), "ratio")
                 values["bridgeCalibrated"] = False
                 values["bridgeCalibrationSignature"] = ""
                 values["bridgeZeroSignature"] = ""
@@ -105,6 +197,16 @@ class BridgeUiMixin:
                     raise ValueError("Capture the unloaded zero for this channel and gain first")
                 scale, offset = calibration(values.get("bridgeZeroRatio"), ratio,
                                             values.get("bridgeKnownWeight"))
+                proposed = dict(values)
+                proposed["bridgeScale"] = repr(scale)
+                proposed["bridgeCalibrated"] = True
+                if not saved_bool(values.get("bridgeCalibrated", False)):
+                    switch_trigger(proposed, "ratio", "weight")
+                else:
+                    ratio_trigger(proposed)  # Revalidate against the new scale before staging.
+                for key in ("bridgeTriggerMode", "bridgeTriggerPreviousMode", "bridgeWeightChangeTrigger"):
+                    if key in proposed:
+                        values[key] = proposed[key]
                 values["bridgeScale"] = repr(scale)
                 values["bridgeOffset"] = repr(offset)
                 values["bridgeCalibrationUnits"] = values.get("bridgeUnits", "kg")

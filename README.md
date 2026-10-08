@@ -261,11 +261,27 @@ To calibrate a scale:
    saturation messages enabled while calibrating.
 2. Remove the load, let the reading settle, and click **Capture unloaded zero**.
 3. Apply a known weight and let the reading settle. Enter **Known weight**, select
-   its units (kg, g, lb, or N), and click **Calibrate with known weight**.
+   its units (kg, g, lb, oz, or N), and click **Calibrate with known weight**.
 4. Click **Save**. The numeric `weight` state becomes the device display, with
    `signedValue` following its configured precision. Raw `voltageRatio` remains
    available. The selected units label the weight state; they do not convert
    previously calibrated values automatically.
+
+For a calibrated scale, **Change trigger units** offers **Weight (g)** (or your
+selected calibration unit) and **Voltage ratio (V/V)**. Enter a value such as
+`10` in the weight field to report changes of 10 grams when calibrated in grams.
+The plugin converts this internally using `weight change / abs(calibration gain)`.
+Switching modes converts the current entry so the threshold remains equivalent.
+Zero reports every reading at the configured data interval. Tare does not affect
+the threshold; recalibration recomputes the V/V threshold from your saved weight
+entry. A weight threshold outside the hardware range reports a setup error.
+
+Uncalibrated inputs show only the V/V field. Clearing calibration converts an
+existing weight threshold back to V/V before hiding the weight choice. Existing
+calibrated configurations initially display their equivalent weight threshold;
+this does not change their sensitivity. Edits apply on Save, and Cancel discards
+them. Ounces (`oz`) are available for calibration and weight thresholds; select
+oz and use a known weight expressed in ounces when calibrating.
 
 The displayed **Calibration gain** and **Calibration offset** use
 `weight = (voltageRatio + offset) * calibrationGain`. Calibration gain is a
