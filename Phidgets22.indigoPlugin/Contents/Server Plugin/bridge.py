@@ -34,7 +34,8 @@ def validate(values):
     if not saved_bool(values.get("bridgeCalibrated", False)):
         return errors
     if not saved_bool(values.get("isDAQ1500", False)):
-        errors["bridgeCalibrated"] = "Load-cell calibration requires a DAQ1500."
+        errors["discoveredServer"] = ("This calibration belongs to a DAQ1500. Select the bridge again, "
+                                     "click Clear calibration, then select the new device and Save.")
     if saved_bool(values.get("useCustomFormula", False)):
         errors["useCustomFormula"] = "Choose load-cell calibration or a custom formula."
     for field in ("bridgeScale", "bridgeOffset"):
@@ -49,7 +50,10 @@ def validate(values):
     if values.get("bridgeUnits", "kg") not in ("kg", "g", "lb", "N"):
         errors["bridgeUnits"] = "Select kg, g, lb, or N."
     if values.get("bridgeCalibrationSignature") != signature(values):
-        errors["bridgeCalibrated"] = "Channel or bridge gain changed. Recalibrate or clear calibration."
+        field = "bridgeGain" if saved_bool(values.get("isDAQ1500", False)) else "discoveredServer"
+        errors[field] = ("Connection or bridge gain changed. If you moved the same scale without changing "
+                         "bridge gain or units, click Keep calibration for moved scale, then Save. "
+                         "For a different load cell or gain, clear calibration and recalibrate.")
     return errors
 
 
@@ -67,6 +71,24 @@ class BridgeUiMixin:
 
     def _bridgeOperation(self, values, dev_id, operation):
         try:
+            if operation == "keep":
+                if not saved_bool(values.get("bridgeCalibrated", False)):
+                    raise ValueError("There is no saved calibration to keep")
+                previous = json.loads(values.get("bridgeCalibrationSignature", ""))
+                if not isinstance(previous, list) or len(previous) != 5:
+                    raise ValueError("Previous calibration connection is invalid; recalibrate")
+                if previous[4] != int(values.get("bridgeGain", 128)):
+                    raise ValueError("Bridge gain changed; restore the calibrated gain or recalibrate")
+                proposed = dict(values)
+                proposed["bridgeCalibrationSignature"] = signature(values)
+                errors = validate(proposed)
+                if errors:
+                    raise ValueError("; ".join(errors.values()))
+                values["bridgeCalibrationSignature"] = proposed["bridgeCalibrationSignature"]
+                values["bridgeZeroSignature"] = ""
+                values["bridgeCalibrationStatus"] = (
+                    "Existing calibration and tare retained for the moved scale. Click Save to apply.")
+                return values
             if operation == "clear":
                 values["bridgeCalibrated"] = False
                 values["bridgeCalibrationSignature"] = ""
@@ -112,3 +134,6 @@ class BridgeUiMixin:
 
     def bridgeClearCalibration(self, valuesDict, typeId, devId):
         return self._bridgeOperation(valuesDict, devId, "clear")
+
+    def bridgeKeepCalibration(self, valuesDict, typeId, devId):
+        return self._bridgeOperation(valuesDict, devId, "keep")

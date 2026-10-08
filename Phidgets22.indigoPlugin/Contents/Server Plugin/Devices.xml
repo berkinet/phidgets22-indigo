@@ -126,6 +126,7 @@
             <Field id="bridgeScale" type="textfield" defaultValue="1" readonly="true" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Calibration gain:</Label></Field>
             <Field id="bridgeOffset" type="textfield" defaultValue="0" readonly="true" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Calibration offset (V/V):</Label></Field>
             <Field id="bridgeTare" type="button" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label></Label><Title>Tare scale</Title><CallbackMethod>bridgeTare</CallbackMethod></Field>
+            <Field id="bridgeKeepCalibration" type="button" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label></Label><Title>Keep calibration for moved scale</Title><CallbackMethod>bridgeKeepCalibration</CallbackMethod></Field>
             <Field id="bridgeClearCalibration" type="button" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label></Label><Title>Clear calibration</Title><CallbackMethod>bridgeClearCalibration</CallbackMethod></Field>
             <Field id="bridgeCalibrationStatus" type="textfield" readonly="true" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Calibration status:</Label></Field>
             <Field id="bridgeCalibrationSignature" type="textfield" hidden="true"/>

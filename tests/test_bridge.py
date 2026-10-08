@@ -237,3 +237,70 @@ class BridgeTests(unittest.TestCase):
             wrapper.readBridgeRatio()
         wrapper.setOnVoltageRatioChangeHandler(channel, 0.0001)
         self.assertEqual(wrapper.readBridgeRatio(), 0.0001)
+
+    def test_connection_change_save_error_targets_visible_control_and_explains_recovery(self):
+        import indigo
+        from discovery_ui import DiscoveryUiMixin
+        import xml.etree.ElementTree as ET
+        ui = object.__new__(DiscoveryUiMixin)
+        ui.discoveryInventory = None
+        ui._validateNativeSettings = mock.Mock(return_value={})
+        fields = {field.get('id'): field for field in ET.parse(SERVER_PLUGIN / 'Devices.xml')
+                  .findall(".//Device[@id='voltageRatioInput']/ConfigUI/Field")}
+        for key, value in (('serverName', 'MovedServer'), ('hubPort', '4'),
+                           ('channel', '1'), ('bridgeGain', '64')):
+            with self.subTest(changed=key), mock.patch.object(indigo, 'Dict', dict, create=True):
+                values = dict(self.calibrated_settings(), **{key: value})
+                valid, returned, errors = ui._validateChannelConfig(values, 'voltageRatioInput', 42)
+                self.assertFalse(valid)
+                self.assertNotIn('bridgeCalibrated', errors)
+                self.assertIn('bridgeGain', errors)
+                self.assertNotEqual(fields['bridgeGain'].get('hidden'), 'true')
+                self.assertEqual(fields['bridgeGain'].get('visibleBindingId'), 'isDAQ1500')
+                self.assertTrue(returned['isDAQ1500'])
+                self.assertIn('Keep calibration for moved scale', errors['showAlertText'])
+                self.assertIn('different load cell', errors['showAlertText'])
+                self.assertEqual(returned['bridgeCalibrationStatus'], errors['showAlertText'])
+                self.assertTrue(returned['bridgeCalibrated'])
+
+    def test_non_bridge_calibration_error_targets_unconditional_control(self):
+        import bridge
+        import xml.etree.ElementTree as ET
+        values = dict(self.calibrated_settings(), isDAQ1500=False)
+        errors = bridge.validate(values)
+        self.assertIn('discoveredServer', errors)
+        self.assertNotIn('bridgeCalibrated', errors)
+        field = ET.parse(SERVER_PLUGIN / 'Devices.xml').find(
+            ".//Device[@id='voltageRatioInput']/ConfigUI/Field[@id='discoveredServer']")
+        self.assertIsNone(field.get('visibleBindingId'))
+        self.assertNotEqual(field.get('hidden'), 'true')
+
+    def test_moved_scale_keeps_calibration_and_tare_without_opening_hardware(self):
+        import bridge
+        saved = self.calibrated_settings()
+        moved = dict(saved, serverName='Coop', serialNumber='744571', hubPort='4')
+        host = bridge.BridgeUiMixin()
+        host.logger = mock.Mock()
+        host._bridgeReading = mock.Mock(side_effect=AssertionError('Must not open hardware'))
+        host.bridgeKeepCalibration(moved, 'voltageRatioInput', 42)
+        self.assertEqual(bridge.validate(moved), {})
+        for field in ('bridgeScale', 'bridgeOffset', 'bridgeUnits', 'bridgeCalibrated'):
+            self.assertEqual(moved[field], saved[field])
+        self.assertNotEqual(moved['bridgeCalibrationSignature'], saved['bridgeCalibrationSignature'])
+        self.assertEqual(moved['bridgeZeroSignature'], '')
+        host._bridgeReading.assert_not_called()
+        host.logger.error.assert_not_called()
+
+    def test_keep_calibration_rejects_gain_units_and_invalid_calibration(self):
+        import bridge
+        host = bridge.BridgeUiMixin()
+        host.logger = mock.Mock()
+        for changes in (dict(bridgeGain='64'), dict(bridgeUnits='kg', bridgeCalibrationUnits='g'),
+                        dict(bridgeScale='0'), dict(bridgeCalibrated=False),
+                        dict(bridgeCalibrationSignature='bad'), dict(isDAQ1500=False)):
+            with self.subTest(changes=changes):
+                moved = dict(self.calibrated_settings(), serverName='Coop', **changes)
+                previous = moved['bridgeCalibrationSignature']
+                host.bridgeKeepCalibration(moved, 'voltageRatioInput', 42)
+                self.assertEqual(moved['bridgeCalibrationSignature'], previous)
+                self.assertNotIn('retained', moved['bridgeCalibrationStatus'])

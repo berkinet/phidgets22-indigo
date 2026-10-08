@@ -1,5 +1,21 @@
 # Release notes
 
+## 2026.1.27 — 2026-10-08
+
+### Added
+
+- **Keep calibration for moved scale** preserves calibration gain and tare when
+  relocating the same scale to a different server, hub, port, or channel. The
+  connection update is staged until Save; bridge gain and units must match.
+
+### Fixed
+
+- Show calibration connection/gain errors on a visible configuration control
+  instead of the hidden calibration flag. Save errors now include the actual
+  reason and recovery steps in the alert and calibration status.
+- Add regression coverage for server, port, channel, and gain changes, and for
+  switching calibrated configuration to non-bridge hardware.
+
 ## 2026.1.26 — 2026-10-08
 
 ### Fixed

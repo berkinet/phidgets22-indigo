@@ -280,7 +280,14 @@ the active saved device; for a new device, save it before calibrating. Readings
 are rejected while disconnected, disabled, or waiting for recovery from an error.
 Let the load settle before capture; each button captures one reading.
 
-Changing channel, hardware gain, or units requires recalibration. Clear the
+When moving the same load cell and bridge to another server, hub, port, or
+channel, select the new connection and click **Keep calibration for moved scale**,
+then Save. This preserves calibration gain and tare offset; it does not take a
+reading or change the hardware before Save. Use this only for the same scale,
+with unchanged bridge gain and units. Check zero after installation, since
+mechanical mounting can affect it.
+
+A different load cell, hardware gain, or units requires recalibration. Clear the
 old calibration, save the new channel/gain, then reopen the dialog to calibrate.
 Custom formulas remain available as an alternative to built-in calibration;
 the two cannot be enabled together. Disabled or disconnected devices retain

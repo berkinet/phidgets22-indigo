@@ -1006,7 +1006,9 @@ class DiscoveryUiMixin(object):
                 valuesDict["voltageRatioSensorType"] = "0"
             errors = indigo.Dict(bridge.validate(valuesDict))
             if errors:
-                errors["showAlertText"] = "Correct the bridge calibration settings."
+                details = "\n".join(dict.fromkeys(errors.values()))
+                valuesDict["bridgeCalibrationStatus"] = details.replace("\n", " ")
+                errors["showAlertText"] = details
                 return False, valuesDict, errors
 
         if settingsValidator is not None:
