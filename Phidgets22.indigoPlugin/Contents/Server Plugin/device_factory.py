@@ -96,6 +96,8 @@ def _voltage_ratio_input(plugin, device, common):
     return VoltageRatioInputPhidget(
         **common["base"], decimalPlaces=common["decimalPlaces"],
         sensorType=int(props.get("voltageRatioSensorType", 0)),
+        bridgeGain=int(props.get("bridgeGain", 128)),
+        bridgeSettings=props,
         dataInterval=common["dataInterval"],
         voltageRatioChangeTrigger=float(props.get("voltageRatioChangeTrigger", 0)),
         sensorValueChangeTrigger=float(props.get("sensorValueChangeTrigger", 0)),

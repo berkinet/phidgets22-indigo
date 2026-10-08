@@ -4,6 +4,7 @@
 
 import indigo
 import rfid_tags
+import bridge
 
 from discovery import (CHANNEL_CLASSES_BY_DEVICE_TYPE, device_token,
                        channel_token, format_channel, format_network_diagram,
@@ -319,6 +320,9 @@ class DiscoveryUiMixin(object):
         """Initialize, safely migrate, and collapse discovery selections."""
         values = indigo.Dict(pluginProps)
         values["configurationMigrated"] = False
+        if typeId == "voltageRatioInput":
+            values["bridgeZeroSignature"] = ""
+            values["bridgeCalibrationStatus"] = "Save and enable the device before capturing calibration readings."
         if typeId == "rfid":
             from rfid_ui import RFIDManagementMixin
             RFIDManagementMixin.initializeRFIDManagement(self, values)
@@ -452,6 +456,10 @@ class DiscoveryUiMixin(object):
             number("sensorValueChangeTrigger", 0,
                    message="Enter a non-negative sensor-value trigger.")
         elif type_id == "voltageRatioInput":
+            if "bridgeGain" not in values:
+                values["bridgeGain"] = "128"
+            integer("bridgeGain", choices=(1, 2, 64, 128),
+                    message="Select a DAQ1500 gain of 1, 2, 64, or 128.")
             integer("voltageRatioSensorType", 0,
                     message="Select a valid voltage-ratio sensor type.")
             number("voltageRatioChangeTrigger", 0,
@@ -991,6 +999,16 @@ class DiscoveryUiMixin(object):
             valuesDict["hubPort"] = (
                 str(description.get("hubPort")) if is_vint else "")
 
+        if typeId == "voltageRatioInput":
+            if description is not None:
+                valuesDict["isDAQ1500"] = str(description.get("deviceSKU", "")).startswith("DAQ1500")
+            if saved_bool(valuesDict.get("isDAQ1500", False)):
+                valuesDict["voltageRatioSensorType"] = "0"
+            errors = indigo.Dict(bridge.validate(valuesDict))
+            if errors:
+                errors["showAlertText"] = "Correct the bridge calibration settings."
+                return False, valuesDict, errors
+
         if settingsValidator is not None:
             errors = settingsValidator(valuesDict, devId, description)
             if errors:
@@ -1236,6 +1254,11 @@ class DiscoveryUiMixin(object):
                 is_vint and not description.get("isHubPortDevice"))
             valuesDict["hubPort"] = (
                 str(description.get("hubPort")) if is_vint else "")
+        if typeId == "voltageRatioInput":
+            valuesDict["isDAQ1500"] = bool(resolved_selection and
+                str(description.get("deviceSKU", "")).startswith("DAQ1500"))
+            if valuesDict["isDAQ1500"]:
+                valuesDict["voltageRatioSensorType"] = "0"
         return valuesDict
 
     def logDiscoveryInventory(self):

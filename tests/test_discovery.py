@@ -113,6 +113,23 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(len(channels), 2)
         self.assertEqual(inventory.resolve_channel(channels[1][0])["channel"], 1)
 
+    def test_daq1500_channels_are_independently_discovered(self):
+        inventory = discovery.DiscoveryInventory(logging.getLogger("test"), manager_factory=FakeManager)
+        inventory.start()
+        for index in (0, 1):
+            channel = FakeChannel()
+            channel.values = dict(FakeChannel.values, getChannel=index,
+                                  getDeviceSKU="DAQ1500", getDeviceName="Wheatstone Bridge Phidget",
+                                  getChannelClass=32, getChannelClassName="PhidgetVoltageRatioInput",
+                                  getChannelName="Bridge Input")
+            inventory.manager.attach_handler(inventory.manager, channel)
+        servers = inventory.server_choices("voltageRatioInput")
+        devices = inventory.device_choices_for_server("voltageRatioInput", servers[0][0])
+        channels = inventory.channel_choices("voltageRatioInput", devices[0][0])
+        self.assertEqual({inventory.resolve_channel(key)["channel"] for key, _ in channels}, {0, 1})
+        self.assertTrue(all(not entry["isHubPortDevice"] for entry in inventory.snapshot()))
+        inventory.stop()
+
     def test_invalid_tokens_are_safe(self):
         inventory = discovery.DiscoveryInventory(logging.getLogger("test"), manager_factory=FakeManager)
         self.assertEqual(inventory.channel_choices("digitalInput", "not-a-token"), [])

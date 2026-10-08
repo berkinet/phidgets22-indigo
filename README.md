@@ -239,3 +239,53 @@ reserved and cannot be used as a custom formula's state name.
 For Pool water level, use `cmBelowFull` for numeric comparisons and `signedValue`
 for signed display. Once the display uses that state, the sign-formatting triggers
 and variable are no longer needed. The plugin does not edit those automations.
+
+### DAQ1500 Wheatstone bridge / load cells
+
+Create a **Voltage Ratio Input** for each DAQ1500 bridge channel (0 or 1).
+Select the discovered server, VINT hub port, DAQ1500, and channel. The dialog
+recognizes the bridge and replaces numbered-sensor settings with bridge controls.
+Choose **DAQ1500 bridge gain**: 1x, 2x, 64x, or 128x (default), and leave
+**Enable bridge input** checked. Both settings are reapplied on reconnect.
+Start at 128x and lower it if your maximum expected load causes saturation.
+
+The default interval is 1000 ms. Use at least 100 ms when both channels are
+active (20 ms is available with only one channel). Hardware-reported interval
+limits are checked on attachment. Select six decimal places or No limit when
+inspecting small raw ratios. The `voltageRatio` state is in V/V.
+
+To calibrate a scale:
+
+1. Save the channel, bridge gain, and enabled setting. Let the device attach,
+   then reopen its configuration. Keep the ratio change trigger at zero and
+   saturation messages enabled while calibrating.
+2. Remove the load, let the reading settle, and click **Capture unloaded zero**.
+3. Apply a known weight and let the reading settle. Enter **Known weight**, select
+   its units (kg, g, lb, or N), and click **Calibrate with known weight**.
+4. Click **Save**. The numeric `weight` state becomes the device display, with
+   `signedValue` following its configured precision. Raw `voltageRatio` remains
+   available. The selected units label the weight state; they do not convert
+   previously calibrated values automatically.
+
+The displayed **Calibration gain** and **Calibration offset** use
+`weight = (voltageRatio + offset) * calibrationGain`. Calibration gain is a
+software conversion factor, separate from the hardware's 1x–128x bridge gain.
+Calibration is saved per channel and survives plugin restarts and reconnects.
+The plugin does not import calibration from the Phidgets Control Panel.
+
+**Tare scale** stages a new zero offset while preserving calibration gain;
+click Save to apply it. **Clear calibration** returns the display to raw ratio
+on Save. Cancel discards all pending calibration and tare changes. Buttons read
+the active saved device; for a new device, save it before calibrating. Readings
+are rejected while disconnected, disabled, or waiting for recovery from an error.
+Let the load settle before capture; each button captures one reading.
+
+Changing channel, hardware gain, or units requires recalibration. Clear the
+old calibration, save the new channel/gain, then reopen the dialog to calibrate.
+Custom formulas remain available as an alternative to built-in calibration;
+the two cannot be enabled together. Disabled or disconnected devices retain
+last readings; those retained states do not indicate a current measurement.
+
+Reference: [Phidgets DAQ1500 guide](https://www.phidgets.com/?prodid=957).
+Automated tests cover setup, calibration, and failure handling. Physical DAQ1500
+and Indigo dialog validation remain pending.

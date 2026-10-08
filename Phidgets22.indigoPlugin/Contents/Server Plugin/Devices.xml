@@ -104,10 +104,33 @@
 			<Field id="isVintHub" type="checkbox" defaultValue="False" enabledBindingId="derivedFieldsEnabled"><Label>Connected to a VINT hub?</Label></Field><Field id="isVintDevice" type="checkbox" defaultValue="False" enabledBindingId="derivedFieldsEnabled" visibleBindingId="isVintHub" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Is this a VINT device?</Label></Field><Field id="hubPort" type="textfield" enabledBindingId="derivedFieldsEnabled" visibleBindingId="isVintHub" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Hub port:</Label></Field>
 			<Field id="observedConnection" type="textfield"><Label>Phidgets path:</Label></Field>
 			<Field id="discoverySeparator" type="separator"/>
-			<Field id="voltageRatioSensorType" type="menu" defaultValue="">
-				<Label>Voltage input type:</Label>
+			<Field id="isDAQ1500" type="checkbox" defaultValue="false" hidden="true"/>
+			<Field id="voltageRatioSensorType" type="menu" defaultValue="" visibleBindingId="isDAQ1500" visibleBindingValue="false" alwaysUseInDialogHeightCalc="true">
+				<Label>Voltage ratio input type:</Label>
 				<List class="self" method="getPhidgetTypeMenu" filter="VoltageRatioSensorType"/>
 			</Field>
+
+            <Field id="bridgeGain" type="menu" defaultValue="128" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
+                <Label>DAQ1500 bridge gain:</Label>
+                <List><Option value="1">1x</Option><Option value="2">2x</Option><Option value="64">64x</Option><Option value="128">128x</Option></List>
+                <Description>Lower gain if readings saturate.</Description>
+            </Field>
+            <Field id="bridgeEnabled" type="checkbox" defaultValue="true" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Enable bridge input</Label></Field>
+            <Field id="bridgeCalibrationHelp" type="label" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Calibration: save the channel and gain first, then reopen this dialog. Remove all weight, let the reading settle, and capture zero. Apply a known weight, let it settle, enter its value and units, then calibrate. Save applies changes; Cancel discards them.</Label></Field>
+            <Field id="bridgeCaptureZero" type="button" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Capture unloaded zero</Label><CallbackMethod>bridgeCaptureZero</CallbackMethod></Field>
+            <Field id="bridgeZeroRatio" type="textfield" readonly="true" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Captured zero (V/V):</Label></Field>
+            <Field id="bridgeKnownWeight" type="textfield" defaultValue="" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Known weight:</Label></Field>
+            <Field id="bridgeUnits" type="menu" defaultValue="kg" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Weight/force units:</Label><List><Option value="kg">kg</Option><Option value="g">g</Option><Option value="lb">lb</Option><Option value="N">N</Option></List></Field>
+            <Field id="bridgeCalibrate" type="button" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Calibrate with known weight</Label><CallbackMethod>bridgeCalibrate</CallbackMethod></Field>
+            <Field id="bridgeCalibrated" type="checkbox" defaultValue="false" hidden="true"/>
+            <Field id="bridgeScale" type="textfield" defaultValue="1" readonly="true" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Calibration gain:</Label></Field>
+            <Field id="bridgeOffset" type="textfield" defaultValue="0" readonly="true" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Calibration offset (V/V):</Label></Field>
+            <Field id="bridgeTare" type="button" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Tare scale</Label><CallbackMethod>bridgeTare</CallbackMethod></Field>
+            <Field id="bridgeClearCalibration" type="button" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Clear calibration</Label><CallbackMethod>bridgeClearCalibration</CallbackMethod></Field>
+            <Field id="bridgeCalibrationStatus" type="textfield" readonly="true" visibleBindingId="isDAQ1500" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"><Label>Calibration status:</Label></Field>
+            <Field id="bridgeCalibrationSignature" type="textfield" hidden="true"/>
+            <Field id="bridgeCalibrationUnits" type="textfield" hidden="true"/>
+            <Field id="bridgeZeroSignature" type="textfield" hidden="true"/>
 
 			<Field id="dataInterval" type="textfield" defaultValue="1000">
 					<Label>Data interval (ms):</Label>
@@ -115,7 +138,7 @@
 			<Field id="voltageRatioChangeTrigger" type="textfield" defaultValue="0.0">
 					<Label>Voltage ratio change trigger:</Label>
 			</Field>
-			<Field id="sensorValueChangeTrigger" type="textfield" defaultValue="0.0">
+			<Field id="sensorValueChangeTrigger" type="textfield" defaultValue="0.0" visibleBindingId="isDAQ1500" visibleBindingValue="false" alwaysUseInDialogHeightCalc="true">
 					<Label>Sensor value change trigger:</Label>
 			</Field>
 
@@ -128,6 +151,8 @@
 					<Option value="2">2</Option>
 					<Option value="3">3</Option>
 					<Option value="4">4</Option>
+                    <Option value="5">5</Option>
+                    <Option value="6">6</Option>
 				</List>
 			</Field>
 

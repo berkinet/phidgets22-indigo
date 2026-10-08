@@ -447,10 +447,23 @@ class ConfigurationTests(unittest.TestCase):
         errors = instance._validateNativeSettings(values, "voltageRatioInput")
         self.assertIn("reserved", errors["customState"])
 
+    def test_bridge_gain_validation_and_legacy_default(self):
+        instance = object.__new__(plugin.Plugin)
+        for gain in (None, "1", "2", "64", "128", "4", "bad"):
+            values = IndigoLikeDict(dataInterval="1000", decimalPlaces="6",
+                                   voltageRatioSensorType="0", voltageRatioChangeTrigger="0",
+                                   sensorValueChangeTrigger="0")
+            if gain is not None:
+                values["bridgeGain"] = gain
+            errors = instance._validateNativeSettings(values, "voltageRatioInput")
+            self.assertEqual("bridgeGain" in errors, gain in ("4", "bad"))
+            if gain is None:
+                self.assertEqual(values["bridgeGain"], "128")
+
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>2026.1.24</string>", plist)
+        self.assertIn("<string>2026.1.25</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_detach_error_delay_is_conditionally_visible(self):

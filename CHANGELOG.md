@@ -1,5 +1,29 @@
 # Release notes
 
+## 2026.1.25 — 2026-10-08
+
+### Added
+
+- DAQ1500 Wheatstone bridge controls in Voltage Ratio Input: per-channel 1x, 2x,
+  64x, or 128x gain and bridge enable restored on attachment and reconnect.
+- Guided unloaded/known-weight calibration, saved weight/force units, numeric
+  `weight` display, and tare. Configuration edits apply on Save; Cancel discards
+  pending calibration and tare. Raw voltage ratio remains available.
+- Calibration checks prevent reuse after channel, gain, or unit changes, mixing
+  with a custom formula, and capture while disabled, detached, or errored.
+- Raw ratio display offers 5–6 decimals. Bridge setup errors identify the API call.
+
+### Fixed
+
+- DAQ1500 setup skips unsupported sensor-type and sensor-value-trigger calls
+  that can cause “Operation Not Supported” during attachment.
+
+### Validation
+
+- Reviewed relevant discovery, configuration, callback, and lifecycle coverage;
+  added bridge and calibration regressions without removing existing coverage.
+- Physical DAQ1500 and Indigo dialog validation remain pending.
+
 ## 2026.1.24 — 2026-10-07
 
 ### Fixed
