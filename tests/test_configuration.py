@@ -460,10 +460,19 @@ class ConfigurationTests(unittest.TestCase):
             if gain is None:
                 self.assertEqual(values["bridgeGain"], "128")
 
+    def test_dialog_buttons_have_exactly_one_nonempty_title(self):
+        for path in SERVER_PLUGIN.glob("*.xml"):
+            root = ElementTree.parse(path).getroot()
+            for field in root.findall(".//Field[@type='button']"):
+                with self.subTest(file=path.name, field=field.get("id")):
+                    titles = field.findall("Title")
+                    self.assertEqual(len(titles), 1)
+                    self.assertTrue((titles[0].text or "").strip())
+
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>2026.1.25</string>", plist)
+        self.assertIn("<string>2026.1.26</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_detach_error_delay_is_conditionally_visible(self):

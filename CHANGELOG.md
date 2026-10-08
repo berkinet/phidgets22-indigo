@@ -1,5 +1,15 @@
 # Release notes
 
+## 2026.1.26 — 2026-10-08
+
+### Fixed
+
+- Correct the four DAQ1500 calibration buttons to include Indigo’s required
+  `Title` element. This fixes the `PAXControlCreationError` that prevented the
+  Voltage Ratio Input configuration dialog from opening.
+- Add a regression check requiring exactly one nonempty title for every
+  dialog button in the plugin XML files.
+
 ## 2026.1.25 — 2026-10-08
 
 ### Added
