@@ -79,7 +79,11 @@ class ServerOutageTests(unittest.TestCase):
         first = FakePhidget(1, 100)
         second = FakePhidget(2, 100, hub_port=0)
         attached = FakePhidget(3, 200, state="attached")
-        self.plugin.activePhidgets = {1: first, 2: second, 3: attached}
+        from network_server import NetworkServerDevice
+        server = NetworkServerDevice.__new__(NetworkServerDevice)
+        peripheral = types.SimpleNamespace(channelInfo=first.channelInfo)
+        self.plugin.activePhidgets = {
+            4: server, 5: peripheral, 1: first, 2: second, 3: attached}
         for phidget in (first, second, attached):
             phidget._lifecycle_lock = threading.RLock()
             phidget._detached_at = 100.0
@@ -105,7 +109,9 @@ class ServerOutageTests(unittest.TestCase):
         self.assertFalse(any(self.coordinator._batches.values()))
 
     def test_manual_scan_reports_when_no_channels_are_detached(self):
-        self.plugin.runtimeRegistry = types.SimpleNamespace(snapshot=lambda: [])
+        from network_server import NetworkServerDevice
+        self.plugin.runtimeRegistry = types.SimpleNamespace(snapshot=lambda: [
+            NetworkServerDevice.__new__(NetworkServerDevice)])
         self.plugin.scanDetachedPhidgets()
         self.plugin.logger.info.assert_called_once()
         self.plugin.logger.error.assert_not_called()

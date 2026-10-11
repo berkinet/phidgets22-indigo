@@ -1,5 +1,12 @@
 # Release notes
 
+## 2026.1.32 — 2026-10-11
+
+- Fix Scan for detached Phidgets failing when a Network Server device is
+  configured. Skip runtime objects without native-channel attachment lifecycles;
+  continue reporting detached Phidget channels without changing timers.
+
+
 ## 2026.1.31 — 2026-10-11
 
 - Add Scan for detached Phidgets to the Plugin menu. Reports one timed-error

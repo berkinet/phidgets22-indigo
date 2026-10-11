@@ -560,7 +560,12 @@ class Plugin(BridgeUiMixin, RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin,
             now = time.monotonic()
             groups = {}
             for phidget in self.runtimeRegistry.snapshot():
-                with phidget._lifecycle_lock:
+                # The registry also owns server monitors and logical peripherals,
+                # which do not have native-channel attachment lifecycles.
+                lock = getattr(phidget, "_lifecycle_lock", None)
+                if lock is None or getattr(phidget, "channelInfo", None) is None:
+                    continue
+                with lock:
                     if phidget._state not in ("starting", "detached"):
                         continue
                     started = phidget._detached_at

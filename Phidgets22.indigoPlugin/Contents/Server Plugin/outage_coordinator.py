@@ -153,6 +153,7 @@ class OutageCoordinator(object):
         configured = [
             phidget for phidget in self._channel_snapshot()
             if (getattr(phidget, "channelInfo", None) is not None and
+                hasattr(phidget, "_state") and
                 PhysicalDeviceIdentity.from_wrapper(phidget) ==
                 physical_device)]
         all_detached = len(configured) > 1 and set(affected) == set(configured)
