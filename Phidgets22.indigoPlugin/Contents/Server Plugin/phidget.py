@@ -7,6 +7,7 @@ import threading
 import time
 import sys
 
+from outage_message import outage_duration, reminder_cadence
 import phidget_util
 from config_util import saved_bool
 from connection_identity import (ChannelIdentity, PhysicalDeviceIdentity,
@@ -83,6 +84,7 @@ class PhidgetBase(object):
         self._detach_generation = 0
         self._detach_error_generation = 0
         self._state = "stopped"
+        self._daily_reminder_reported = False
         self._detached_at = None
         self._detach_announced = False
         self._attach_count = 0
@@ -109,6 +111,16 @@ class PhidgetBase(object):
                     self.__class__.__name__, self.serverDisplayName(),
                     self.channelInfo.serialNumber, self.channelInfo.hubPort,
                     self.channelInfo.channel, net_info.isRemote))
+
+    def _unavailable_message(self, detached_for):
+        return ("Indigo device '%s' remains unavailable after %s "
+                "since this plugin session observed the outage; Physical Phidget "
+                "serial %s (server: %s; hub port %s, channel %s). "
+                "Check the Phidget and Network Server; automatic attachment "
+                "remains active." % (self.indigoDevice.name,
+                    outage_duration(detached_for), self.channelInfo.serialNumber,
+                    self.serverDisplayName(), self.channelInfo.hubPort,
+                    self.channelInfo.channel))
 
     def _error_identity(self):
         return "device='%s' id=%s" % (
@@ -375,14 +387,16 @@ class PhidgetBase(object):
                 return
             state = self._state
             detached_for = time.monotonic() - self._detached_at if self._detached_at else 0
+            first_daily = detached_for >= 86400 and not self._daily_reminder_reported
+            if detached_for >= 86400:
+                self._daily_reminder_reported = True
             operational_detach = self._attach_count > 0
             self.timer = None
         try:
             if operational_detach:
                 self.logger.warning(
-                    "Phidget remains detached after %.1f seconds; awaiting "
-                    "automatic reattach: %s", detached_for,
-                    self._identity())
+                    "%s%s", reminder_cadence(detached_for, first_daily),
+                    self._unavailable_message(detached_for))
             elif self._startup_contention_message:
                 with self._lifecycle_lock:
                     self._startup_contention_expired = True
@@ -418,8 +432,8 @@ class PhidgetBase(object):
                     coordinator(self, detached_for, state)
                 else:
                     self.logger.error(
-                        "Phidget remains detached after %.1f seconds (%s): %s",
-                        detached_for, state, self._identity())
+                        "%s%s", reminder_cadence(detached_for, first_daily),
+                        self._unavailable_message(detached_for))
         except Exception:
             self.logger.error("Attach-timeout handler failed: %s\n%s",
                               self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
@@ -566,6 +580,7 @@ class PhidgetBase(object):
             self._cancel_detach_error_timer()
             with self._lifecycle_lock:
                 self._state = "attached"
+                self._daily_reminder_reported = False
                 self._detached_at = None
                 self._detach_announced = False
                 startup_contention_recovered = bool(

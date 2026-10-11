@@ -1,5 +1,15 @@
 # Release notes
 
+## 2026.1.30 — 2026-10-11
+
+- Startup-unavailable reminders emit one message per Indigo device, including
+  shared physical-device outage context.
+- Unavailable-device reminders identify Indigo devices and physical Phidgets,
+  show elapsed hours/minutes, and label the first daily reminder explicitly.
+- Clarify that outage duration starts when the current plugin session observes
+  the outage; restarting or upgrading the plugin resets its outage clock.
+
+
 ## 2026.1.29 — 2026-10-11
 
 - After 24 hours continuously detached, each device's reminders back off to

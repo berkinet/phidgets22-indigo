@@ -185,7 +185,7 @@ class ServerOutageTests(unittest.TestCase):
         self.assertIn("'Test device 1' (channel 0)", arguments[-1])
         self.assertIn("'Test device 2' (channel 1)", arguments[-1])
 
-    def test_all_startup_timeouts_for_serial_are_one_physical_device_error(self):
+    def test_all_startup_timeouts_report_each_indigo_device(self):
         first = FakePhidget(1, 622666, state="starting", channel=0, hub_port=0)
         second = FakePhidget(2, 622666, state="starting", channel=0, hub_port=1)
         self.plugin.activePhidgets = {1: first, 2: second}
@@ -195,14 +195,17 @@ class ServerOutageTests(unittest.TestCase):
 
         self.coordinator.flush_startup_unavailable(physical_key)
 
-        self.plugin.logger.error.assert_called_once()
-        arguments = self.plugin.logger.error.call_args.args
-        self.assertIn("Physical Phidget serial %s remains unavailable", arguments[0])
-        self.assertIn("all %d configured channels are detached", arguments[0])
-        self.assertIn("automatic attachment remains active", arguments[0])
-        self.assertEqual(arguments[1:5], (622666, 7200.1, 2, "Test-Server-B"))
-        self.assertIn("'Test device 1' (hub port 0, channel 0)", arguments[5])
-        self.assertIn("'Test device 2' (hub port 1, channel 0)", arguments[5])
+        self.assertEqual(self.plugin.logger.error.call_count, 2)
+        for call, name, port in zip(self.plugin.logger.error.call_args_list,
+                                    ("Test device 1", "Test device 2"), (0, 1)):
+            arguments = call.args
+            self.assertIn("Indigo device '%s'", arguments[0])
+            self.assertIn("automatic attachment remains active", arguments[0])
+            self.assertEqual(arguments[1], name)
+            self.assertEqual(arguments[2], "02:00 hours/minutes")
+            self.assertEqual(arguments[3], 622666)
+            self.assertEqual(arguments[4], "all 2 configured channels are detached; ")
+            self.assertEqual(arguments[5:], ("Test-Server-B", port, 0))
 
     def test_partial_startup_timeout_remains_channel_specific(self):
         first = FakePhidget(1, 622666, state="starting")
@@ -215,7 +218,7 @@ class ServerOutageTests(unittest.TestCase):
         self.coordinator.flush_startup_unavailable(physical_key)
 
         self.plugin.logger.error.assert_called_once()
-        self.assertIn("Phidget remains detached", self.plugin.logger.error.call_args.args[0])
+        self.assertIn("Indigo device", self.plugin.logger.error.call_args.args[0])
         self.assertIn("automatic attachment remains active",
                       self.plugin.logger.error.call_args.args[0])
 

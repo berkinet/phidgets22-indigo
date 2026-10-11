@@ -407,6 +407,8 @@ class PhidgetLifecycleTests(unittest.TestCase):
             self.phidget.connectionTimeoutHandler(self.phidget._timer_generation)
         self.phidget.plugin.phidgetStartupUnavailableExpired.assert_not_called()
         self.phidget.test_logger.error.assert_called_once()
+        self.assertIn("First daily reminder", self.phidget.test_logger.error.call_args.args[1])
+        self.assertIn("hours/minutes", self.phidget.test_logger.error.call_args.args[2])
 
     def test_startup_grace_is_at_least_thirty_seconds(self):
         self.phidget = TestPhidget(attach_timeout="5")

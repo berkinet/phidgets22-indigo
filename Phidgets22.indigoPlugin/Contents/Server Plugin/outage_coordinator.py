@@ -2,6 +2,8 @@
 
 """Coalesced reporting for channel, physical-device, and server outages."""
 
+from outage_message import outage_duration
+
 import threading
 import time
 
@@ -149,28 +151,18 @@ class OutageCoordinator(object):
             if (getattr(phidget, "channelInfo", None) is not None and
                 PhysicalDeviceIdentity.from_wrapper(phidget) ==
                 physical_device)]
-        if not (len(configured) > 1 and set(affected) == set(configured)):
-            for phidget, (detached_for, state) in affected.items():
-                self.logger.error(
-                    "Phidget remains detached after %.1f seconds (%s): %s; "
-                    "automatic attachment remains active",
-                    detached_for, state, phidget._identity())
-            return
-        servers = ", ".join(sorted(set(
-            phidget.serverDisplayName() for phidget in affected)))
-        names = ", ".join(sorted(
-            "'%s' (hub port %s, channel %s)" % (
-                phidget.indigoDevice.name, phidget.channelInfo.hubPort,
-                phidget.channelInfo.channel)
-            for phidget in affected))
-        longest = max(details[0] for details in affected.values())
-        self.logger.error(
-            "Physical Phidget serial %s remains unavailable after %.1f seconds; "
-            "all %d configured channels are detached (server: %s): %s. "
-            "Check the Phidget and Network Server; automatic attachment "
-            "remains active.",
-            physical_device.serial_number, longest, len(affected), servers,
-            names)
+        all_detached = len(configured) > 1 and set(affected) == set(configured)
+        for phidget, (detached_for, state) in affected.items():
+            status = ("all %d configured channels are detached; " % len(configured)
+                      if all_detached else "")
+            self.logger.error(
+                "Indigo device '%s' remains unavailable after %s "
+                "since this plugin session observed the outage; Physical "
+                "Phidget serial %s; %s(server: %s; hub port %s, channel %s). "
+                "Check the Phidget and Network Server; automatic attachment remains active.",
+                phidget.indigoDevice.name, outage_duration(detached_for),
+                phidget.channelInfo.serialNumber, status, phidget.serverDisplayName(),
+                phidget.channelInfo.hubPort, phidget.channelInfo.channel)
 
     def flush_startup_contention(self, key, token=None):
         pending = self._take_batch("startup-contention", key, {}, token)
