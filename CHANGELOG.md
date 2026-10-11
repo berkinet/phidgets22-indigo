@@ -2,6 +2,11 @@
 
 ## 2026.1.33 — 2026-10-11
 
+- Preserve outage start time, next reminder deadline and daily-reminder state
+  across plugin restarts/upgrades. Recovery clears the saved record; changed
+  hardware addresses discard it. Time while stopped counts toward the outage.
+  Overdue reminders wait for the normal startup attachment grace period.
+
 - Match the requested unavailable-device log wording and punctuation, removing
   the plugin-session phrase from timed reminders and manual scan messages.
 

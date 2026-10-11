@@ -3,6 +3,8 @@
 # Bulk of the code for actually interacting with the phidget devices.
 #
 
+import json
+import math
 import threading
 import time
 import sys
@@ -111,6 +113,56 @@ class PhidgetBase(object):
                     self.__class__.__name__, self.serverDisplayName(),
                     self.channelInfo.serialNumber, self.channelInfo.hubPort,
                     self.channelInfo.channel, net_info.isRemote))
+
+    def _outage_address(self):
+        info = self.channelInfo
+        return [info.serialNumber, info.hubPort, info.channel,
+                info.isHubPortDevice, info.netInfo.isRemote,
+                info.netInfo.serverName, self.indigoDevice.deviceTypeId
+                if hasattr(self.indigoDevice, "deviceTypeId") else ""]
+
+    def _restore_outage(self):
+        self._restored_reminder_due = None
+        raw = self.indigoDevice.pluginProps.get("detachedOutageRecord")
+        if not raw:
+            return
+        try:
+            record = json.loads(raw)
+            if record["address"] != self._outage_address():
+                return
+            now = time.time()
+            started, due = float(record["started"]), float(record["due"])
+            if not (math.isfinite(started) and math.isfinite(due) and
+                    0 < started <= now and started <= due):
+                raise ValueError("invalid outage timestamps")
+            self._detached_at = time.monotonic() - (now - started)
+            self._restored_reminder_due = due
+            self._daily_reminder_reported = record.get("daily") is True
+        except (ValueError, TypeError, KeyError) as error:
+            self.logger.warning("Ignoring invalid saved outage for %s: %s",
+                                self._error_identity(), str(error).replace("\n", " "))
+
+    def _persist_outage(self, delay=None):
+        # Indigo persists plugin properties immediately; keep normal settings.
+        save = getattr(self.indigoDevice, "replacePluginPropsOnServer", None)
+        if save is None:
+            return
+        try:
+            props = dict(self.indigoDevice.pluginProps)
+            if self._detached_at is None:
+                props.pop("detachedOutageRecord", None)
+            else:
+                now = time.time()
+                elapsed = max(0, time.monotonic() - self._detached_at)
+                props["detachedOutageRecord"] = json.dumps({
+                    "address": self._outage_address(), "started": now - elapsed,
+                    "due": now + (delay if delay is not None else
+                                  self.initial_connection_timeout),
+                    "daily": self._daily_reminder_reported})
+            save(props)
+        except Exception as error:
+            self.logger.error("Unable to save outage for %s: %s",
+                              self._error_identity(), str(error).replace("\n", " "))
 
     def _unavailable_message(self, detached_for):
         return ("Indigo device '%s' remains unavailable after %s; Physical Phidget "
@@ -241,8 +293,13 @@ class PhidgetBase(object):
         self._cancel_attach_timer()
         with self._lifecycle_lock:
             generation = self._timer_generation
+            due = getattr(self, "_restored_reminder_due", None)
+            delay = (max(self.initial_connection_timeout, due - time.time())
+                     if due is not None else self.initial_connection_timeout)
+            self._restored_reminder_due = None
+            self._persist_outage(delay)
             timer = threading.Timer(
-                self.initial_connection_timeout,
+                delay,
                 self.connectionTimeoutHandler,
                 args=(generation,))
             timer.daemon = True
@@ -261,6 +318,7 @@ class PhidgetBase(object):
                             if self._detached_at is not None else 0)
             interval = (max(86400, self.detached_reminder_interval)
                         if detached_for >= 86400 else self.detached_reminder_interval)
+            self._persist_outage(interval)
             timer = threading.Timer(
                 interval,
                 self.connectionTimeoutHandler,
@@ -352,6 +410,8 @@ class PhidgetBase(object):
             self._state = "starting"
             self._detached_at = time.monotonic()
             self._started_at = self._detached_at
+            self._daily_reminder_reported = False
+            self._restore_outage()
             self._startup_contention_message = None
             self._startup_error_message = None
             self._startup_contention_expired = False
@@ -489,7 +549,9 @@ class PhidgetBase(object):
                 if self._state in ("stopping", "stopped"):
                     return
                 self._state = "detached"
-                self._detached_at = time.monotonic()
+                if self._detached_at is None:
+                    self._detached_at = time.monotonic()
+                    self._persist_outage()
                 self._detach_announced = False
                 previously_attached = self._attach_count > 0
             if previously_attached:
@@ -581,6 +643,7 @@ class PhidgetBase(object):
                 self._state = "attached"
                 self._daily_reminder_reported = False
                 self._detached_at = None
+                self._persist_outage()
                 self._detach_announced = False
                 startup_contention_recovered = bool(
                     self._startup_contention_message)
