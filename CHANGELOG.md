@@ -1,5 +1,12 @@
 # Release notes
 
+## 2026.1.34 — 2026-10-11
+
+- Fix restart/reinitialization loops caused by saving outage records in Indigo
+  device properties. Persist records atomically in the plugin log directory
+  instead; attachment and recovery never modify device configuration.
+
+
 ## 2026.1.33 — 2026-10-11
 
 - Preserve outage start time, next reminder deadline and daily-reminder state

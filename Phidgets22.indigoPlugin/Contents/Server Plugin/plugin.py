@@ -3,6 +3,7 @@
 # Originally created by Eric Perlman (@perlman):
 # https://github.com/perlman/phidgets-indigo
 
+import os
 import logging
 import time
 import threading
@@ -41,6 +42,7 @@ from device_factory import create_phidget
 from discovery import DiscoveryInventory, channel_sort_key, format_channel
 from discovery_ui import DiscoveryUiMixin
 from event_coordinator import EventCoordinator
+from outage_store import OutageStore
 from outage_coordinator import OutageCoordinator
 from version_check import start_version_check
 from version_collection import (ATTACH_DELAY_SECONDS, UPDATE_VARIABLE_NAME,
@@ -58,6 +60,7 @@ class Plugin(BridgeUiMixin, RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin,
 
         self.plugin_file_handler.setLevel(logging.INFO)
         self.indigo_log_handler.setLevel(logging.INFO)
+        self.outageStore = OutageStore(os.path.dirname(self.plugin_file_handler.baseFilename))
         self.runtimeRegistry = RuntimeDeviceRegistry()
         self._networkServerLock = threading.RLock()
         self.phidgetInfo = PhidgetInfo()

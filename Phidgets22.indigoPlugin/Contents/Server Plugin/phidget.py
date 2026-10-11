@@ -3,7 +3,6 @@
 # Bulk of the code for actually interacting with the phidget devices.
 #
 
-import json
 import math
 import threading
 import time
@@ -123,11 +122,13 @@ class PhidgetBase(object):
 
     def _restore_outage(self):
         self._restored_reminder_due = None
-        raw = self.indigoDevice.pluginProps.get("detachedOutageRecord")
-        if not raw:
+        store = getattr(self.indigo_plugin, "outageStore", None)
+        if store is None:
             return
         try:
-            record = json.loads(raw)
+            record = store.load(self.indigoDevice.id)
+            if record is None:
+                return
             if record["address"] != self._outage_address():
                 return
             now = time.time()
@@ -138,28 +139,25 @@ class PhidgetBase(object):
             self._detached_at = time.monotonic() - (now - started)
             self._restored_reminder_due = due
             self._daily_reminder_reported = record.get("daily") is True
-        except (ValueError, TypeError, KeyError) as error:
+        except Exception as error:
             self.logger.warning("Ignoring invalid saved outage for %s: %s",
                                 self._error_identity(), str(error).replace("\n", " "))
 
     def _persist_outage(self, delay=None):
-        # Indigo persists plugin properties immediately; keep normal settings.
-        save = getattr(self.indigoDevice, "replacePluginPropsOnServer", None)
-        if save is None:
+        store = getattr(self.indigo_plugin, "outageStore", None)
+        if store is None:
             return
         try:
-            props = dict(self.indigoDevice.pluginProps)
-            if self._detached_at is None:
-                props.pop("detachedOutageRecord", None)
-            else:
+            record = None
+            if self._detached_at is not None:
                 now = time.time()
                 elapsed = max(0, time.monotonic() - self._detached_at)
-                props["detachedOutageRecord"] = json.dumps({
+                record = {
                     "address": self._outage_address(), "started": now - elapsed,
                     "due": now + (delay if delay is not None else
                                   self.initial_connection_timeout),
-                    "daily": self._daily_reminder_reported})
-            save(props)
+                    "daily": self._daily_reminder_reported}
+            store.save(self.indigoDevice.id, record)
         except Exception as error:
             self.logger.error("Unable to save outage for %s: %s",
                               self._error_identity(), str(error).replace("\n", " "))
