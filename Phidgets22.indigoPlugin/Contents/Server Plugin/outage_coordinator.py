@@ -132,7 +132,7 @@ class OutageCoordinator(object):
         messages = sorted(set(details[1] for details in affected.values()))
         self.logger.error(
             "Phidget open failed after %.1f seconds on server '%s', physical "
-            "serial %s; %d configured channels remain unavailable: %s. %s "
+            "serial %s; %d configured Indigo devices remain unavailable: %s. %s "
             "Automatic attachment remains active.",
             longest, first.serverDisplayName(), first.channelInfo.serialNumber,
             len(affected), names, "; ".join(messages))
@@ -163,7 +163,10 @@ class OutageCoordinator(object):
             check = getattr(phidget, "isChannelDetached", None)
             if check is not None and not check():
                 continue
-            status = ("all %d configured channels are detached; " % len(configured)
+            status = (("both Indigo devices configured for this Phidget are unavailable; "
+                       if len(configured) == 2 else
+                       "all %d Indigo devices configured for this Phidget are unavailable; "
+                       % len(configured))
                       if all_detached else "")
             self.logger.error(
                 "Indigo device '%s' remains unavailable after %s; Physical "
@@ -213,7 +216,7 @@ class OutageCoordinator(object):
                     "displayName": affected[0].serverDisplayName(),
                 }
             self.logger.warning(
-                "Phidget server '%s' disconnected; %d configured channels "
+                "Phidget server '%s' disconnected; %d configured Indigo devices "
                 "across %d physical Phidgets are unavailable and awaiting "
                 "automatic reattach", affected[0].serverDisplayName(),
                 len(affected), len(serials))
@@ -237,7 +240,7 @@ class OutageCoordinator(object):
                 duration = self._clock() - outage["detachedAt"]
                 self.logger.info(
                     "Phidget server '%s' recovered after %.1f seconds; all %d "
-                    "configured channels across %d physical Phidgets reattached",
+                    "configured Indigo devices across %d physical Phidgets reattached",
                     outage["displayName"], duration, outage["channelCount"],
                     outage["serialCount"])
                 with self._lock:

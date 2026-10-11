@@ -1,5 +1,13 @@
 # Release notes
 
+## 2026.1.37 — 2026-10-11
+
+- Outage and recovery summaries count configured Indigo devices rather than
+  calling them Phidget channels. Shared outages say “both Indigo devices
+  configured for this Phidget are unavailable,” or “all N” for larger groups.
+  Phidget hub port/channel addressing remains unchanged.
+
+
 ## 2026.1.36 — 2026-10-11
 
 - Mark unavailable channels with an Indigo error after startup grace even when

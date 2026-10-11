@@ -260,7 +260,7 @@ class ServerOutageTests(unittest.TestCase):
             self.assertEqual(arguments[1], name)
             self.assertEqual(arguments[2], "02:00 hours/minutes")
             self.assertEqual(arguments[3], 622666)
-            self.assertEqual(arguments[4], "all 2 configured channels are detached; ")
+            self.assertEqual(arguments[4], "both Indigo devices configured for this Phidget are unavailable; ")
             self.assertEqual(arguments[5:], ("Test-Server-B", port, 0))
 
     def test_partial_startup_timeout_remains_channel_specific(self):
