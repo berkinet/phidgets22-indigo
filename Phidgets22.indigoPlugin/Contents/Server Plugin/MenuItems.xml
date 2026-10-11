@@ -1,5 +1,9 @@
 <?xml version="1.0"?>
 <MenuItems>
+	<MenuItem id="scanDetachedPhidgets">
+		<Name>Scan for detached Phidgets</Name>
+		<CallbackMethod>scanDetachedPhidgets</CallbackMethod>
+	</MenuItem>
 	<MenuItem id="printIndigoPhidgetDevices">
 		<Name>Print Indigo Phidget devices to log</Name>
 		<CallbackMethod>printIndigoPhidgetDevices</CallbackMethod>

@@ -146,6 +146,10 @@ class OutageCoordinator(object):
         }
         if not affected:
             return
+        self.report_unavailable(physical_device, affected)
+
+    def report_unavailable(self, physical_device, affected):
+        """Log a snapshot without changing batches, timers, or outage state."""
         configured = [
             phidget for phidget in self._channel_snapshot()
             if (getattr(phidget, "channelInfo", None) is not None and

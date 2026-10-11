@@ -74,6 +74,42 @@ class ServerOutageTests(unittest.TestCase):
             lambda: list(self.plugin.activePhidgets.values()))
         self.server_key = "Test-Server-B._phidget22server._tcp.local"
 
+    def test_manual_scan_reports_each_device_without_touching_timers(self):
+        import threading
+        first = FakePhidget(1, 100)
+        second = FakePhidget(2, 100, hub_port=0)
+        attached = FakePhidget(3, 200, state="attached")
+        self.plugin.activePhidgets = {1: first, 2: second, 3: attached}
+        for phidget in (first, second, attached):
+            phidget._lifecycle_lock = threading.RLock()
+            phidget._detached_at = 100.0
+            phidget.timer = mock.Mock()
+            phidget._timer_generation = 7
+            phidget._daily_reminder_reported = False
+        self.plugin.runtimeRegistry = types.SimpleNamespace(
+            snapshot=lambda: list(self.plugin.activePhidgets.values()))
+        self.plugin.outageCoordinator = self.coordinator
+        with mock.patch.object(plugin_module.time, "monotonic", return_value=10900), \
+                mock.patch("outage_coordinator.threading.Timer") as timer:
+            self.plugin.scanDetachedPhidgets()
+            timer.assert_not_called()
+        self.assertEqual(self.plugin.logger.error.call_count, 2)
+        for call, phidget in zip(self.plugin.logger.error.call_args_list, (first, second)):
+            self.assertEqual(call.args[1], phidget.indigoDevice.name)
+            self.assertEqual(call.args[2], "03:00 hours/minutes")
+        for phidget in (first, second, attached):
+            self.assertEqual(phidget._detached_at, 100.0)
+            self.assertEqual(phidget._timer_generation, 7)
+            self.assertFalse(phidget._daily_reminder_reported)
+            self.assertEqual(phidget.timer.mock_calls, [])
+        self.assertFalse(any(self.coordinator._batches.values()))
+
+    def test_manual_scan_reports_when_no_channels_are_detached(self):
+        self.plugin.runtimeRegistry = types.SimpleNamespace(snapshot=lambda: [])
+        self.plugin.scanDetachedPhidgets()
+        self.plugin.logger.info.assert_called_once()
+        self.plugin.logger.error.assert_not_called()
+
     def test_batch_timer_is_replaced_and_shutdown_cancels_it(self):
         timers = []
 

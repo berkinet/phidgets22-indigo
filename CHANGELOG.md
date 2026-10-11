@@ -1,5 +1,12 @@
 # Release notes
 
+## 2026.1.31 — 2026-10-11
+
+- Add Scan for detached Phidgets to the Plugin menu. Reports one timed-error
+  style message per unavailable Indigo device, without changing timers, outage
+  timestamps, pending reports, or daily-reminder state.
+
+
 ## 2026.1.30 — 2026-10-11
 
 - Startup-unavailable reminders emit one message per Indigo device, including

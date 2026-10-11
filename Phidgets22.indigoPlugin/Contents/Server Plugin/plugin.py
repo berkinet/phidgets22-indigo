@@ -4,6 +4,7 @@
 # https://github.com/perlman/phidgets-indigo
 
 import logging
+import time
 import threading
 import sys
 
@@ -552,6 +553,28 @@ class Plugin(BridgeUiMixin, RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin,
                                 value)
         else:
             self.logger.info("No Indigo Phidget firmware updates are available")
+
+    def scanDetachedPhidgets(self):
+        """Report current unavailable channels without advancing reminder clocks."""
+        try:
+            now = time.monotonic()
+            groups = {}
+            for phidget in self.runtimeRegistry.snapshot():
+                with phidget._lifecycle_lock:
+                    if phidget._state not in ("starting", "detached"):
+                        continue
+                    started = phidget._detached_at
+                    elapsed = max(0, now - started) if started is not None else 0
+                    state = phidget._state
+                key = PhysicalDeviceIdentity.from_wrapper(phidget)
+                groups.setdefault(key, {})[phidget] = (elapsed, state)
+            for key, affected in groups.items():
+                self.outageCoordinator.report_unavailable(key, affected)
+            if not groups:
+                self.logger.info("Scan for detached Phidgets: no detached Phidgets found.")
+        except Exception as error:
+            self.logger.error("Scan for detached Phidgets failed: %s",
+                              str(error).replace("\n", " "))
 
     def printVisiblePhidgets(self):
         inventory = self.discoveryInventory
