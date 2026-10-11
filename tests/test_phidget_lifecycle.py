@@ -385,6 +385,29 @@ class PhidgetLifecycleTests(unittest.TestCase):
         self.assertIs(self.phidget.timer, timer)
         timer.start.assert_called_once_with()
 
+    def test_long_outage_reminders_become_daily_and_recovery_resets_interval(self):
+        self.phidget = TestPhidget()
+        self.phidget.start()
+        with mock.patch.object(phidget_module.time, "monotonic", return_value=200000),                 mock.patch.object(phidget_module.threading, "Timer") as timer_class:
+            self.phidget._detached_at = 100000
+            generation = self.phidget._timer_generation
+            self.phidget._schedule_detached_reminder(generation)
+            self.assertEqual(timer_class.call_args.args[0], 86400)
+            self.phidget.onAttachHandler(self.phidget.native)
+            self.phidget.onDetachHandler(self.phidget.native)
+            self.phidget._schedule_detached_reminder(self.phidget._timer_generation)
+            self.assertEqual(timer_class.call_args.args[0], 3600)
+
+    def test_long_startup_outage_logs_each_device_separately(self):
+        self.phidget = TestPhidget()
+        self.phidget.plugin.phidgetStartupUnavailableExpired = mock.Mock()
+        self.phidget.start()
+        self.phidget._detached_at = 100000
+        with mock.patch.object(phidget_module.time, "monotonic", return_value=200000):
+            self.phidget.connectionTimeoutHandler(self.phidget._timer_generation)
+        self.phidget.plugin.phidgetStartupUnavailableExpired.assert_not_called()
+        self.phidget.test_logger.error.assert_called_once()
+
     def test_startup_grace_is_at_least_thirty_seconds(self):
         self.phidget = TestPhidget(attach_timeout="5")
         self.assertEqual(self.phidget.initial_connection_timeout, 30)

@@ -1,5 +1,19 @@
 # Release notes
 
+## 2026.1.29 — 2026-10-11
+
+- After 24 hours continuously detached, each device's reminders back off to
+  once per day (or its longer configured interval). Recovery remains immediate;
+  a new outage resets the interval. Long-standing startup-unavailable reminders
+  identify each device separately. Automatic reattachment is unchanged.
+
+- Digital Output async failures identify the device, Indigo ID, server, serial,
+  hub port/channel, operation and requested value. Context is captured per
+  request, so overlapping On/Off callbacks retain the correct operation.
+- Failed Digital Output status reads report concise contextual messages without
+  Python tracebacks. Failed async writes still do not publish success or read status.
+
+
 ## 2026.1.28 — 2026-10-08
 
 ### Added

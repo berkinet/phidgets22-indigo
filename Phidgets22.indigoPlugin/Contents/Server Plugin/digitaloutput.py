@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import traceback
 
 import indigo
 
@@ -19,7 +18,7 @@ class DigitalOutputPhidget(PhidgetBase):
             self.updateStateOnServer("brightnessLevel", value=brightnessLevel, uiValue="%d" % brightnessLevel)
             self.updateStateOnServer("onOffState", value=onOffState, uiValue="on" if onOffState else "off")
         except Exception as e:
-            self.logger.error('%s: %s' % (self.indigoDevice.name, traceback.format_exc()))
+            self.logger.error('Digital output status read failed: %s; %s', self._identity(), str(e))
 
     def addPhidgetHandlers(self):
         self.phidget.setOnErrorHandler(self.onErrorHandler)
@@ -44,22 +43,35 @@ class DigitalOutputPhidget(PhidgetBase):
 
     def actionControlDevice(self, action):
         if action.deviceAction == indigo.kDeviceAction.TurnOn:
-            self.phidget.setState_async(True, self.asyncSetResult)
+            self.phidget.setState_async(True, self._result_callback("Turn On", True))
         elif action.deviceAction == indigo.kDeviceAction.TurnOff:
-            self.phidget.setState_async(False, self.asyncSetResult)
+            self.phidget.setState_async(False, self._result_callback("Turn Off", False))
         elif action.deviceAction == indigo.kDeviceAction.Toggle:
             onOffState = bool(self.phidget.getState())
-            self.phidget.setState_async(not onOffState, self.asyncSetResult)
+            self.phidget.setState_async(not onOffState, self._result_callback("Toggle", not onOffState))
         elif action.deviceAction == indigo.kDeviceAction.SetBrightness:
             # Brightness value will be 0-100; phidgets expects 0.0-1.0
-            self.phidget.setDutyCycle_async(action.actionValue / 100.0, self.asyncSetResult)
+            self.phidget.setDutyCycle_async(action.actionValue / 100.0, self._result_callback("Set brightness", action.actionValue))
         elif action.deviceAction == indigo.kDeviceAction.RequestStatus:
             self.updateIndigoStatus()
         else:
             self.logger.error("Unexpected action: %s" % action.deviceAction)
 
-    def asyncSetResult(self, ch, res, details):
+    def _result_callback(self, operation, requested):
+        # Capture each request separately; completion order may differ from submission.
+        identity = self._identity()
+        def completed(ch, res, details):
+            self.asyncSetResult(ch, res, details, operation, requested, identity)
+        return completed
+
+    def asyncSetResult(self, ch, res, details, operation="unspecified write", requested=None, identity=None):
         if res != ErrorCode.EPHIDGET_OK:
-            self.logger.error("Async failure: %i : %s" % (res, details))
+            if identity is None:
+                try:
+                    identity = self._identity()
+                except Exception:
+                    identity = "device identity unavailable"
+            self.logger.error("Async failure: %s : %s; %s; operation=%s requested=%s",
+                              res, details, identity, operation, requested)
             return
         self.updateIndigoStatus()

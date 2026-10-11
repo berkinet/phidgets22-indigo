@@ -135,6 +135,23 @@ class DeviceWrapperTests(unittest.TestCase):
         wrapper.logger.error.assert_called_once()
         wrapper.updateIndigoStatus.assert_not_called()
 
+    def test_digital_output_async_context_survives_overlapping_requests(self):
+        wrapper = object.__new__(digitaloutput.DigitalOutputPhidget)
+        wrapper.logger = mock.Mock()
+        wrapper.updateIndigoStatus = mock.Mock()
+        wrapper._identity = mock.Mock(return_value="device='Close door' id=354290814 server=CM-Poulailler serial=744571 hubPort=5 channel=0")
+        on = wrapper._result_callback("Turn On", True)
+        off = wrapper._result_callback("Turn Off", False)
+        off(None, 52, "Device not Attached")
+        on(None, 52, "Device not Attached")
+        messages = wrapper.logger.error.call_args_list
+        self.assertEqual(messages[0].args[-2:], ("Turn Off", False))
+        self.assertEqual(messages[1].args[-2:], ("Turn On", True))
+        self.assertIn("354290814", messages[0].args[3])
+        wrapper.updateIndigoStatus.assert_not_called()
+        on(None, 0, "OK")
+        wrapper.updateIndigoStatus.assert_called_once()
+
     def test_adapter_gpio_input_configures_pullup_and_inverts_switch_state(self):
         wrapper = object.__new__(adapter_gpio.AdapterGPIOInputPhidget)
         wrapper.inputMode = "pullup"

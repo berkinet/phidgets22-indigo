@@ -246,8 +246,12 @@ class PhidgetBase(object):
                 return
             self._timer_generation += 1
             next_generation = self._timer_generation
+            detached_for = (time.monotonic() - self._detached_at
+                            if self._detached_at is not None else 0)
+            interval = (max(86400, self.detached_reminder_interval)
+                        if detached_for >= 86400 else self.detached_reminder_interval)
             timer = threading.Timer(
-                self.detached_reminder_interval,
+                interval,
                 self.connectionTimeoutHandler,
                 args=(next_generation,))
             timer.daemon = True
@@ -410,7 +414,7 @@ class PhidgetBase(object):
                 self.indigoDevice.setErrorStateOnServer('Detached')
                 coordinator = getattr(
                     self.indigo_plugin, "phidgetStartupUnavailableExpired", None)
-                if coordinator is not None:
+                if coordinator is not None and detached_for < 86400:
                     coordinator(self, detached_for, state)
                 else:
                     self.logger.error(
