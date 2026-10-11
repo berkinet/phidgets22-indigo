@@ -113,6 +113,18 @@ class PhidgetBase(object):
                     self.channelInfo.serialNumber, self.channelInfo.hubPort,
                     self.channelInfo.channel, net_info.isRemote))
 
+    def isChannelDetached(self):
+        """Use the SDK attachment status rather than cached initialization state."""
+        with self._lifecycle_lock:
+            if self._state not in ("starting", "detached"):
+                return False
+        try:
+            return not self.phidget.getAttached()
+        except Exception as error:
+            self.logger.debug("Unable to check attachment for %s: %s",
+                              self._error_identity(), str(error).replace("\n", " "))
+            return True
+
     def _outage_address(self):
         info = self.channelInfo
         return [info.serialNumber, info.hubPort, info.channel,
@@ -450,6 +462,8 @@ class PhidgetBase(object):
             operational_detach = self._attach_count > 0
             self.timer = None
         try:
+            if not self.isChannelDetached():
+                return
             if operational_detach:
                 self.logger.warning(
                     "%s%s", reminder_cadence(detached_for, first_daily),

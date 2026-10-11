@@ -574,6 +574,9 @@ class Plugin(BridgeUiMixin, RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin,
                     started = phidget._detached_at
                     elapsed = max(0, now - started) if started is not None else 0
                     state = phidget._state
+                check = getattr(phidget, "isChannelDetached", None)
+                if check is not None and not check():
+                    continue
                 key = PhysicalDeviceIdentity.from_wrapper(phidget)
                 groups.setdefault(key, {})[phidget] = (elapsed, state)
             for key, affected in groups.items():

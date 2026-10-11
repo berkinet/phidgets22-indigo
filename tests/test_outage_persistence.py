@@ -92,3 +92,14 @@ class OutagePersistenceTests(unittest.TestCase):
             self.phidget._schedule_detached_reminder(self.phidget._timer_generation)
             timer.return_value.start.assert_called_once()
         self.phidget.test_logger.error.assert_called_once()
+
+    def test_attached_native_channel_is_not_reported_from_stale_lifecycle(self):
+        self.phidget._state = 'detached'
+        self.phidget._detached_at = 100
+        self.phidget.native.getAttached = mock.Mock(return_value=True)
+        self.assertFalse(self.phidget.isChannelDetached())
+        with mock.patch.object(self.phidget, '_schedule_detached_reminder') as schedule:
+            self.phidget.connectionTimeoutHandler(self.phidget._timer_generation)
+            schedule.assert_called_once()
+        self.phidget.test_logger.error.assert_not_called()
+        self.phidget.test_logger.warning.assert_not_called()

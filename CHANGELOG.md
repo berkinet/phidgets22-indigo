@@ -1,5 +1,12 @@
 # Release notes
 
+## 2026.1.35 — 2026-10-11
+
+- Verify SDK channel attachment before reporting a detached channel, in manual
+  scans and timed unavailable reminders. Recheck coalesced reports before logging
+  and avoid claiming all channels are detached when any is attached.
+
+
 ## 2026.1.34 — 2026-10-11
 
 - Fix restart/reinitialization loops caused by saving outage records in Indigo

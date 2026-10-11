@@ -116,6 +116,20 @@ class ServerOutageTests(unittest.TestCase):
         self.plugin.logger.info.assert_called_once()
         self.plugin.logger.error.assert_not_called()
 
+    def test_coalesced_report_rechecks_native_attachment(self):
+        first = self.plugin.activePhidgets[1]
+        second = FakePhidget(3, 100)
+        self.plugin.activePhidgets[3] = second
+        first.isChannelDetached = lambda: False
+        second.isChannelDetached = lambda: True
+        key = PhysicalDeviceIdentity.from_wrapper(first)
+        self.coordinator.report_unavailable(key, {
+            first: (120, 'detached'), second: (120, 'detached')})
+        self.plugin.logger.error.assert_called_once()
+        args = self.plugin.logger.error.call_args.args
+        self.assertEqual(args[1], second.indigoDevice.name)
+        self.assertEqual(args[4], '')
+
     def test_batch_timer_is_replaced_and_shutdown_cancels_it(self):
         timers = []
 

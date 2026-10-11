@@ -156,8 +156,13 @@ class OutageCoordinator(object):
                 hasattr(phidget, "_state") and
                 PhysicalDeviceIdentity.from_wrapper(phidget) ==
                 physical_device)]
-        all_detached = len(configured) > 1 and set(affected) == set(configured)
+        all_detached = (len(configured) > 1 and set(affected) == set(configured)
+                        and all(getattr(phidget, "isChannelDetached",
+                                        lambda: True)() for phidget in configured))
         for phidget, (detached_for, state) in affected.items():
+            check = getattr(phidget, "isChannelDetached", None)
+            if check is not None and not check():
+                continue
             status = ("all %d configured channels are detached; " % len(configured)
                       if all_detached else "")
             self.logger.error(
