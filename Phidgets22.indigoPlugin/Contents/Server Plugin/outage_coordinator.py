@@ -161,8 +161,7 @@ class OutageCoordinator(object):
             status = ("all %d configured channels are detached; " % len(configured)
                       if all_detached else "")
             self.logger.error(
-                "Indigo device '%s' remains unavailable after %s "
-                "since this plugin session observed the outage; Physical "
+                "Indigo device '%s' remains unavailable after %s; Physical "
                 "Phidget serial %s; %s(server: %s; hub port %s, channel %s). "
                 "Check the Phidget and Network Server; automatic attachment remains active.",
                 phidget.indigoDevice.name, outage_duration(detached_for),

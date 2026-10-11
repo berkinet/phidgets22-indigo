@@ -1,5 +1,11 @@
 # Release notes
 
+## 2026.1.33 — 2026-10-11
+
+- Match the requested unavailable-device log wording and punctuation, removing
+  the plugin-session phrase from timed reminders and manual scan messages.
+
+
 ## 2026.1.32 — 2026-10-11
 
 - Fix Scan for detached Phidgets failing when a Network Server device is

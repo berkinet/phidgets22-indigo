@@ -113,9 +113,8 @@ class PhidgetBase(object):
                     self.channelInfo.channel, net_info.isRemote))
 
     def _unavailable_message(self, detached_for):
-        return ("Indigo device '%s' remains unavailable after %s "
-                "since this plugin session observed the outage; Physical Phidget "
-                "serial %s (server: %s; hub port %s, channel %s). "
+        return ("Indigo device '%s' remains unavailable after %s; Physical Phidget "
+                "serial %s; (server: %s; hub port %s, channel %s). "
                 "Check the Phidget and Network Server; automatic attachment "
                 "remains active." % (self.indigoDevice.name,
                     outage_duration(detached_for), self.channelInfo.serialNumber,
