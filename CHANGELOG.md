@@ -1,5 +1,12 @@
 # Release notes
 
+## 2026.1.36 — 2026-10-11
+
+- Mark unavailable channels with an Indigo error after startup grace even when
+  a persisted reminder is not due yet. Preserve the saved logging deadline
+  independently, and clear errors on successful attachment.
+
+
 ## 2026.1.35 — 2026-10-11
 
 - Verify SDK channel attachment before reporting a detached channel, in manual

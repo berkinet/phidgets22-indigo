@@ -304,10 +304,9 @@ class PhidgetBase(object):
         with self._lifecycle_lock:
             generation = self._timer_generation
             due = getattr(self, "_restored_reminder_due", None)
-            delay = (max(self.initial_connection_timeout, due - time.time())
-                     if due is not None else self.initial_connection_timeout)
-            self._restored_reminder_due = None
-            self._persist_outage(delay)
+            delay = self.initial_connection_timeout
+            self._persist_outage(max(delay, due - time.time())
+                                 if due is not None else delay)
             timer = threading.Timer(
                 delay,
                 self.connectionTimeoutHandler,
@@ -328,6 +327,11 @@ class PhidgetBase(object):
                             if self._detached_at is not None else 0)
             interval = (max(86400, self.detached_reminder_interval)
                         if detached_for >= 86400 else self.detached_reminder_interval)
+            due = getattr(self, "_restored_reminder_due", None)
+            if due is not None and due > time.time():
+                interval = due - time.time()
+            else:
+                self._restored_reminder_due = None
             self._persist_outage(interval)
             timer = threading.Timer(
                 interval,
@@ -457,13 +461,23 @@ class PhidgetBase(object):
             state = self._state
             detached_for = time.monotonic() - self._detached_at if self._detached_at else 0
             first_daily = detached_for >= 86400 and not self._daily_reminder_reported
-            if detached_for >= 86400:
-                self._daily_reminder_reported = True
             operational_detach = self._attach_count > 0
             self.timer = None
         try:
             if not self.isChannelDetached():
                 return
+            with self._lifecycle_lock:
+                if (generation != self._timer_generation or
+                        self._state not in ("starting", "detached")):
+                    return
+                error = 'Channel in use' if self._startup_contention_message else 'Detached'
+                self.indigoDevice.setErrorStateOnServer(error)
+                due = getattr(self, "_restored_reminder_due", None)
+                if due is not None and due > time.time():
+                    return
+                self._restored_reminder_due = None
+                if detached_for >= 86400:
+                    self._daily_reminder_reported = True
             if operational_detach:
                 self.logger.warning(
                     "%s%s", reminder_cadence(detached_for, first_daily),
@@ -471,7 +485,6 @@ class PhidgetBase(object):
             elif self._startup_contention_message:
                 with self._lifecycle_lock:
                     self._startup_contention_expired = True
-                self.indigoDevice.setErrorStateOnServer('Channel in use')
                 coordinator = getattr(
                     self.indigo_plugin, "phidgetStartupContentionExpired", None)
                 if coordinator is not None:
@@ -485,7 +498,6 @@ class PhidgetBase(object):
             elif self._startup_error_message:
                 with self._lifecycle_lock:
                     self._startup_contention_expired = True
-                self.indigoDevice.setErrorStateOnServer('Detached')
                 coordinator = getattr(
                     self.indigo_plugin, "phidgetStartupOpenFailureExpired", None)
                 if coordinator is not None:
@@ -496,7 +508,6 @@ class PhidgetBase(object):
                         "%s on %s",
                         self._error_identity(), self._startup_error_message)
             else:
-                self.indigoDevice.setErrorStateOnServer('Detached')
                 coordinator = getattr(
                     self.indigo_plugin, "phidgetStartupUnavailableExpired", None)
                 if coordinator is not None and detached_for < 86400:
@@ -654,6 +665,7 @@ class PhidgetBase(object):
             with self._lifecycle_lock:
                 self._state = "attached"
                 self._daily_reminder_reported = False
+                self._restored_reminder_due = None
                 self._detached_at = None
                 self._persist_outage()
                 self._detach_announced = False

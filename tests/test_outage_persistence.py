@@ -30,12 +30,28 @@ class OutagePersistenceTests(unittest.TestCase):
             self.phidget.start()
             self.assertEqual(self.phidget._detached_at, -99500)
             self.assertTrue(self.phidget._daily_reminder_reported)
-            self.assertEqual(timer.call_args.args[0], 900)
+            self.assertEqual(timer.call_args.args[0], self.phidget.initial_connection_timeout)
             self.assertEqual(self.store.load(self.device.id)['started'], 100000)
             self.phidget.onAttachHandler(self.phidget.native)
             self.assertIsNone(self.store.load(self.device.id))
             self.device.replacePluginPropsOnServer.assert_not_called()
             self.assertEqual(self.device.pluginProps['normalSetting'], 'retained')
+
+    def test_future_daily_reminder_does_not_delay_startup_error(self):
+        self.store.save(self.device.id, json.loads(self.record(due=280000, daily=False)))
+        with mock.patch.object(phidget_module.time, 'time', return_value=200000), \
+                mock.patch.object(phidget_module.time, 'monotonic', return_value=500), \
+                mock.patch.object(phidget_module.threading, 'Timer') as timer:
+            self.phidget.start()
+            self.phidget.connectionTimeoutHandler(self.phidget._timer_generation)
+            self.assertEqual(self.device.errors, ['Detached'])
+            self.assertEqual(timer.call_args.args[0], 80000)
+            self.assertFalse(self.phidget._daily_reminder_reported)
+            self.phidget.test_logger.error.assert_not_called()
+            self.assertEqual(self.store.load(self.device.id)['due'], 280000)
+            self.phidget.onAttachHandler(self.phidget.native)
+            self.assertEqual(self.device.errors[-1], None)
+            self.assertIsNone(self.store.load(self.device.id))
 
     def test_overdue_reminder_keeps_startup_grace(self):
         self.store.save(self.device.id, json.loads(self.record(due=150000)))
