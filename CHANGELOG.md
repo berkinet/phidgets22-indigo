@@ -1,5 +1,13 @@
 # Release notes
 
+## 2026.1.38 — 2026-10-12
+
+- Count configured Indigo devices per Phidget hub port in outage messages.
+  Separate RFID and LCD Phidgets sharing a hub serial no longer count as two
+  definitions of one Phidget. Available hardware channels and internal RFID
+  output handles do not contribute to this count.
+
+
 ## 2026.1.37 — 2026-10-11
 
 - Outage and recovery summaries count configured Indigo devices rather than

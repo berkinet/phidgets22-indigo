@@ -156,17 +156,24 @@ class OutageCoordinator(object):
                 hasattr(phidget, "_state") and
                 PhysicalDeviceIdentity.from_wrapper(phidget) ==
                 physical_device)]
-        all_detached = (len(configured) > 1 and set(affected) == set(configured)
-                        and all(getattr(phidget, "isChannelDetached",
-                                        lambda: True)() for phidget in configured))
         for phidget, (detached_for, state) in affected.items():
             check = getattr(phidget, "isChannelDetached", None)
             if check is not None and not check():
                 continue
+            # A VINT hub serial identifies the hub; its ports host separate
+            # Phidgets. Count device definitions for this port, never the
+            # hardware's available channels or internally managed handles.
+            port = PortIdentity.from_wrapper(phidget)
+            devices = [device for device in configured
+                       if PortIdentity.from_wrapper(device) == port]
+            all_detached = (len(devices) > 1 and
+                            all(device in affected and
+                                getattr(device, "isChannelDetached", lambda: True)()
+                                for device in devices))
             status = (("both Indigo devices configured for this Phidget are unavailable; "
-                       if len(configured) == 2 else
+                       if len(devices) == 2 else
                        "all %d Indigo devices configured for this Phidget are unavailable; "
-                       % len(configured))
+                       % len(devices))
                       if all_detached else "")
             self.logger.error(
                 "Indigo device '%s' remains unavailable after %s; Physical "

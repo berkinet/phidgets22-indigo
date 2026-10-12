@@ -260,8 +260,23 @@ class ServerOutageTests(unittest.TestCase):
             self.assertEqual(arguments[1], name)
             self.assertEqual(arguments[2], "02:00 hours/minutes")
             self.assertEqual(arguments[3], 622666)
-            self.assertEqual(arguments[4], "both Indigo devices configured for this Phidget are unavailable; ")
+            self.assertEqual(arguments[4], "")
             self.assertEqual(arguments[5:], ("Test-Server-B", port, 0))
+
+    def test_two_indigo_definitions_on_same_phidget_count_as_two(self):
+        first = FakePhidget(1, 742134, channel=0, hub_port=0)
+        second = FakePhidget(2, 742134, channel=1, hub_port=0)
+        reader = FakePhidget(3, 742134, channel=0, hub_port=1)
+        self.plugin.activePhidgets = {1: first, 2: second, 3: reader}
+        self.coordinator.report_unavailable(PhysicalDeviceIdentity.from_wrapper(first), {
+            first: (120, 'detached'), second: (120, 'detached'),
+            reader: (120, 'detached')})
+        calls = self.plugin.logger.error.call_args_list
+        self.assertEqual(len(calls), 3)
+        for call in calls[:2]:
+            self.assertEqual(call.args[4],
+                "both Indigo devices configured for this Phidget are unavailable; ")
+        self.assertEqual(calls[2].args[4], '')
 
     def test_partial_startup_timeout_remains_channel_specific(self):
         first = FakePhidget(1, 622666, state="starting")
