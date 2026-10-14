@@ -1,6 +1,7 @@
 """Concise bounded reporting; callers retain retry and lifecycle ownership."""
 from collections import OrderedDict
 from functools import wraps
+import inspect
 import logging
 import threading
 import time
@@ -88,6 +89,52 @@ def clear_faults(owner, prefix=None):
         return sum(existing.clear(key) for key in keys)
 
 
+
+def _preserve_signature(callback, guarded):
+    """Keep actual argument counts/defaults for Indigo's callback dispatcher.
+
+    This compiles only parameter names declared in trusted plugin source;
+    default objects are passed through a private namespace, never rendered
+    or evaluated as source text. No user configuration is executed.
+    """
+    signature = inspect.signature(callback)
+    declarations, forwarded = [], []
+    namespace = {'_guarded_callback': guarded}
+    positional_only = 0
+    has_varargs = False
+    for index, parameter in enumerate(signature.parameters.values()):
+        name = parameter.name
+        kind = parameter.kind
+        if kind is inspect.Parameter.VAR_POSITIONAL:
+            declarations.append('*' + name)
+            forwarded.append('*' + name)
+            has_varargs = True
+            continue
+        if kind is inspect.Parameter.VAR_KEYWORD:
+            declarations.append('**' + name)
+            forwarded.append('**' + name)
+            continue
+        if kind is inspect.Parameter.KEYWORD_ONLY and not has_varargs:
+            declarations.append('*')
+            has_varargs = True
+        declaration = name
+        if parameter.default is not inspect.Parameter.empty:
+            reference = '_default_%d' % index
+            namespace[reference] = parameter.default
+            declaration += '=' + reference
+        declarations.append(declaration)
+        forwarded.append(name + '=' + name if kind is inspect.Parameter.KEYWORD_ONLY else name)
+        if kind is inspect.Parameter.POSITIONAL_ONLY:
+            positional_only += 1
+    if positional_only:
+        declarations.insert(positional_only, '/')
+    source = 'def _callback(%s):\n    return _guarded_callback(%s)\n' % (
+        ', '.join(declarations), ', '.join(forwarded))
+    exec(compile(source, '<Phidgets callback signature>', 'exec'), namespace)
+    result = wraps(callback)(namespace['_callback'])
+    result.__signature__ = signature
+    return result
+
 def runtime_boundary(operation, stopped=True):
     """Contain foreign-thread failures; retries belong to the callback itself."""
     def decorate(callback):
@@ -110,7 +157,7 @@ def runtime_boundary(operation, stopped=True):
                     getattr(device, 'name', 'plugin'), getattr(device, 'id', 'n/a'),
                     type(error).__name__, concise_error(error))
                 return None
-        return guarded
+        return _preserve_signature(callback, guarded)
     return decorate
 
 
@@ -137,5 +184,5 @@ def validation_boundary(operation):
                 errors['showAlertText'] = "Invalid configuration: %s" % concise_error(error)
                 log_error(owner, "%s failed: %s", operation, error)
                 return False, values, errors
-        return validate
+        return _preserve_signature(callback, validate)
     return decorate

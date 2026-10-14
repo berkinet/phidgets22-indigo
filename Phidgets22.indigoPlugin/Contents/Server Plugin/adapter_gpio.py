@@ -1,5 +1,5 @@
 from error_reporting import runtime_boundary
-from error_reporting import log_error
+from error_reporting import log_error, log_warning, set_device_error
 # -*- coding: utf-8 -*-
 
 """GPIO channels exposed by an ADP0001 selected through an Indigo adapter."""
@@ -8,6 +8,7 @@ import threading
 
 import indigo
 
+from Phidget22.PhidgetException import PhidgetException
 from Phidget22.ErrorCode import ErrorCode
 from Phidget22.InputMode import InputMode
 
@@ -26,6 +27,8 @@ class AdapterGPIOInputPhidget(DigitalInputPhidget):
         self._debounce_lock = threading.RLock()
         self._debounce_timer = None
         self._pending_state = None
+        self._initial_input_timer = None
+        self._awaiting_initial_input = False
 
     def configureAttachedPhidget(self, ph):
         modes = {
@@ -65,9 +68,47 @@ class AdapterGPIOInputPhidget(DigitalInputPhidget):
         if committed is False or (type(committed) is int and committed != getattr(self, "_lifecycle_epoch", committed)):
             return False
         if self._state == "attached":
-            self.updateIndigoStatus(bool(ph.getState()) != self.inverted)
+            self._readInitialInput(self._lifecycle_epoch)
         return committed
 
+
+    def _cancelInitialInputTimer(self):
+        timer, self._initial_input_timer = getattr(self, '_initial_input_timer', None), None
+        if timer is not None:
+            timer.cancel()
+
+    def updateIndigoStatus(self, state):
+        super(AdapterGPIOInputPhidget, self).updateIndigoStatus(state)
+        if getattr(self, '_awaiting_initial_input', False):
+            if set_device_error(self, None):
+                self._awaiting_initial_input = False
+                self._cancelInitialInputTimer()
+
+    @runtime_boundary("GPIO initial input read")
+    def _readInitialInput(self, epoch, attempt=0):
+        with self._lifecycle_lock:
+            if epoch != self._lifecycle_epoch or self._state != 'attached':
+                return False
+            self._cancelInitialInputTimer()
+            try:
+                value = self.phidget.getState()
+            except PhidgetException as error:
+                if error.code != ErrorCode.EPHIDGET_UNKNOWNVAL:
+                    raise
+                self._awaiting_initial_input = True
+                set_device_error(self, 'Awaiting first input value')
+                if attempt < 5:
+                    timer = threading.Timer(min(2.0, 0.2 * 2 ** attempt),
+                                            self._readInitialInput, args=(epoch, attempt + 1))
+                    timer.daemon = True
+                    self._initial_input_timer = timer
+                    timer.start()
+                else:
+                    log_warning(self, "GPIO input has not supplied its first value; awaiting a state callback: %s",
+                                self._identity())
+                return False
+            self.updateIndigoStatus(bool(value) != self.inverted)
+            return True
 
     def actionControlSensor(self, action):
         # The base implementation reads the raw state, so apply inversion here.
@@ -78,6 +119,7 @@ class AdapterGPIOInputPhidget(DigitalInputPhidget):
         super(AdapterGPIOInputPhidget, self).actionControlSensor(action)
 
     def stop(self):
+        self._cancelInitialInputTimer()
         with self._debounce_lock:
             timer = self._debounce_timer
             self._debounce_timer = None

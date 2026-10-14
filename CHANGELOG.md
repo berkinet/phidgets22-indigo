@@ -1,5 +1,10 @@
 # Release notes
 
+## 2026.1.45 — 2026-10-14
+
+- Preserve actual Indigo callback argument signatures through error guards, fixing LCD action dispatch and guarded validation callbacks.
+- Wait for a valid initial GPIO input reading when the SDK reports Unknown Value after attachment; do not publish an invented input state. Retries are bounded and reject obsolete attachment work.
+
 ## 2026.1.44 — 2026-10-14
 
 - Consolidate I2C polling faults/recovery and native/I2C LCD initialization retries.
