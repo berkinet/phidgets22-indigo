@@ -199,6 +199,16 @@ class DeviceWrapperTests(unittest.TestCase):
         self.assertEqual(wrapper.logger.error.call_count, 2)
         wrapper.updateIndigoStatus.assert_not_called()
 
+    def test_successful_writes_do_not_rearm_a_continuing_status_read_fault(self):
+        wrapper = object.__new__(digitaloutput.DigitalOutputPhidget)
+        wrapper.logger = mock.Mock()
+        wrapper._identity = lambda: 'Door'
+        wrapper.phidget = mock.Mock()
+        wrapper.phidget.getDutyCycle.side_effect = RuntimeError('cannot read status')
+        for _ in range(20):
+            wrapper.asyncSetResult(None, 0, 'OK', 'Turn Off', False)
+        wrapper.logger.error.assert_called_once()
+
     def test_adapter_gpio_input_configures_pullup_and_inverts_switch_state(self):
         wrapper = object.__new__(adapter_gpio.AdapterGPIOInputPhidget)
         wrapper.inputMode = "pullup"

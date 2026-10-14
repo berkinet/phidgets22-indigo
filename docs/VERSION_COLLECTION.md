@@ -39,7 +39,7 @@ device operation or availability.
 An attached channel's Phidget SDK handle supplies its physical-device firmware
 version and exact firmware-upgrade identifier. That identifier, plus the VINT
 ID where applicable, is matched against a filename-only catalog generated from
-`phidget22admin` 1.26.20260828. Before each collection, the plugin checks the
+`phidget22admin` 1.26.20260828. At most once per six hours, the plugin checks the
 official Phidgets admin archive index; when it finds a newer archive, it reads
 the firmware filenames from that archive into memory. It never runs the admin
 tool, bundles new firmware payloads, or applies firmware. The last successful
@@ -54,3 +54,19 @@ The Network Server protocol version is read from an attached remote Phidget
 channel belonging to that server. If a monitored server has no attached plugin
 channel at collection time, its version is reported as unavailable; no new
 channel is opened merely to obtain a version.
+
+## Catalog refresh and diagnostic override
+
+Device-version reads still run on every requested collection. Remote catalog
+refresh attempts are limited to once per six hours per plugin session, including
+failed attempts; this prevents reconnect activity from repeatedly fetching the
+same archive. A cached/bundled catalog remains usable while the network is down.
+
+The `testFirmwareVersionOverride` callback is an administrative diagnostic hook,
+not an ordinary Plugin menu action. It temporarily simulates a lower firmware
+version for one attached device to exercise update reporting. It does not write
+firmware, change hardware, or persist the override; it is cleared on plugin stop.
+Use only during a deliberate reporting test, and clear/restart afterward before
+using firmware-state automation. Optional SDK firmware identifiers are checked
+before use; unavailable identifiers must not be interpreted as an available
+firmware update.

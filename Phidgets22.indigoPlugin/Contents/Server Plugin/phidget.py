@@ -1,11 +1,10 @@
 from error_reporting import runtime_boundary
-from error_reporting import log_error, concise_error, set_device_error
+from error_reporting import log_error, concise_error, set_device_error, clear_faults
 # -*- coding: utf-8 -*-
 #
 # Bulk of the code for actually interacting with the phidget devices.
 #
 
-import math
 import threading
 import time
 import sys
@@ -147,7 +146,8 @@ class PhidgetBase(OutagePersistence):
 
     def _attachment_failed(self, epoch, error):
         with self._lifecycle_lock:
-            if epoch != self._lifecycle_epoch or self._state in ("stopping", "stopped"):
+            if (epoch != self._lifecycle_epoch or self._state in ("stopping", "stopped") or
+                        getattr(self.indigo_plugin, "_shutting_down", False) is True):
                 return
             self._state = "detached"
             if self._detached_at is None:
@@ -301,7 +301,7 @@ class PhidgetBase(OutagePersistence):
             try:
                 self.updateStateOnServer(key, value=value)
             except Exception:
-                self.logger.debug("Unable to update connection state %s for %s:: %s",
+                self.logger.debug("Unable to update connection state %s for %s: %s",
                                   key, self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
 
     def _cancel_attach_timer(self):
@@ -631,8 +631,8 @@ class PhidgetBase(OutagePersistence):
     def onAttachHandler(self, ph):
         try:
             with self._lifecycle_lock:
-                if self._state in ("stopping", "stopped"):
-                    return
+                if self._state in ("attached", "stopping", "stopped"):
+                    return False
                 self._cancel_initialization_retry()
                 self._lifecycle_epoch += 1
                 epoch = self._lifecycle_epoch
@@ -640,18 +640,20 @@ class PhidgetBase(OutagePersistence):
                 detach_announced = self._detach_announced
             self.configureAttachedPhidget(ph)
             with self._lifecycle_lock:
-                if epoch != self._lifecycle_epoch or self._state in ("stopping", "stopped"):
-                    return
+                if (epoch != self._lifecycle_epoch or self._state in ("stopping", "stopped") or
+                        getattr(self.indigo_plugin, "_shutting_down", False) is True):
+                    return False
                 self._cache_runtime_server(ph)
                 self._update_connection_states()
         except Exception as error:
             self._attachment_failed(epoch, error)
-            return
+            return False
 
         try:
             with self._lifecycle_lock:
-                if epoch != self._lifecycle_epoch or self._state in ("stopping", "stopped"):
-                    return
+                if (epoch != self._lifecycle_epoch or self._state in ("stopping", "stopped") or
+                        getattr(self.indigo_plugin, "_shutting_down", False) is True):
+                    return False
                 self._cancel_detach_grace_timer()
                 self._cancel_attach_timer()
                 self._cancel_detach_error_timer()
@@ -677,8 +679,11 @@ class PhidgetBase(OutagePersistence):
                         "Transient startup contention cleared automatically: %s",
                         self._identity())
                 attachment_announced = detach_announced or startup_contention_expired
-                if attach_count == 1 or attachment_announced:
+                if (attach_count == 1 or attachment_announced or
+                        getattr(self, "_reported_availability_error", None) is not None):
                     self.indigoDevice.setErrorStateOnServer(None)
+                    self._reported_availability_error = None
+                clear_faults(self)
                 coordinator = getattr(self.indigo_plugin, "phidgetAttachCompleted", None)
                 if coordinator is not None:
                     coordinator(self, detached_for, attach_count, attachment_announced)
@@ -694,9 +699,12 @@ class PhidgetBase(OutagePersistence):
                 except Exception:
                     self.logger.debug("Unable to format attach diagnostics: %s: %s",
                                       self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
+            return epoch
         except Exception:
             log_error(self, "Attach completion handler failed: %s: %s",
                               self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
+
+        return False
 
     def configureAttachedPhidget(self, ph):
         """Apply model-specific settings before declaring the channel healthy."""

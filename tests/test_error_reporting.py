@@ -7,6 +7,7 @@ from unittest import mock
 
 SERVER = pathlib.Path(__file__).parents[1] / 'Phidgets22.indigoPlugin/Contents/Server Plugin'
 sys.path.insert(0, str(SERVER))
+sys.modules.setdefault("indigo", types.ModuleType("indigo"))
 from error_reporting import FaultReporter, runtime_boundary
 
 

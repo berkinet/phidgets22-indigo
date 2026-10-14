@@ -165,6 +165,7 @@ class VoltageRatioInputPhidget(PhidgetBase):
 
         if self.sensorStateName == "lux":
             self.indigoDevice.updateStateImageOnServer(indigo.kStateImageSel.EnergyMeterOn)
+        return True
 
 
     def getDeviceStateList(self):

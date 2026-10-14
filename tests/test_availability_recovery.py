@@ -71,3 +71,29 @@ class AvailabilityRecoveryTests(unittest.TestCase):
         device.setErrorStateOnServer.assert_called_with(None)
         wrapper.providerStopping()
         device.setErrorStateOnServer.assert_called_with('Provider unavailable')
+
+    def test_reinitialization_after_operational_fault_clears_indigo_error(self):
+        wrapper = TestPhidget()
+        wrapper.native.getAttached = lambda: True
+        with mock.patch.object(phidget_module.threading, 'Timer'):
+            wrapper.start()
+            wrapper.onAttachHandler(wrapper.native)
+            wrapper.onDetachHandler(wrapper.native)
+            wrapper.configureAttachedPhidget = mock.Mock(side_effect=[
+                PhidgetException(ErrorCode.EPHIDGET_TIMEOUT), None])
+            wrapper.onAttachHandler(wrapper.native)
+            self.assertEqual(wrapper.device.errors[-1], 'Initialization failed')
+            wrapper._retry_initialization(wrapper._lifecycle_epoch)
+            self.assertEqual(wrapper.device.errors[-1], None)
+            wrapper.stop()
+
+    def test_duplicate_attach_callback_does_not_run_initialization_twice(self):
+        wrapper = TestPhidget()
+        wrapper.configureAttachedPhidget = mock.Mock()
+        with mock.patch.object(phidget_module.threading, 'Timer'):
+            wrapper.start()
+            wrapper.onAttachHandler(wrapper.native)
+            wrapper.onAttachHandler(wrapper.native)
+            wrapper.configureAttachedPhidget.assert_called_once()
+            self.assertEqual(wrapper._attach_count, 1)
+            wrapper.stop()

@@ -54,11 +54,13 @@ class FrequencyCounterPhidget(PhidgetBase):
     @runtime_boundary("onFrequencyChangeHandler")
     def onFrequencyChangeHandler(self, ph, frequency):
         self.updateStateOnServer("frequency", value=frequency,  decimalPlaces=self.decimalPlaces)
+        return True
 
     @runtime_boundary("onCountChangeHandler")
     def onCountChangeHandler(self, ph, count, timeChange):
         self.updateStateOnServer("count", value=ph.getCount())
         self.updateStateOnServer("timeChange", value=timeChange,  decimalPlaces=self.decimalPlaces)
+        return True
 
     def getDeviceStateList(self):
         return self.stateList(

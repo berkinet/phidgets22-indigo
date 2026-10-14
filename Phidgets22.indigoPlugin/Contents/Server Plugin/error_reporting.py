@@ -2,7 +2,6 @@
 from collections import OrderedDict
 from functools import wraps
 import logging
-import sys
 import threading
 import time
 
@@ -19,9 +18,10 @@ def concise_error(error):
 
 
 class FaultReporter:
-    def __init__(self, logger, clock=time.monotonic):
+    def __init__(self, logger, clock=time.monotonic, interval=3600):
         self.logger = logger
         self.clock = clock
+        self.interval = max(1, int(interval))
         self.lock = threading.RLock()
         self.faults = OrderedDict()
 
@@ -31,7 +31,7 @@ class FaultReporter:
             previous = self.faults.get(key)
             if previous is not None:
                 previous['count'] += 1
-                interval = 86400 if now - previous['started'] >= 86400 else 3600
+                interval = max(86400, self.interval) if now - previous['started'] >= 86400 else self.interval
                 if now - previous['reported'] < interval:
                     return False
                 previous['reported'] = now
@@ -57,7 +57,14 @@ def reporter(owner):
     with _REGISTRY_LOCK:
         result = getattr(owner, '_fault_reporter', None)
         if not isinstance(result, FaultReporter):
-            result = owner._fault_reporter = FaultReporter((getattr(owner, "logger", None) or logging.getLogger("Phidgets22")))
+            preferences = getattr(getattr(owner, 'indigo_plugin', None), 'pluginPrefs', {})
+            try:
+                interval = int(preferences.get('detachedReminderInterval', 3600))
+                interval = interval if interval > 0 else 3600
+            except (TypeError, ValueError, OverflowError):
+                interval = 3600
+            result = owner._fault_reporter = FaultReporter(
+                getattr(owner, "logger", None) or logging.getLogger("Phidgets22"), interval=interval)
         return result
 
 
@@ -69,9 +76,16 @@ def log_warning(owner, message, *args):
     return reporter(owner).report('warning', ('warning', message, tuple(concise_error(x) for x in args)), message, *args)
 
 
-def clear_faults(owner):
+def clear_faults(owner, prefix=None):
     existing = getattr(owner, "_fault_reporter", None)
-    return existing.clear() if isinstance(existing, FaultReporter) else 0
+    if not isinstance(existing, FaultReporter):
+        return 0
+    if prefix is None:
+        return existing.clear()
+    with existing.lock:
+        keys = [key for key in existing.faults
+                if isinstance(key, tuple) and len(key) > 1 and str(key[1]).startswith(prefix)]
+        return sum(existing.clear(key) for key in keys)
 
 
 def runtime_boundary(operation, stopped=True):
@@ -80,12 +94,13 @@ def runtime_boundary(operation, stopped=True):
         @wraps(callback)
         def guarded(owner, *args, **kwargs):
             if stopped and (getattr(owner, '_state', None) in ('stopping', 'stopped') or
-                            getattr(owner, '_stopped', False) is True):
+                            getattr(owner, '_stopped', False) is True or
+                            getattr(getattr(owner, 'indigo_plugin', None), '_shutting_down', False) is True):
                 return None
             try:
                 result = callback(owner, *args, **kwargs)
                 existing = getattr(owner, '_fault_reporter', None)
-                if existing is not None:
+                if isinstance(existing, FaultReporter) and result is not None and result is not False:
                     existing.clear(('boundary', operation))
                 return result
             except Exception as error:
@@ -102,6 +117,7 @@ def runtime_boundary(operation, stopped=True):
 def set_device_error(owner, message):
     try:
         owner.indigoDevice.setErrorStateOnServer(message)
+        owner._reported_availability_error = message
         return True
     except Exception as error:
         log_error(owner, "Unable to publish device availability: device='%s'; %s",

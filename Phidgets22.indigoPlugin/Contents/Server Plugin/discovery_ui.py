@@ -1,3 +1,4 @@
+from diagnostics_ui import DiagnosticsUiMixin
 from error_reporting import validation_boundary
 # -*- coding: utf-8 -*-
 
@@ -8,7 +9,7 @@ import rfid_tags
 import bridge
 
 from discovery import (CHANNEL_CLASSES_BY_DEVICE_TYPE, device_token,
-                       channel_token, format_channel, format_network_diagram,
+                       channel_token,
                        port_token, server_token, target_token)
 from display_providers import available_display_providers
 from config_util import (bounded_float, bounded_int, call_with_timeout,
@@ -41,7 +42,7 @@ def _sensirion_crc(data):
     return value
 
 
-class DiscoveryUiMixin(object):
+class DiscoveryUiMixin(DiagnosticsUiMixin):
 
     def getActionGroupMenu(self, filter="", valuesDict=None, typeId="", targetId=0):
         groups = sorted(
@@ -1276,53 +1277,21 @@ class DiscoveryUiMixin(object):
                 valuesDict["voltageRatioSensorType"] = "0"
         return valuesDict
 
-    def logDiscoveryInventory(self):
-        if self.discoveryInventory is None:
-            self.logger.warning("Phidget discovery inventory is unavailable")
-            return
-        channels = self.discoveryInventory.snapshot()
-        self.logger.info("Discovered Phidget inventory: %d channel(s)", len(channels))
-        for channel in channels:
-            self.logger.info("  %s", format_channel(channel))
-
-    def printPhidgetsNetworkDiagram(self):
-        if self.discoveryInventory is None:
-            self.logger.warning("Phidget discovery inventory is unavailable")
-            return
-        for line in format_network_diagram(self.discoveryInventory.snapshot()):
-            self.logger.info("%s", line)
-
-    def printIndigoPhidgetDevices(self):
-        devices = sorted(
-            (device for device in indigo.devices
-             if getattr(device, "pluginId", None) == self.pluginId),
-            key=lambda device: str(device.name).lower())
-        self.logger.info("Indigo Phidget devices: %d", len(devices))
-        for device in devices:
-            states = getattr(device, "states", {})
-            connection = states.get("connectionPath", "")
-            suffix = " connection=%r" % connection if connection else ""
-            self.logger.info(
-                "  name=%r id=%s type=%s enabled=%s address=%r%s",
-                device.name, device.id, device.deviceTypeId,
-                getattr(device, "enabled", True),
-                getattr(device, "address", ""), suffix)
-
     def getAttachCapableList(self, filter="", valuesDict=None,
                              typeId="", targetId=0):
         result = []
         for device in indigo.devices:
-            if device.pluginId == "com.yikes.eric.phidgets-indigo":
+            if device.pluginId == getattr(self, "pluginId", "com.yikes.eric.phidgets-indigo"):
                 result.append((device.id, device.name))
         return result
 
     def getOnRequestDeviceList(self, filter="", valuesDict=None,
                                typeId="", targetId=0):
         return [(device.id, device.name) for device in indigo.devices
-                if device.pluginId == "com.yikes.eric.phidgets-indigo"
+                if device.pluginId == getattr(self, "pluginId", "com.yikes.eric.phidgets-indigo")
                 and device.deviceTypeId in ("digitalOutput", "adapterGPIOOutput")]
 
     def getRFIDReaderList(self, filter="", valuesDict=None, typeId="", targetId=0):
         return [(device.id, device.name) for device in indigo.devices
-                if device.pluginId == "com.yikes.eric.phidgets-indigo"
+                if device.pluginId == getattr(self, "pluginId", "com.yikes.eric.phidgets-indigo")
                 and device.deviceTypeId == "rfid"]

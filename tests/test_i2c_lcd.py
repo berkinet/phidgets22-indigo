@@ -90,6 +90,34 @@ class I2CLCDTests(unittest.TestCase):
         self.assertIn(0xc0, commands)
         self.assertNotIn(0x94, commands)
 
+    def test_repeated_frame_is_silent_and_changed_cell_does_not_clear_display(self):
+        channel, adapter = self.channel(screen_size=5)
+        with mock.patch.object(i2c_lcd.time, 'sleep'):
+            channel.flush()
+        original_bytes = sum(len(payload) for address, payload, receive_length in adapter.transactions)
+        adapter.transactions.clear()
+        channel.flush()
+        self.assertEqual(adapter.transactions, [])
+        channel.writeText(None, 5, 1, 'A')
+        with mock.patch.object(channel, '_command', wraps=channel._command) as command:
+            channel.flush()
+        command.assert_called_once_with(0xc5)
+        self.assertLess(sum(len(payload) for address, payload, receive_length in adapter.transactions), original_bytes)
+
+    def test_partial_frame_failure_forces_complete_resynchronization(self):
+        channel, adapter = self.channel(screen_size=5)
+        with mock.patch.object(i2c_lcd.time, 'sleep'):
+            channel.flush()
+            channel.writeText(None, 0, 0, 'A')
+            with mock.patch.object(channel, '_send_batched', side_effect=RuntimeError('interrupted')):
+                with self.assertRaises(RuntimeError):
+                    channel.flush()
+            self.assertIsNone(channel._rendered_buffer)
+            with mock.patch.object(channel, '_command', wraps=channel._command) as command:
+                channel.flush()
+            self.assertIn(mock.call(0x01), command.call_args_list)
+            self.assertEqual(channel._rendered_buffer, channel._buffer)
+
     def test_address_and_advanced_pin_mapping_are_configurable(self):
         mapping = {
             "rs": 7, "rw": 6, "enable": 5, "backlight": 4,
@@ -199,7 +227,7 @@ class I2CLCDTests(unittest.TestCase):
         self.assertTrue(adapter.transactions)
         lcd.stop()
 
-    def test_defined_but_absent_lcd_schedules_provider_retry(self):
+    def test_defined_but_absent_lcd_uses_bounded_initialization_retry(self):
         adapter = FakeAdapter()
         adapter.i2cSendReceive = mock.Mock(
             side_effect=PhidgetException(ErrorCode.EPHIDGET_NACK))
@@ -214,12 +242,12 @@ class I2CLCDTests(unittest.TestCase):
             channelInfo=ChannelInfo(), indigoDevice=device, logger=mock.Mock())
 
         with (mock.patch.object(i2c_lcd.time, "sleep"),
-              mock.patch.object(i2c_lcd.threading, "Timer") as timer):
+              mock.patch("threading.Timer") as timer):
             lcd.start()
 
         self.assertNotEqual(lcd._state, "stopped")
-        timer.assert_called_with(1.0, lcd._retryProvider,
-                                 (lcd._provider_retry_generation,))
+        timer.assert_called_with(5, lcd._retry_initialization,
+                                 args=(lcd._lifecycle_epoch,))
         lcd.stop()
 
     def test_provider_detach_marks_lcd_detached_and_keeps_queued_request(self):

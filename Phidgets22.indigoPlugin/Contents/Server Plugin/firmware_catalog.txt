@@ -1,6 +1,5 @@
 # Firmware filename catalog from phidget22admin 1.26.20260828.
 # Filenames only; no firmware payloads are bundled.
-The Casa Milagro Server
 1014_2v710.bin.rc4
 1014_3_0x040_v810.bin.obf
 1014_3_0x040_v811.bin.obf

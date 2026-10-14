@@ -291,6 +291,13 @@ class NetworkServerDeviceTests(unittest.TestCase):
         self.assertTrue(self.monitor._unavailable_announced)
         self.assertIsNotNone(self.monitor._unavailable_timer)
 
+    def test_failed_availability_publication_does_not_kill_monitor_timers(self):
+        self.device.updateStateImageOnServer = mock.Mock(side_effect=RuntimeError('Indigo unavailable'))
+        self.monitor.serverInitiallyUnavailable()
+        self.assertIsNotNone(self.monitor._liveness_timer)
+        self.assertIsNotNone(self.monitor._unavailable_timer)
+        self.logger.error.assert_called_once()
+
     def test_daily_outage_record_survives_monitor_restart(self):
         import tempfile
         import network_server

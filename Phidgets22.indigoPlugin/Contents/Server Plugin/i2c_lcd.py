@@ -1,10 +1,8 @@
 from error_reporting import set_device_error
-from error_reporting import runtime_boundary
 # -*- coding: utf-8 -*-
 
 """Configurable HD44780/PCF8574 transport over a shared DataAdapter."""
 
-import threading
 import time
 
 from Phidget22.ChannelSubclass import ChannelSubclass
@@ -85,6 +83,7 @@ class HD44780PCF8574Channel(object):
     def getDeviceName(self): return "HD44780 / PCF8574-compatible LCD"
     def getDeviceSKU(self): return "HD44780-PCF8574-COMPATIBLE"
     def getChannelName(self): return "LCD"
+    def getAttached(self): return self.adapter is not None and getattr(self.adapter, "_state", None) == "attached"
 
     def _send(self, values):
         if self.adapter is None:
@@ -136,6 +135,7 @@ class HD44780PCF8574Channel(object):
         self._byte(value, False)
 
     def initialize(self):
+        self._rendered_buffer = None
         try:
             time.sleep(0.05)
             self._nibble(0x03)
@@ -169,6 +169,7 @@ class HD44780PCF8574Channel(object):
         self.screenSize = screen_size
         self.WIDTH, self.HEIGHT, self.ROW_ADDRESSES = self.GEOMETRIES[screen_size]
         self._buffer = [[" "] * self.WIDTH for _ in range(self.HEIGHT)]
+        self._rendered_buffer = None
 
     def getScreenSize(self): return LCDScreenSize(self.screenSize)
     def setAutoFlush(self, value): pass
@@ -211,19 +212,35 @@ class HD44780PCF8574Channel(object):
             self._buffer[y][column] = character
 
     def flush(self):
-        self._command(0x01)
-        time.sleep(0.002)
+        previous = self._rendered_buffer
+        if previous == self._buffer:
+            return
+        if previous is None:
+            self._command(0x01)
+            time.sleep(0.002)
         self._pending_bytes = []
         try:
             for row, address in enumerate(self.ROW_ADDRESSES):
-                self._command(0x80 | address)
-                for character in self._buffer[row]:
-                    codepoint = ord(character)
-                    self._byte(codepoint if codepoint <= 0xff else ord("?"), True)
+                column = 0
+                while column < self.WIDTH:
+                    if previous is not None and previous[row][column] == self._buffer[row][column]:
+                        column += 1
+                        continue
+                    self._command(0x80 | (address + column))
+                    while column < self.WIDTH and (previous is None or
+                            previous[row][column] != self._buffer[row][column]):
+                        codepoint = ord(self._buffer[row][column])
+                        self._byte(codepoint if codepoint <= 0xff else ord("?"), True)
+                        column += 1
             payload = self._pending_bytes
         finally:
             self._pending_bytes = None
-        self._send_batched(payload)
+        try:
+            self._send_batched(payload)
+        except Exception:
+            self._rendered_buffer = None  # A partial transfer needs full resynchronization.
+            raise
+        self._rendered_buffer = [list(row) for row in self._buffer]
 
 
 class I2CLCDPhidget(LCDPhidget):
@@ -239,39 +256,6 @@ class I2CLCDPhidget(LCDPhidget):
             backlight_active_high=backlightActiveHigh)
         super(I2CLCDPhidget, self).__init__(*args, **kwargs)
         self.adapterDeviceId = int(adapterDeviceId)
-        self._provider_retry_timer = None
-        self._provider_retry_generation = 0
-
-    def _cancelProviderRetry(self):
-        self._provider_retry_generation += 1
-        timer, self._provider_retry_timer = self._provider_retry_timer, None
-        if timer is not None:
-            timer.cancel()
-
-    def _scheduleProviderRetry(self):
-        self._cancelProviderRetry()
-        generation = self._provider_retry_generation
-        timer = threading.Timer(1.0, self._retryProvider, (generation,))
-        timer.daemon = True
-        self._provider_retry_timer = timer
-        timer.start()
-
-    @runtime_boundary("_retryProvider")
-    def _retryProvider(self, generation):
-        if (generation != self._provider_retry_generation or
-                self._state in ("stopping", "stopped")):
-            return
-        self._provider_retry_timer = None
-        self.phidget.providerAttached()
-
-    @runtime_boundary("onAttachHandler")
-    def onAttachHandler(self, ph):
-        super(I2CLCDPhidget, self).onAttachHandler(ph)
-        if self._state == "attached":
-            self._cancelProviderRetry()
-        elif (self.phidget.adapter is not None and
-              getattr(self.phidget.adapter, "_state", None) == "attached"):
-            self._scheduleProviderRetry()
 
     def providerReattached(self):
         """Reinitialize the controller after its shared adapter reconnects."""
@@ -282,7 +266,6 @@ class I2CLCDPhidget(LCDPhidget):
                 getattr(self.phidget.adapter, "_state", None) != "attached")
 
     def providerStopping(self):
-        self._cancelProviderRetry()
         with self._lifecycle_lock:
             self._lifecycle_epoch += 1
             self._cancel_initialization_retry()
@@ -291,7 +274,6 @@ class I2CLCDPhidget(LCDPhidget):
         super(I2CLCDPhidget, self).providerStopping()
 
     def stop(self):
-        self._cancelProviderRetry()
         super(I2CLCDPhidget, self).stop()
 
 

@@ -79,6 +79,7 @@ class VoltageInputPhidget(PhidgetBase):
                     "Custom voltage formula failed: device='%s' formula=%r "
                     "input=%s: %s", self.indigoDevice.name,
                     self.customFormula, voltage, error)
+        return True
 
     @runtime_boundary("onSensorChangeHandler")
     def onSensorChangeHandler(self, ph, sensorValue, sensorUnit):
@@ -88,6 +89,7 @@ class VoltageInputPhidget(PhidgetBase):
 
         if self.sensorStateName == "lux":
             self.indigoDevice.updateStateImageOnServer(indigo.kStateImageSel.EnergyMeterOn)
+        return True
 
     def getDeviceStateList(self):
         newStatesList = indigo.List()

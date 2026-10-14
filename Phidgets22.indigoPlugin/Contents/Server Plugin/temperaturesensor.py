@@ -48,6 +48,7 @@ class TemperatureSensorPhidget(PhidgetBase):
         self.updateStateOnServer("tempC", value=temperature, decimalPlaces=self.decimalPlaces)
         self.updateStateOnServer("tempF", value=(9.0/5.0 * temperature + 32), decimalPlaces=self.decimalPlaces)
         self.indigoDevice.updateStateImageOnServer(indigo.kStateImageSel.TemperatureSensorOn)
+        return True
 
     def getDeviceStateList(self):
         return self.stateList(

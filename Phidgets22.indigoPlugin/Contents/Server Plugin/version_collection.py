@@ -1,3 +1,4 @@
+import time
 from error_reporting import log_error
 # -*- coding: utf-8 -*-
 
@@ -134,13 +135,14 @@ class VersionCollector(object):
         self._generation = 0
         self._stopped = True
         self._test_override = None
+        self._last_catalog_refresh = None
         self._remote_catalog_enabled = firmware_catalog is None
         self.catalog_version = FIRMWARE_CATALOG_VERSION
         if firmware_catalog is None:
             try:
                 firmware_catalog = FirmwareCatalog.loaded(CATALOG_PATH)
             except Exception:
-                logger.warning("Unable to load firmware catalog:: %s",
+                logger.warning("Unable to load firmware catalog: %s",
                                concise_error(sys.exc_info()[1]))
                 firmware_catalog = FirmwareCatalog(())
         self.firmware_catalog = firmware_catalog
@@ -255,7 +257,7 @@ class VersionCollector(object):
         try:
             self.collect()
         except Exception:
-            log_error(self, "Version collection failed; next check remains scheduled:: %s",
+            log_error(self, "Version collection failed; next check remains scheduled: %s",
                               concise_error(sys.exc_info()[1]))
         finally:
             self._collection_lock.release()
@@ -265,6 +267,12 @@ class VersionCollector(object):
     def _refresh_catalog(self):
         if not self._remote_catalog_enabled:
             return
+        now = time.monotonic()
+        with self._lock:
+            if self._last_catalog_refresh is not None and now - self._last_catalog_refresh < 21600:
+                return
+            # Back off failed requests too; device version reads still run.
+            self._last_catalog_refresh = now
         try:
             refreshed = fetch_firmware_catalog(self.catalog_version)
             if refreshed is not None:
@@ -307,7 +315,9 @@ class VersionCollector(object):
             raise ValueError("Selected device has no independent firmware")
         phidget = runtime.phidget
         real_version = int(phidget.getDeviceVersion())
-        identifier = str(phidget._getDeviceFirmwareUpgradeString() or "").strip()
+        getter = (getattr(phidget, "getDeviceFirmwareUpgradeString", None) or
+                  getattr(phidget, "_getDeviceFirmwareUpgradeString", None))
+        identifier = str(getter() if getter is not None else "").strip()
         if not identifier:
             raise ValueError("Device has no firmware upgrade identifier")
         vint_id = None

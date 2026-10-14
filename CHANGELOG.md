@@ -1,5 +1,25 @@
 # Release notes
 
+## 2026.1.44 — 2026-10-14
+
+- Consolidate I2C polling faults/recovery and native/I2C LCD initialization retries.
+- Use attachment completion tokens for subclass side effects; reject duplicate
+  attachments and late work during global shutdown.
+- Separate write/status fault recovery so a successful write cannot rearm a
+  continuing status-read error storm.
+- Retain logical sensors started before their provider for later recovery.
+- Dispose an existing runtime before restarting the same Indigo device, avoiding
+  duplicate live handles/timers; failed server publications retain monitoring.
+- Cache firmware catalog fetch attempts for six hours; remove obsolete outage
+  files on device deletion/startup without touching unrelated files.
+- I2C LCDs write changed cells, skip identical frames, and fully resynchronize
+  after interrupted transfers. Character-ROM interpretation remains unchanged.
+- Extract read-only diagnostic menu callbacks; document diagnostic firmware
+  override and live outage/startup/shutdown acceptance checks.
+- Keep initial sensor reads synchronous to preserve metadata/state initialization.
+  Sensor algorithms and actuator no-replay behavior remain unchanged.
+
+
 ## 2026.1.43 — 2026-10-14
 
 - Correct Fahrenheit change thresholds to SDK Celsius deltas.

@@ -53,6 +53,7 @@ class DigitalInputPhidget(PhidgetBase):
                     self.channelInfo.channel, self._rawStateChangeSequence,
                     bool(state)))
         self.updateIndigoStatus(state)
+        return True
 
     def actionControlSensor(self, action):
         if action.sensorAction == indigo.kSensorAction.RequestStatus:

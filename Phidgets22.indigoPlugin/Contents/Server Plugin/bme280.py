@@ -1,4 +1,4 @@
-from error_reporting import log_error, set_device_error
+from error_reporting import set_device_error
 # -*- coding: utf-8 -*-
 
 """BME280/BMP280 environmental sensor on a shared ADP0001 I2C bus."""
@@ -6,8 +6,6 @@ from error_reporting import log_error, set_device_error
 import struct
 import threading
 import time
-import sys
-from error_reporting import concise_error
 
 import indigo
 
@@ -18,6 +16,7 @@ from i2c_peripheral import I2CPeripheralBase
 
 
 class BME280Phidget(I2CPeripheralBase):
+    POLL_LABEL = "BME280/BMP280"
     NUMERIC_DISPLAY = True
     PROVIDER_FUNCTION = "bme280"
     CHIP_IDS = {0x60: "BME280", 0x58: "BMP280"}
@@ -178,64 +177,18 @@ class BME280Phidget(I2CPeripheralBase):
                     self.updateStateOnServer(
                         "humidity", value=humidity,
                         decimalPlaces=self.decimalPlaces)
-                if self._offline_message is not None:
-                    self.logger.info(
-                        "I2C environmental sensor recovered: device='%s' "
-                        "address=0x%02X", self.indigoDevice.name, self.address)
-                    self._offline_message = None
-                if self._transport_error_count:
-                    self.logger.info(
-                        "BME280/BMP280 polling recovered after a transport "
-                        "error: device='%s'", self.indigoDevice.name)
-                    self._transport_error_count = 0
-                    self._transport_error_code = None
-                self.indigoDevice.setErrorStateOnServer(None)
-            except PeripheralUnavailableError as error:
-                message = str(error)
-                if message != self._offline_message:
-                    log_error(self,
-                        "Configured peripheral unavailable: device='%s': %s",
-                        self.indigoDevice.name, message)
-                    self._offline_message = message
-                self.indigoDevice.setErrorStateOnServer(
-                    "No response at 0x%02X" % self.address)
-            except PhidgetException as error:
-                if not self._pollInterruptedByProviderDetach():
-                    code = int(error.code)
-                    if code != self._transport_error_code:
-                        self._transport_error_count = 0
-                        self._transport_error_code = code
-                    self._transport_error_count += 1
-                    detail = str(getattr(error, "details", "")).strip()
-                    if not detail:
-                        detail = str(error).strip()
-                    detail = detail.splitlines()[0] if detail else "Phidget transport error"
-                    if self._transport_error_count == 1:
-                        self.logger.warning(
-                            "BME280/BMP280 transport error 0x%02x; retrying on "
-                            "the next poll: device='%s' (%s)", code,
-                            self.indigoDevice.name, detail)
-                    elif self._transport_error_count == 3:
-                        log_error(self,
-                            "BME280/BMP280 transport error 0x%02x on %d "
-                            "consecutive polls; retries remain active: "
-                            "device='%s' (%s)", code,
-                            self._transport_error_count,
-                            self.indigoDevice.name, detail)
-                    self.indigoDevice.setErrorStateOnServer(
-                        "I2C transport error; retrying")
-            except Exception:
-                if not self._pollInterruptedByProviderDetach():
-                    log_error(self,
-                        "BME280/BMP280 poll failed: device='%s': %s",
-                        self.indigoDevice.name, concise_error(sys.exc_info()[1]))
-                    self.indigoDevice.setErrorStateOnServer("I2C read failed")
+                self._pollRecovered()
+            except Exception as error:
+                self._handlePollFailure(error)
             if generation == self._generation and self._state == "attached":
                 self._schedulePoll(generation, self.pollInterval)
 
     def start(self):
         with self._lock:
-            adapter = self._resolveAdapter()
+            try:
+                adapter = self._resolveAdapter()
+            except RuntimeError:
+                adapter = None
             if getattr(adapter, "_state", None) != "attached":
                 self._state = "starting"
                 set_device_error(self, "Provider unavailable")

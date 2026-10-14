@@ -21,6 +21,8 @@ class DigitalOutputPhidget(PhidgetBase):
             onOffState = bool(self.phidget.getState())
             self.updateStateOnServer("brightnessLevel", value=brightnessLevel, uiValue="%d" % brightnessLevel)
             self.updateStateOnServer("onOffState", value=onOffState, uiValue="on" if onOffState else "off")
+            if clear_faults(self, "Digital output status read failed:"):
+                self.logger.info("Digital output status recovered: %s", self._identity())
         except Exception as e:
             log_error(self, 'Digital output status read failed: %s; %s', self._identity(), str(e))
 
@@ -31,10 +33,14 @@ class DigitalOutputPhidget(PhidgetBase):
 
     @runtime_boundary("onAttachHandler")
     def onAttachHandler(self, ph):
-        super(DigitalOutputPhidget, self).onAttachHandler(ph)
+        committed = super(DigitalOutputPhidget, self).onAttachHandler(ph)
+        if committed is False or (type(committed) is int and committed != getattr(self, "_lifecycle_epoch", committed)):
+            return False
         if self._state == "attached":
             self._clear_detached_write_failures()
             self.updateIndigoStatus()
+        return committed
+
 
     def getDeviceStateList(self):
         # Currently support the minimal states used by all phidget DigitalOutput devices
@@ -78,7 +84,7 @@ class DigitalOutputPhidget(PhidgetBase):
     def _clear_detached_write_failures(self):
         with getattr(self, "_lifecycle_lock", nullcontext()):
             self._detached_write_failures = set()
-            clear_faults(self)
+            clear_faults(self, "Async failure:")
 
     def _first_detached_write_failure(self, operation, requested):
         with getattr(self, "_lifecycle_lock", nullcontext()):

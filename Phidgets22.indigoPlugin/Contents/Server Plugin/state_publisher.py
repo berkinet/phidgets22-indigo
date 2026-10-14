@@ -36,6 +36,6 @@ def update_indigo_states(owner, values, logger=None, ui_values=None):
             if logger is not None:
                 device = getattr(owner, "indigoDevice", None)
                 logger.debug(
-                    "Unable to update state %s for device='%s' id=%s:: %s",
+                    "Unable to update state %s for device='%s' id=%s: %s",
                     key, getattr(device, "name", "unknown"),
                     getattr(device, "id", "unknown"), concise_error(sys.exc_info()[1]))

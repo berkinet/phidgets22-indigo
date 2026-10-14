@@ -1,7 +1,7 @@
+"""Outage records kept outside Indigo device configuration."""
 import math
 import time
 from error_reporting import log_error
-"""Outage records kept outside Indigo device configuration."""
 import json
 import os
 import threading
@@ -40,6 +40,16 @@ class OutageStore:
             finally:
                 if os.path.exists(temporary):
                     os.remove(temporary)
+
+    def prune(self, valid_device_ids):
+        valid = {int(value) for value in valid_device_ids}
+        with self.lock:
+            for name in os.listdir(self.directory):
+                if not (name.startswith('phidgets-outage-') and name.endswith('.json')):
+                    continue
+                identifier = name[len('phidgets-outage-'):-5]
+                if identifier.isdigit() and int(identifier) not in valid:
+                    os.remove(os.path.join(self.directory, name))
 
 
 class OutagePersistence:

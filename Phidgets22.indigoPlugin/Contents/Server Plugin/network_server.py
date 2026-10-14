@@ -57,6 +57,47 @@ class NetworkServerDevice(OutagePersistence):
         self._reminder_interval = max(
             1, saved_positive_int(indigo_plugin.pluginPrefs, "detachedReminderInterval", 3600, logger=logger))
 
+    def _ensureMonitoring(self):
+        with self._lock:
+            if self._state not in ("attached", "detached"):
+                return
+            if self._liveness_timer is None:
+                self._schedule_liveness_check()
+            if self._state == "detached" and self._unavailable_timer is None:
+                delay = (max(86400, self._reminder_interval)
+                         if self._detached_at is not None and time.monotonic() - self._detached_at >= 86400
+                         else self._reminder_interval if self._unavailable_announced
+                         else self._initial_unavailable_timeout)
+                self._schedule_unavailable_timer(delay)
+
+    @runtime_boundary("serverAvailable")
+    def serverAvailable(self, server):
+        try:
+            return self.serverAvailable_impl(server)
+        finally:
+            self._ensureMonitoring()
+
+    @runtime_boundary("serverInitiallyUnavailable")
+    def serverInitiallyUnavailable(self):
+        try:
+            return self.serverInitiallyUnavailable_impl()
+        finally:
+            self._ensureMonitoring()
+
+    @runtime_boundary("_confirmUnavailable")
+    def _confirmUnavailable(self, generation):
+        try:
+            return self._confirmUnavailable_impl(generation)
+        finally:
+            self._ensureMonitoring()
+
+    @runtime_boundary("_unavailableReminder")
+    def _unavailableReminder(self, generation):
+        try:
+            return self._unavailableReminder_impl(generation)
+        finally:
+            self._ensureMonitoring()
+
     def _outage_address(self):
         return ["networkServer", self.serverName]
 
@@ -87,8 +128,7 @@ class NetworkServerDevice(OutagePersistence):
         with self._lock:
             self._state = "stopped"
 
-    @runtime_boundary("serverAvailable")
-    def serverAvailable(self, server):
+    def serverAvailable_impl(self, server):
         self._cancel_detach_timer()
         self._cancel_unavailable_timer()
         with self._lock:
@@ -150,8 +190,7 @@ class NetworkServerDevice(OutagePersistence):
                 else " after %.1f seconds" % outage_seconds)
         self._schedule_liveness_check()
 
-    @runtime_boundary("Network server startup availability")
-    def serverInitiallyUnavailable(self):
+    def serverInitiallyUnavailable_impl(self):
         """Begin monitoring a configured server absent during plugin startup."""
         with self._lock:
             self._state = "detached"
@@ -304,8 +343,7 @@ class NetworkServerDevice(OutagePersistence):
         if timer is not None:
             timer.cancel()
 
-    @runtime_boundary("_confirmUnavailable")
-    def _confirmUnavailable(self, generation):
+    def _confirmUnavailable_impl(self, generation):
         with self._lock:
             if (generation != self._detach_generation or
                     self._state != "attached"):
@@ -363,8 +401,7 @@ class NetworkServerDevice(OutagePersistence):
             self._unavailable_timer = timer
         timer.start()
 
-    @runtime_boundary("_unavailableReminder")
-    def _unavailableReminder(self, generation):
+    def _unavailableReminder_impl(self, generation):
         with self._lock:
             if (generation != self._unavailable_generation or
                     self._state != "detached"):

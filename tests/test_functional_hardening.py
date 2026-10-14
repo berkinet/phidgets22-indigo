@@ -29,6 +29,12 @@ class FunctionalHardeningTests(unittest.TestCase):
                 None, 1000, 9, 'F', indigo_plugin=plugin, indigoDevice=device,
                 logger=mock.Mock())
         self.assertEqual(sensor.temperatureChangeTrigger, 5)
+        channel.getMinDataInterval.return_value = 1
+        channel.getMaxDataInterval.return_value = 10000
+        channel.getMinTemperatureChangeTrigger.return_value = 0
+        channel.getMaxTemperatureChangeTrigger.return_value = 100
+        sensor.configureAttachedPhidget(channel)
+        channel.setTemperatureChangeTrigger.assert_called_once_with(5)
 
     def test_vcp_sensor_types_publish_current_units(self):
         import sensortypes

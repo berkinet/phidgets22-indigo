@@ -178,11 +178,15 @@ class LCDPhidget(PhidgetBase):
 
     @runtime_boundary("onAttachHandler")
     def onAttachHandler(self, ph):
-        super(LCDPhidget, self).onAttachHandler(ph)
+        committed = super(LCDPhidget, self).onAttachHandler(ph)
+        if committed is False or (type(committed) is int and committed != getattr(self, "_lifecycle_epoch", committed)):
+            return False
         if self._state == "attached":
             self.updateIndigoStatus()
             self._replay_pending_display_request()
             self._runInitialActionGroup()
+        return committed
+
 
     def _runInitialActionGroup(self):
         if not self.initialActionGroupId:

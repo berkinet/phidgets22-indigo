@@ -61,9 +61,13 @@ class AdapterGPIOInputPhidget(DigitalInputPhidget):
 
     @runtime_boundary("onAttachHandler")
     def onAttachHandler(self, ph):
-        super(AdapterGPIOInputPhidget, self).onAttachHandler(ph)
+        committed = super(AdapterGPIOInputPhidget, self).onAttachHandler(ph)
+        if committed is False or (type(committed) is int and committed != getattr(self, "_lifecycle_epoch", committed)):
+            return False
         if self._state == "attached":
             self.updateIndigoStatus(bool(ph.getState()) != self.inverted)
+        return committed
+
 
     def actionControlSensor(self, action):
         # The base implementation reads the raw state, so apply inversion here.

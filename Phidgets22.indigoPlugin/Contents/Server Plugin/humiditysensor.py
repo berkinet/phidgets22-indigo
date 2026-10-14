@@ -37,6 +37,7 @@ class HumiditySensorPhidget(PhidgetBase):
     def onHumidityChangeHandler(self, ph, humidity):
         self.updateStateOnServer("humidity", value=humidity, decimalPlaces=self.decimalPlaces)
         self.indigoDevice.updateStateImageOnServer(indigo.kStateImageSel.HumiditySensorOn)
+        return True
 
     def getDeviceStateList(self):
         return self.stateList(("number", "humidity", "humidity"))

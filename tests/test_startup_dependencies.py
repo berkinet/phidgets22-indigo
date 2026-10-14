@@ -26,7 +26,8 @@ class StartupDependencyTests(unittest.TestCase):
         log = mock.Mock()
         indigo = types.SimpleNamespace(server=types.SimpleNamespace(log=log))
         with mock.patch.dict("sys.modules", {"indigo": indigo}), \
-                mock.patch("builtins.__import__", side_effect=import_module):
+                mock.patch("builtins.__import__", side_effect=import_module), \
+                mock.patch.object(python_environment.os, "access", return_value=True):
             with self.assertRaises(ImportError) as caught:
                 runpy.run_path(str(ENTRY))
         return caught.exception, log

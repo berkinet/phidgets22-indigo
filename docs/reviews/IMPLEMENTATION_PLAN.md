@@ -26,10 +26,10 @@ Authorized 14 October 2026. Baseline 2026.1.39, bcbc788.
 - [x] Regression tests and release.
 
 ## Stage 5: consolidation and maintenance
-- [ ] Shared polling fault lifecycle, retaining sensor-specific algorithms.
-- [ ] Outage cleanup, catalog TTL, test hook documentation, optional SDK handling.
-- [ ] Evaluate LCD diff rendering/startup polling/UI splitting against benefit/risk.
-- [ ] Full validation, release, live acceptance checklist.
+- [x] Shared polling fault lifecycle, retaining sensor-specific algorithms.
+- [x] Outage cleanup, catalog TTL, test hook documentation, optional SDK handling.
+- [x] Evaluate LCD diff rendering/startup polling/UI splitting against benefit/risk.
+- [x] Full validation, release, live acceptance checklist.
 
 Excluded: debug tracebacks in Indigo, generic decorator as recovery substitute,
 custom distribution ZIP, broad rewrite. RFID history is already bounded.
@@ -50,3 +50,27 @@ architecture introspection with a malformed-row-count behavior regression. A
 function's length was not a meaningful correctness requirement.
 
 Stage 4 automated acceptance: 441 tests; version 2026.1.43.
+
+Stage 5 decisions:
+- Shared peripheral fault/recovery handling; GPIO and I2C LCD use common native
+  completion/initialization retry behavior. No separate one-second LCD retry loop.
+- I2C LCD frames use changed-cell writes; failed transfers invalidate the display
+  cache and require a full redraw. HD44780 character ROM mapping is retained
+  because ROM variants differ; no untested accented-character translation added.
+- First sensor poll remains synchronous to preserve model metadata and dynamic
+  state creation. The guarded path retains a retry if publication fails.
+- Extract diagnostic menus, retain focused validators/menu builders. Further
+  monolithic UI reorganization offers little defect-reduction benefit here.
+- Keep atomic/fsynced outage writes for immediate crash-safe records; file I/O
+  still runs synchronously. A worker/persistence rewrite is not justified without
+  evidence of actual disk stalls. Cleanup handles deleted/obsolete devices.
+- Firmware override documented as administrative, temporary and read-only.
+- Dependency-install tests now model a supported Indigo host independently of
+  the test machine's filesystem; no supported-host runtime advice was changed.
+- Simulator-specific RFID behavior and sensor algorithms retained.
+
+All code stages completed. Automated acceptance and published version recorded
+in FINAL_ACCEPTANCE.md. Live hardware acceptance remains pending; it cannot be
+claimed from mock-based testing.
+
+Stage 5 automated acceptance: 453 tests; version 2026.1.44.
