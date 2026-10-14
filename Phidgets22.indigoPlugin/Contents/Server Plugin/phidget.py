@@ -81,6 +81,7 @@ class PhidgetBase(object):
         self._detach_grace_timer = None
         self._detach_error_timer = None
         self._lifecycle_lock = threading.RLock()
+        self._lifecycle_epoch = 0
         self._timer_generation = 0
         self._detach_generation = 0
         self._detach_error_generation = 0
@@ -421,6 +422,7 @@ class PhidgetBase(object):
 
     def start(self):
         with self._lifecycle_lock:
+            self._lifecycle_epoch += 1
             self._state = "starting"
             self._detached_at = time.monotonic()
             self._started_at = self._detached_at
@@ -571,6 +573,7 @@ class PhidgetBase(object):
             with self._lifecycle_lock:
                 if self._state in ("stopping", "stopped"):
                     return
+                self._lifecycle_epoch += 1
                 self._state = "detached"
                 if self._detached_at is None:
                     self._detached_at = time.monotonic()
@@ -606,13 +609,20 @@ class PhidgetBase(object):
             with self._lifecycle_lock:
                 if self._state in ("stopping", "stopped"):
                     return
+                self._lifecycle_epoch += 1
+                epoch = self._lifecycle_epoch
                 detached_for = time.monotonic() - self._detached_at if self._detached_at else 0
                 detach_announced = self._detach_announced
             self.configureAttachedPhidget(ph)
-            self._cache_runtime_server(ph)
-            self._update_connection_states()
+            with self._lifecycle_lock:
+                if epoch != self._lifecycle_epoch or self._state in ("stopping", "stopped"):
+                    return
+                self._cache_runtime_server(ph)
+                self._update_connection_states()
         except PeripheralUnavailableError as error:
             with self._lifecycle_lock:
+                if epoch != self._lifecycle_epoch or self._state in ("stopping", "stopped"):
+                    return
                 self._state = "detached"
                 if self._detached_at is None:
                     self._detached_at = time.monotonic()
@@ -627,6 +637,8 @@ class PhidgetBase(object):
         except PhidgetException as error:
             if error.code == ErrorCode.EPHIDGET_NOTATTACHED:
                 with self._lifecycle_lock:
+                    if epoch != self._lifecycle_epoch or self._state in ("stopping", "stopped"):
+                        return
                     self._state = "detached"
                     if self._detached_at is None:
                         self._detached_at = time.monotonic()
@@ -635,6 +647,8 @@ class PhidgetBase(object):
                     "awaiting automatic reattach: %s", self._identity())
                 return
             with self._lifecycle_lock:
+                if epoch != self._lifecycle_epoch or self._state in ("stopping", "stopped"):
+                    return
                 self._state = "detached"
                 if self._detached_at is None:
                     self._detached_at = time.monotonic()
@@ -647,6 +661,8 @@ class PhidgetBase(object):
             return
         except Exception:
             with self._lifecycle_lock:
+                if epoch != self._lifecycle_epoch or self._state in ("stopping", "stopped"):
+                    return
                 self._state = "detached"
                 if self._detached_at is None:
                     self._detached_at = time.monotonic()
@@ -659,46 +675,49 @@ class PhidgetBase(object):
             return
 
         try:
-            self._cancel_detach_grace_timer()
-            self._cancel_attach_timer()
-            self._cancel_detach_error_timer()
             with self._lifecycle_lock:
-                self._state = "attached"
-                self._daily_reminder_reported = False
-                self._restored_reminder_due = None
-                self._detached_at = None
-                self._persist_outage()
-                self._detach_announced = False
-                startup_contention_recovered = bool(
-                    self._startup_contention_message)
-                startup_contention_expired = self._startup_contention_expired
-                self._startup_contention_message = None
-                self._startup_error_message = None
-                self._startup_contention_expired = False
-                self._attach_count += 1
-                attach_count = self._attach_count
-            if startup_contention_recovered:
-                self.logger.debug(
-                    "Transient startup contention cleared automatically: %s",
-                    self._identity())
-            attachment_announced = detach_announced or startup_contention_expired
-            if attach_count == 1 or attachment_announced:
-                self.indigoDevice.setErrorStateOnServer(None)
-            coordinator = getattr(self.indigo_plugin, "phidgetAttachCompleted", None)
-            if coordinator is not None:
-                coordinator(self, detached_for, attach_count, attachment_announced)
-            else:
-                log = self.logger.info if detach_announced else self.logger.debug
-                log("Phidget %s in %.1f seconds (attach #%d): %s",
-                    "reattached" if attach_count > 1 else "attached",
-                    detached_for, attach_count, self._identity())
-            if attachment_announced:
-                self.indigo_plugin.triggerEvent(self, "deviceAttached")
-            try:
-                phidget_util.logPhidgetEvent(ph, self.logger.debug, "Attached '" + self.indigoDevice.name + "'")
-            except Exception:
-                self.logger.debug("Unable to format attach diagnostics: %s\n%s",
-                                  self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
+                if epoch != self._lifecycle_epoch or self._state in ("stopping", "stopped"):
+                    return
+                self._cancel_detach_grace_timer()
+                self._cancel_attach_timer()
+                self._cancel_detach_error_timer()
+                with self._lifecycle_lock:
+                    self._state = "attached"
+                    self._daily_reminder_reported = False
+                    self._restored_reminder_due = None
+                    self._detached_at = None
+                    self._persist_outage()
+                    self._detach_announced = False
+                    startup_contention_recovered = bool(
+                        self._startup_contention_message)
+                    startup_contention_expired = self._startup_contention_expired
+                    self._startup_contention_message = None
+                    self._startup_error_message = None
+                    self._startup_contention_expired = False
+                    self._attach_count += 1
+                    attach_count = self._attach_count
+                if startup_contention_recovered:
+                    self.logger.debug(
+                        "Transient startup contention cleared automatically: %s",
+                        self._identity())
+                attachment_announced = detach_announced or startup_contention_expired
+                if attach_count == 1 or attachment_announced:
+                    self.indigoDevice.setErrorStateOnServer(None)
+                coordinator = getattr(self.indigo_plugin, "phidgetAttachCompleted", None)
+                if coordinator is not None:
+                    coordinator(self, detached_for, attach_count, attachment_announced)
+                else:
+                    log = self.logger.info if detach_announced else self.logger.debug
+                    log("Phidget %s in %.1f seconds (attach #%d): %s",
+                        "reattached" if attach_count > 1 else "attached",
+                        detached_for, attach_count, self._identity())
+                if attachment_announced:
+                    self.indigo_plugin.triggerEvent(self, "deviceAttached")
+                try:
+                    phidget_util.logPhidgetEvent(ph, self.logger.debug, "Attached '" + self.indigoDevice.name + "'")
+                except Exception:
+                    self.logger.debug("Unable to format attach diagnostics: %s\n%s",
+                                      self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
         except Exception:
             self.logger.error("Attach completion handler failed: %s\n%s",
                               self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
@@ -712,6 +731,7 @@ class PhidgetBase(object):
         with self._lifecycle_lock:
             if self._state == "stopped":
                 return
+            self._lifecycle_epoch += 1
             self._state = "stopping"
         self._cancel_attach_timer()
         self._cancel_detach_grace_timer()

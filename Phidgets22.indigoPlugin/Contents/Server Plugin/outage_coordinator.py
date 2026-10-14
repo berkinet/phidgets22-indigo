@@ -21,6 +21,7 @@ class OutageCoordinator(object):
         self._timer_factory = timer_factory
         self._clock = clock
         self._lock = threading.RLock()
+        self._stopped = False
         self._batches = {
             "detach": {},
             "recovery": {},
@@ -50,6 +51,9 @@ class OutageCoordinator(object):
             self.COALESCE_SECONDS, callback, args=(key, token))
         timer.daemon = True
         with self._lock:
+            if self._stopped:
+                self._batches[kind].pop(key, None)
+                return
             old_timer = self._timers.pop(timer_key, None)
             self._timers[timer_key] = (timer, token)
         if old_timer is not None:
@@ -97,6 +101,8 @@ class OutageCoordinator(object):
 
     def _take_batch(self, kind, key, default, token=None):
         with self._lock:
+            if self._stopped:
+                return default
             current = self._timers.get((kind, key))
             if token is not None and (current is None or current[1] is not token):
                 return default
@@ -260,6 +266,7 @@ class OutageCoordinator(object):
 
     def stop(self):
         with self._lock:
+            self._stopped = True
             timers = [item[0] for item in self._timers.values()]
             self._timers.clear()
             for batches in self._batches.values():

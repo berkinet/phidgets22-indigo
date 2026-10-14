@@ -483,6 +483,26 @@ class PhidgetLifecycleTests(unittest.TestCase):
         self.assertIsNone(self.phidget.timer)
         self.assertTrue(self.phidget.native.closed)
 
+    def test_initialization_completion_after_stop_cannot_publish_recovery(self):
+        self.phidget = TestPhidget()
+        self.phidget.start()
+        self.phidget.configureAttachedPhidget = lambda ph: self.phidget.stop()
+        self.phidget.onAttachHandler(self.phidget.native)
+        self.assertEqual(self.phidget._state, "stopped")
+        self.assertTrue(self.phidget.native.closed)
+        self.assertEqual(self.phidget.device.errors, [])
+        self.assertEqual(self.phidget._attach_count, 0)
+
+    def test_initialization_completion_after_detach_cannot_clear_outage(self):
+        self.phidget = TestPhidget()
+        self.phidget.start()
+        self.phidget.configureAttachedPhidget = lambda ph: self.phidget.onDetachHandler(ph)
+        self.phidget.onAttachHandler(self.phidget.native)
+        self.assertEqual(self.phidget._state, "detached")
+        self.assertIsNotNone(self.phidget._detached_at)
+        self.assertEqual(self.phidget._attach_count, 0)
+        self.assertEqual(self.phidget.device.errors, [])
+
     def test_stop_is_repeatable(self):
         self.phidget = TestPhidget()
         self.phidget.start()

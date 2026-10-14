@@ -11,6 +11,7 @@ class EventCoordinator(object):
     def __init__(self, timer_factory=threading.Timer):
         self.triggers = {}
         self._lock = threading.RLock()
+        self._stopped = False
         self._timers = {}
         self._reported_detaches = set()
         self._timer_factory = timer_factory
@@ -62,6 +63,8 @@ class EventCoordinator(object):
             args=(trigger_id, source, token))
         timer.daemon = True
         with self._lock:
+            if self._stopped:
+                return
             old = self._timers.pop(trigger_id, None)
             self._timers[trigger_id] = (timer, token)
         if old is not None:
@@ -71,6 +74,8 @@ class EventCoordinator(object):
     def _execute_delayed_detach(self, trigger_id, source, token):
         device_id = source.indigoDevice.id
         with self._lock:
+            if self._stopped:
+                return
             pending = self._timers.get(trigger_id)
             details = self.triggers.get(trigger_id)
             if (pending is None or pending[1] is not token or
@@ -84,6 +89,9 @@ class EventCoordinator(object):
         indigo.trigger.execute(trigger_id)
 
     def trigger_event(self, source, event):
+        with self._lock:
+            if self._stopped:
+                return
         device_id = source.indigoDevice.id
         if event == "deviceAttached":
             self._cancel_delayed_detach(device_id)
@@ -138,6 +146,7 @@ class EventCoordinator(object):
 
     def stop(self):
         with self._lock:
+            self._stopped = True
             timers = [item[0] for item in self._timers.values()]
             self._timers.clear()
             self._reported_detaches.clear()

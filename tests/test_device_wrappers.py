@@ -171,6 +171,23 @@ class DeviceWrapperTests(unittest.TestCase):
         wrapper.asyncSetResult(None, 52, "Device not Attached", "Turn Off", False)
         self.assertEqual(wrapper.logger.error.call_count, 3)
 
+    def test_async_completion_from_old_lifecycle_is_ignored(self):
+        wrapper = object.__new__(digitaloutput.DigitalOutputPhidget)
+        wrapper._identity = lambda: "Door"
+        wrapper._lifecycle_epoch = 1
+        wrapper._state = "attached"
+        wrapper.logger = mock.Mock()
+        wrapper.updateIndigoStatus = mock.Mock()
+        old = wrapper._result_callback("Turn On", True)
+        wrapper._lifecycle_epoch = 2
+        wrapper._state = "detached"
+        wrapper._detached_write_failures = {("Turn Off", "False")}
+        old(None, 0, "OK")
+        old(None, 52, "Device not Attached")
+        self.assertEqual(wrapper._detached_write_failures, {("Turn Off", "False")})
+        wrapper.updateIndigoStatus.assert_not_called()
+        wrapper.logger.error.assert_not_called()
+
     def test_non_detach_async_errors_are_not_suppressed(self):
         wrapper = object.__new__(digitaloutput.DigitalOutputPhidget)
         wrapper.logger = mock.Mock()

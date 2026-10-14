@@ -130,6 +130,18 @@ class ServerOutageTests(unittest.TestCase):
         self.assertEqual(args[1], second.indigoDevice.name)
         self.assertEqual(args[4], '')
 
+    def test_stopped_outage_coordinator_rejects_late_callback_work(self):
+        timers = mock.Mock()
+        coordinator = OutageCoordinator(self.plugin.logger,
+            lambda: list(self.plugin.activePhidgets.values()), timer_factory=timers)
+        coordinator.stop()
+        coordinator.startup_unavailable(self.plugin.activePhidgets[1], 30, 'starting')
+        coordinator.flush_startup_unavailable(
+            PhysicalDeviceIdentity.from_wrapper(self.plugin.activePhidgets[1]))
+        self.assertFalse(any(coordinator._batches.values()))
+        self.plugin.logger.error.assert_not_called()
+        timers.return_value.start.assert_not_called()
+
     def test_batch_timer_is_replaced_and_shutdown_cancels_it(self):
         timers = []
 

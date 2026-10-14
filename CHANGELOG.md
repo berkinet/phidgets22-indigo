@@ -1,5 +1,13 @@
 # Release notes
 
+## 2026.1.40 — 2026-10-14
+
+- Lifecycle epochs invalidate attachment initialization and async write
+  completions after detach/stop, preventing false recovery and stale status reads.
+- Stopped event/outage coordinators reject late scheduling.
+- Regression coverage for stop/detach during initialization and old completions.
+
+
 ## 2026.1.39 — 2026-10-14
 
 - Suppress repeated Digital Output async Device not Attached errors for the

@@ -63,8 +63,13 @@ class DigitalOutputPhidget(PhidgetBase):
     def _result_callback(self, operation, requested):
         # Capture each request separately; completion order may differ from submission.
         identity = self._identity()
+        epoch = getattr(self, "_lifecycle_epoch", 0)
         def completed(ch, res, details):
-            self.asyncSetResult(ch, res, details, operation, requested, identity)
+            with getattr(self, "_lifecycle_lock", nullcontext()):
+                if (epoch != getattr(self, "_lifecycle_epoch", 0) or
+                        getattr(self, "_state", None) in ("stopping", "stopped")):
+                    return
+                self.asyncSetResult(ch, res, details, operation, requested, identity)
         return completed
 
     def _clear_detached_write_failures(self):
