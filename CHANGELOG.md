@@ -1,5 +1,17 @@
 # Release notes
 
+## 2026.1.43 — 2026-10-14
+
+- Correct Fahrenheit change thresholds to SDK Celsius deltas.
+- Validate formula function argument counts before evaluation.
+- Correct unsupported sensor-action context and VCP4115/4116 current unit mappings.
+- Safely parse saved intervals and malformed UI input; expose the effective
+  30-second startup minimum consistently.
+- Normalize local discovery/runtime identities with legacy channel-token support.
+  Physical counts distinguish hub ports and tolerate wildcard/named definitions
+  of the same target without merging conflicting named server configurations.
+
+
 ## 2026.1.42 — 2026-10-14
 
 - Distinguish attached-but-uninitialized channels from physical detachment.

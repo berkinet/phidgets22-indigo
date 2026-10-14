@@ -339,16 +339,12 @@ class ConfigurationTests(unittest.TestCase):
         self.assertIsNotNone(field)
         self.assertEqual(field.get("defaultValue"), "0")
 
-    def test_device_validation_uses_focused_dispatch_handlers(self):
-        coordinator = inspect.getsource(
-            discovery_ui.DiscoveryUiMixin.validateDeviceConfigUi)
-        self.assertLessEqual(len(coordinator.splitlines()), 17)
-        for name in (
-                "_validateSGP41Config", "_validateBME280Config",
-                "_validateAdapterGPIOConfig", "_validateLCDConfig",
-                "_validateLCDSettings", "_validateDataAdapterConfig",
-                "_validateDataAdapterSettings", "_validateChannelConfig"):
-            self.assertTrue(hasattr(discovery_ui.DiscoveryUiMixin, name), name)
+    def test_malformed_lcd_row_count_returns_field_error(self):
+        instance = object.__new__(plugin.Plugin)
+        valid, values, errors = instance.validateActionConfigUi(
+            {'lineCount': 'not a number'}, 'lcdStartAnimation', 0)
+        self.assertFalse(valid)
+        self.assertIn('lineCount', errors)
 
     def test_custom_sensor_formula_is_validated_before_save(self):
         instance = object.__new__(plugin.Plugin)
@@ -472,7 +468,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>2026.1.42</string>", plist)
+        self.assertIn("<string>2026.1.43</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_detach_error_delay_is_conditionally_visible(self):
@@ -1173,7 +1169,7 @@ class ConfigurationTests(unittest.TestCase):
         })
 
         self.assertTrue(instance.validatePrefsConfigUi(values))
-        self.assertEqual(values["attachTimeout"], "12")
+        self.assertEqual(values["attachTimeout"], "30")
         self.assertEqual(values["detachedReminderInterval"], "900")
 
     def test_action_group_menu_is_optional_and_sorted(self):

@@ -66,3 +66,12 @@ def call_with_timeout(callback, timeout=1.0):
     if not succeeded:
         raise result
     return result
+
+
+def saved_positive_int(preferences, key, default, minimum=1, logger=None):
+    try:
+        return bounded_int(preferences.get(key, default), minimum=minimum)
+    except (TypeError, ValueError, OverflowError):
+        if logger is not None:
+            logger.warning("Invalid saved %s; using %s", key, default)
+        return default

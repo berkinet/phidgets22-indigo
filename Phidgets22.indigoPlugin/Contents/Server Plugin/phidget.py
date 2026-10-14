@@ -13,7 +13,7 @@ import sys
 from outage_store import OutagePersistence
 from outage_message import outage_duration, reminder_cadence
 import phidget_util
-from config_util import saved_bool
+from config_util import saved_bool, saved_positive_int
 from connection_identity import (ChannelIdentity, PhysicalDeviceIdentity,
                                  PortIdentity, ServerIdentity)
 from state_publisher import update_indigo_state
@@ -66,12 +66,10 @@ class PhidgetBase(OutagePersistence):
         self.pluginSuppressErrors = saved_bool(
             self.indigo_plugin.pluginPrefs.get('suppressErrors', False))
 
-        configured_timeout = int(
-            indigo_plugin.pluginPrefs.get('attachTimeout', '30'))
+        configured_timeout = saved_positive_int(indigo_plugin.pluginPrefs, 'attachTimeout', 30, logger=logger)
         self.initial_connection_timeout = max(
             self.STARTUP_ERROR_GRACE_SECONDS, configured_timeout)
-        self.detached_reminder_interval = int(
-            indigo_plugin.pluginPrefs.get('detachedReminderInterval', '3600'))
+        self.detached_reminder_interval = saved_positive_int(indigo_plugin.pluginPrefs, 'detachedReminderInterval', 3600, logger=logger)
         self.log_detach_error = saved_bool(
             indigo_plugin.pluginPrefs.get('logDetachError', False))
         try:

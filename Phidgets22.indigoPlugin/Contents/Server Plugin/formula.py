@@ -124,6 +124,18 @@ class Formula(object):
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             if node.func.id not in FUNCTIONS or node.keywords:
                 raise ValueError("Unknown or unsupported formula function")
+            count = len(node.args)
+            name = node.func.id
+            if name in ("min", "max"):
+                valid = count >= 2  # All arguments are scalar numbers, not iterables.
+            elif name in ("round", "log"):
+                valid = count in (1, 2)
+            elif name == "clamp":
+                valid = count == 3
+            else:
+                valid = count == 1
+            if not valid:
+                raise ValueError("%s has an invalid number of arguments" % name)
             if node.func.id == "round":
                 if len(node.args) not in (1, 2):
                     raise ValueError("round accepts a value and optional digits")

@@ -1,3 +1,4 @@
+from error_reporting import validation_boundary
 # -*- coding: utf-8 -*-
 
 """Indigo configuration callbacks backed by the live discovery inventory."""
@@ -259,6 +260,7 @@ class DiscoveryUiMixin(object):
         return self._applyDisplayProvider(
             valuesDict, valuesDict.get("lcdDisplayProvider", ""), devId)
 
+    @validation_boundary("validatePrefsConfigUi")
     def validatePrefsConfigUi(self, valuesDict):
         valid_version_intervals = {"0", "21600", "43200", "86400", "604800"}
         version_interval = str(valuesDict.get(
@@ -291,7 +293,7 @@ class DiscoveryUiMixin(object):
                 detach_error_delay = 300
 
         try:
-            attach_timeout = int(valuesDict.get("attachTimeout", "5"))
+            attach_timeout = int(valuesDict.get("attachTimeout", "30"))
             if attach_timeout <= 0:
                 raise ValueError
         except (TypeError, ValueError):
@@ -310,7 +312,7 @@ class DiscoveryUiMixin(object):
                 "Enter a whole number greater than zero.")
             return False, valuesDict, errors
 
-        valuesDict["attachTimeout"] = str(attach_timeout)
+        valuesDict["attachTimeout"] = str(max(30, attach_timeout))
         valuesDict["detachedReminderInterval"] = str(reminder_interval)
         valuesDict["detachErrorDelay"] = str(detach_error_delay)
         valuesDict["versionCollectionInterval"] = version_interval
@@ -524,6 +526,7 @@ class DiscoveryUiMixin(object):
                 errors["customFormula"] = str(error)
         return errors
 
+    @validation_boundary("validateDeviceConfigUi")
     def validateDeviceConfigUi(self, valuesDict, typeId, devId):
         valuesDict["observedConnection"] = self._observedConnectionForDevice(devId)
         if typeId == "networkServer":
@@ -856,7 +859,11 @@ class DiscoveryUiMixin(object):
                         "That address is already used by '%s' on this adapter." %
                         owner.name)
 
-                adapter = registry_for(self).get(int(adapter_id or 0))
+                try:
+                    adapter = registry_for(self).get(int(adapter_id or 0))
+                except (TypeError, ValueError):
+                    errors["lcdAdapterDeviceId"] = "Select a valid I2C adapter."
+                    adapter = None
                 probe = getattr(adapter, "i2cAddressResponds", None)
                 if ("lcdI2CAddress" not in errors and probe is not None and
                         getattr(adapter, "_state", None) == "attached"):

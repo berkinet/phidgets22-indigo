@@ -79,6 +79,12 @@ sensorUnitTypes = {
                           VoltageSensorType.SENSOR_TYPE_3509, VoltageSensorType.SENSOR_TYPE_3510, VoltageSensorType.SENSOR_TYPE_VOLTAGE],
 }
 
+for _name in ("SENSOR_TYPE_VCP4115", "SENSOR_TYPE_VCP4116"):
+    _value = getattr(VoltageSensorType, _name, None)
+    if _value is not None:
+        sensorUnitTypes[Unit.PHIDUNIT_AMPERE].append(_value)
+
+
 def getVoltageSensorUnit(sensorType):
     for key, value in sensorUnitTypes.items():
         if sensorType in value:

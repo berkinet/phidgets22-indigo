@@ -29,7 +29,7 @@ class ServerIdentity(object):
         if not self.remote:
             return "local"
         return (self.unique_name or self.name or self.configured_name or
-                self.hostname or self.peer or "local")
+                self.hostname or self.peer or "remote:any")
 
     @property
     def discovery_key(self):
@@ -129,7 +129,7 @@ class ChannelIdentity(object):
         return cls(
             PortIdentity(
                 PhysicalDeviceIdentity(
-                    server.discovery_key, description.get("serialNumber")),
+                    server.key, description.get("serialNumber")),
                 description.get("hubPort")),
             bool(description.get("isHubPortDevice")),
             description.get("channel"),
@@ -190,3 +190,15 @@ def discovery_device_key(description):
         return (server, serial, "VINT_HUB")
     return (server, serial, description.get("deviceClass"),
             description.get("deviceSKU"))
+
+
+def same_phidget(first, second):
+    """Compare configured physical targets, tolerating a wildcard server address."""
+    a, b = first.channelInfo, second.channelInfo
+    if (a.serialNumber, a.hubPort) != (b.serialNumber, b.hubPort):
+        return False
+    sa, sb = ServerIdentity.from_wrapper(first), ServerIdentity.from_wrapper(second)
+    if sa.remote != sb.remote:
+        return False
+    return (sa.key == sb.key or bool(sa.aliases & sb.aliases) or
+            not sa.aliases or not sb.aliases)

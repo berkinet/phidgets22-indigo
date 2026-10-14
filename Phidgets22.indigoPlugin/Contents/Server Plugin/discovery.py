@@ -112,7 +112,11 @@ def _untoken(token, expected_kind):
         raw = str(token)
         raw += "=" * (-len(raw) % 4)
         kind, key = json.loads(base64.urlsafe_b64decode(raw.encode("ascii")).decode("utf-8"))
-        return tuple(key) if kind == expected_kind else None
+        if kind != expected_kind:
+            return None
+        if kind == "channel" and key and key[0] is None:
+            key[0] = "local"  # Accept channel selections saved by older versions.
+        return tuple(key)
     except Exception:
         return None
 

@@ -9,7 +9,7 @@ import threading
 import time
 
 from connection_identity import (PhysicalDeviceIdentity, PortIdentity,
-                                 ServerIdentity)
+                                 ServerIdentity, same_phidget)
 
 
 class OutageCoordinator(object):
@@ -159,12 +159,9 @@ class OutageCoordinator(object):
 
     def report_unavailable(self, physical_device, affected):
         """Log a snapshot without changing batches, timers, or outage state."""
-        configured = [
-            phidget for phidget in self._channel_snapshot()
-            if (getattr(phidget, "channelInfo", None) is not None and
-                hasattr(phidget, "_state") and
-                PhysicalDeviceIdentity.from_wrapper(phidget) ==
-                physical_device)]
+        configured = [phidget for phidget in self._channel_snapshot()
+                      if getattr(phidget, "channelInfo", None) is not None
+                      and hasattr(phidget, "_state")]
         for phidget, (detached_for, state) in affected.items():
             check = getattr(phidget, "isChannelDetached", None)
             if check is not None and not check():
@@ -172,11 +169,10 @@ class OutageCoordinator(object):
             # A VINT hub serial identifies the hub; its ports host separate
             # Phidgets. Count device definitions for this port, never the
             # hardware's available channels or internally managed handles.
-            port = PortIdentity.from_wrapper(phidget)
             devices = [device for device in configured
-                       if PortIdentity.from_wrapper(device) == port]
+                       if same_phidget(device, phidget)]
             all_detached = (len(devices) > 1 and
-                            all(device in affected and
+                            all(getattr(device, "_state", None) in ("starting", "detached") and
                                 getattr(device, "isChannelDetached", lambda: True)()
                                 for device in devices))
             status = (("both Indigo devices configured for this Phidget are unavailable; "
@@ -225,7 +221,7 @@ class OutageCoordinator(object):
                     phidget._detach_announced]
         if len(configured) > 1 and len(affected) == len(configured):
             detached_at = min(phidget._detached_at for phidget in affected)
-            serials = {phidget.channelInfo.serialNumber for phidget in affected}
+            serials = {PortIdentity.from_wrapper(phidget) for phidget in affected}
             with self._lock:
                 self._server_outages[server_key] = {
                     "detachedAt": detached_at,

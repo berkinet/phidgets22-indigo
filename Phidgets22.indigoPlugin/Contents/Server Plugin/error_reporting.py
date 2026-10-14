@@ -107,3 +107,19 @@ def set_device_error(owner, message):
         log_error(owner, "Unable to publish device availability: device='%s'; %s",
                   getattr(owner.indigoDevice, 'name', 'unknown'), error)
         return False
+
+
+def validation_boundary(operation):
+    def decorate(callback):
+        @wraps(callback)
+        def validate(owner, values, *args, **kwargs):
+            try:
+                return callback(owner, values, *args, **kwargs)
+            except Exception as error:
+                import indigo
+                errors = getattr(indigo, 'Dict', dict)()
+                errors['showAlertText'] = "Invalid configuration: %s" % concise_error(error)
+                log_error(owner, "%s failed: %s", operation, error)
+                return False, values, errors
+        return validate
+    return decorate

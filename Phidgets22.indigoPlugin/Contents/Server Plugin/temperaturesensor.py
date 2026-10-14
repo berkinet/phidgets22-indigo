@@ -15,7 +15,7 @@ class TemperatureSensorPhidget(PhidgetBase):
         self.displayTempUnit = displayTempUnit
 
         if self.displayTempUnit.upper() == "F":
-            self.temperatureChangeTrigger = 9.0/5.0 * temperatureChangeTrigger
+            self.temperatureChangeTrigger = 5.0/9.0 * temperatureChangeTrigger
         else: # C
             self.temperatureChangeTrigger = temperatureChangeTrigger
 

@@ -1,3 +1,4 @@
+from error_reporting import validation_boundary
 from error_reporting import runtime_boundary
 # -*- coding: utf-8 -*-
 
@@ -420,6 +421,7 @@ class Plugin(BridgeUiMixin, RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin,
                 "Run a version collection to create the Indigo variable")
         return (values, indigo.Dict())
 
+    @validation_boundary("validateEventConfigUi")
     def validateEventConfigUi(self, valuesDict, typeId, eventId):
         if typeId == "turnOnRequested":
             selected = str(valuesDict.get("indigoDevice", ""))

@@ -1,3 +1,4 @@
+from config_util import saved_positive_int
 from outage_store import OutagePersistence
 from outage_message import outage_duration, reminder_cadence
 from error_reporting import runtime_boundary
@@ -52,10 +53,9 @@ class NetworkServerDevice(OutagePersistence):
         self._liveness_interval = 5.0
         self._liveness_failure_limit = 2
         self._initial_unavailable_timeout = max(
-            30, int(indigo_plugin.pluginPrefs.get("attachTimeout", "30")))
+            30, saved_positive_int(indigo_plugin.pluginPrefs, "attachTimeout", 30, logger=logger))
         self._reminder_interval = max(
-            1, int(indigo_plugin.pluginPrefs.get(
-                "detachedReminderInterval", "3600")))
+            1, saved_positive_int(indigo_plugin.pluginPrefs, "detachedReminderInterval", 3600, logger=logger))
 
     def _outage_address(self):
         return ["networkServer", self.serverName]

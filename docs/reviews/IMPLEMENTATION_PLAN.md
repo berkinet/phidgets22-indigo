@@ -20,10 +20,10 @@ Authorized 14 October 2026. Baseline 2026.1.39, bcbc788.
 - [x] Regression tests and release.
 
 ## Stage 4: functional corrections
-- [ ] Fahrenheit delta converts to SDK Celsius; formula arity checks.
-- [ ] Sensor action attribute, malformed preferences/configuration, VCP mappings.
-- [ ] Identity normalization and physical/device counts.
-- [ ] Regression tests and release.
+- [x] Fahrenheit delta converts to SDK Celsius; formula arity checks.
+- [x] Sensor action attribute, malformed preferences/configuration, VCP mappings.
+- [x] Identity normalization and physical/device counts.
+- [x] Regression tests and release.
 
 ## Stage 5: consolidation and maintenance
 - [ ] Shared polling fault lifecycle, retaining sensor-specific algorithms.
@@ -40,3 +40,13 @@ Stage 1 automated acceptance: 422 tests; version 2026.1.40. Live acceptance pend
 Stage 2 automated acceptance: 429 tests; version 2026.1.41.
 
 Stage 3 automated acceptance: 434 tests; version 2026.1.42.
+
+VCP4115/4116 mappings verified against installed SDK enums and vendor current units:
+https://www.phidgets.com/?prodid=1286 and https://www.phidgets.com/?prodid=1374.
+Unit mapping correction does not constitute hardware acceptance.
+
+Test review: removed the validator source-line-count assertion and replaced its
+architecture introspection with a malformed-row-count behavior regression. A
+function's length was not a meaningful correctness requirement.
+
+Stage 4 automated acceptance: 441 tests; version 2026.1.43.

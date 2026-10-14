@@ -1,3 +1,4 @@
+from error_reporting import validation_boundary
 from error_reporting import runtime_boundary
 from error_reporting import log_error
 # -*- coding: utf-8 -*-
@@ -398,6 +399,7 @@ class ActionsMixin(object):
                     for character in ("\r", "\n"))):
             errors["virtualText"] = "Virtual single-line marquee text must be one line."
 
+    @validation_boundary("validateActionConfigUi")
     def validateActionConfigUi(self, valuesDict, typeId, deviceId):
         errors = indigo.Dict()
         if typeId == "rfidSimulateTag":
@@ -413,7 +415,11 @@ class ActionsMixin(object):
                       ["animationLine%d" % line for line in range(1, 5)] +
                       ["alternateLine%d" % line for line in range(1, 5)]):
             valuesDict[field] = str(valuesDict.get(field, "") or "")
-        line_count = int(valuesDict.get("lineCount", 0))
+        try:
+            line_count = bounded_int(valuesDict.get("lineCount", 0), minimum=0, maximum=4)
+        except (TypeError, ValueError):
+            errors["lineCount"] = "Select a valid LCD row count."
+            return (False, valuesDict, errors)
         mode = valuesDict.get("animationMode", "static")
         self._validateGraphicAction(valuesDict, errors, line_count, mode)
         self._validateLCDLevelsAndPosition(valuesDict, errors, line_count, mode)

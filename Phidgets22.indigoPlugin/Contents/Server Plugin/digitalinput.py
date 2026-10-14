@@ -59,7 +59,7 @@ class DigitalInputPhidget(PhidgetBase):
             state = self.phidget.getState()
             self.updateIndigoStatus(state)
         else:
-            self.logger.error("Unexpected action: %s" % action.deviceAction)
+            self.logger.error("Unexpected sensor action: %s" % action.sensorAction)
 
     def getDeviceStateList(self):
         return self.stateList(
