@@ -152,6 +152,34 @@ class DeviceWrapperTests(unittest.TestCase):
         on(None, 0, "OK")
         wrapper.updateIndigoStatus.assert_called_once()
 
+    def test_repeated_detached_async_errors_are_suppressed_until_recovery(self):
+        wrapper = object.__new__(digitaloutput.DigitalOutputPhidget)
+        wrapper.logger = mock.Mock()
+        wrapper.updateIndigoStatus = mock.Mock()
+        wrapper._identity = mock.Mock(return_value="Close door")
+        for _ in range(100):
+            wrapper.asyncSetResult(None, 52, "Device not Attached", "Turn Off", False)
+        wrapper.logger.error.assert_called_once()
+        wrapper.updateIndigoStatus.assert_not_called()
+        wrapper.asyncSetResult(None, 0, "OK", "Turn Off", False)
+        wrapper.asyncSetResult(None, 52, "Device not Attached", "Turn Off", False)
+        self.assertEqual(wrapper.logger.error.call_count, 2)
+        wrapper._state = "detached"
+        with mock.patch.object(digitaloutput.PhidgetBase, "onAttachHandler",
+                               side_effect=lambda ph: setattr(wrapper, '_state', 'attached')):
+            wrapper.onAttachHandler(object())
+        wrapper.asyncSetResult(None, 52, "Device not Attached", "Turn Off", False)
+        self.assertEqual(wrapper.logger.error.call_count, 3)
+
+    def test_non_detach_async_errors_are_not_suppressed(self):
+        wrapper = object.__new__(digitaloutput.DigitalOutputPhidget)
+        wrapper.logger = mock.Mock()
+        wrapper.updateIndigoStatus = mock.Mock()
+        for _ in range(2):
+            wrapper.asyncSetResult(None, 3, "Timed Out", "Turn Off", False)
+        self.assertEqual(wrapper.logger.error.call_count, 2)
+        wrapper.updateIndigoStatus.assert_not_called()
+
     def test_adapter_gpio_input_configures_pullup_and_inverts_switch_state(self):
         wrapper = object.__new__(adapter_gpio.AdapterGPIOInputPhidget)
         wrapper.inputMode = "pullup"

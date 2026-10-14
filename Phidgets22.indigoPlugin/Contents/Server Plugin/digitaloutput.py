@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from contextlib import nullcontext
+
 import indigo
 
 from Phidget22.Devices.DigitalOutput import DigitalOutput
@@ -28,6 +30,7 @@ class DigitalOutputPhidget(PhidgetBase):
     def onAttachHandler(self, ph):
         super(DigitalOutputPhidget, self).onAttachHandler(ph)
         if self._state == "attached":
+            self._clear_detached_write_failures()
             self.updateIndigoStatus()
 
     def getDeviceStateList(self):
@@ -64,14 +67,37 @@ class DigitalOutputPhidget(PhidgetBase):
             self.asyncSetResult(ch, res, details, operation, requested, identity)
         return completed
 
+    def _clear_detached_write_failures(self):
+        with getattr(self, "_lifecycle_lock", nullcontext()):
+            self._detached_write_failures = set()
+
+    def _first_detached_write_failure(self, operation, requested):
+        with getattr(self, "_lifecycle_lock", nullcontext()):
+            failures = getattr(self, "_detached_write_failures", None)
+            if failures is None:
+                failures = self._detached_write_failures = set()
+            key = (operation, repr(requested))
+            if key in failures:
+                return False
+            failures.add(key)
+            return True
+
     def asyncSetResult(self, ch, res, details, operation="unspecified write", requested=None, identity=None):
         if res != ErrorCode.EPHIDGET_OK:
+            detached = res == ErrorCode.EPHIDGET_NOTATTACHED
+            if detached and not self._first_detached_write_failure(operation, requested):
+                return
             if identity is None:
                 try:
                     identity = self._identity()
                 except Exception:
                     identity = "device identity unavailable"
-            self.logger.error("Async failure: %s : %s; %s; operation=%s requested=%s",
+            message = "Async failure: %s : %s; %s; operation=%s requested=%s"
+            if detached:
+                message += ("; repeated failures for this request are suppressed until recovery. "
+                            "Command was not applied or queued; automatic attachment remains active.")
+            self.logger.error(message,
                               res, details, identity, operation, requested)
             return
+        self._clear_detached_write_failures()
         self.updateIndigoStatus()

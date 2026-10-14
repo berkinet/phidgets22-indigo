@@ -1,5 +1,14 @@
 # Release notes
 
+## 2026.1.39 — 2026-10-14
+
+- Suppress repeated Digital Output async Device not Attached errors for the
+  same operation/value until successful attachment or a successful write.
+  The first failure remains contextual; distinct requests and other failures
+  remain visible. Failed commands are neither applied nor queued for replay.
+  Normal detached reminders and automatic attachment remain active.
+
+
 ## 2026.1.38 — 2026-10-12
 
 - Count configured Indigo devices per Phidget hub port in outage messages.
