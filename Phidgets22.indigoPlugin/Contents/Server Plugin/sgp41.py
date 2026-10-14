@@ -1,4 +1,4 @@
-from error_reporting import log_error
+from error_reporting import log_error, set_device_error
 # -*- coding: utf-8 -*-
 
 """Sensirion SGP41 VOC/NOx sensor on a shared ADP0001 I2C bus."""
@@ -285,6 +285,7 @@ class SGP41Phidget(I2CPeripheralBase):
             adapter = self._resolveAdapter()
             if getattr(adapter, "_state", None) != "attached":
                 self._state = "starting"
+                set_device_error(self, "Provider unavailable")
                 return
             # Indigo may retain the previous device type's dynamic states while
             # a copied device is being saved. Install the SGP41 state list before

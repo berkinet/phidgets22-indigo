@@ -1,3 +1,6 @@
+import math
+import time
+from error_reporting import log_error
 """Outage records kept outside Indigo device configuration."""
 import json
 import os
@@ -37,3 +40,48 @@ class OutageStore:
             finally:
                 if os.path.exists(temporary):
                     os.remove(temporary)
+
+
+class OutagePersistence:
+    """Shared wall-clock records with monotonic runtime elapsed time."""
+    def _restore_outage(self):
+        self._restored_reminder_due = None
+        store = getattr(self.indigo_plugin, "outageStore", None)
+        if store is None:
+            return
+        try:
+            record = store.load(self.indigoDevice.id)
+            if record is None:
+                return
+            if record["address"] != self._outage_address():
+                return
+            now = time.time()
+            started, due = float(record["started"]), float(record["due"])
+            if not (math.isfinite(started) and math.isfinite(due) and
+                    0 < started <= now and started <= due):
+                raise ValueError("invalid outage timestamps")
+            self._detached_at = time.monotonic() - (now - started)
+            self._restored_reminder_due = due
+            self._daily_reminder_reported = record.get("daily") is True
+        except Exception as error:
+            self.logger.warning("Ignoring invalid saved outage for %s: %s",
+                                self._error_identity(), str(error).replace("\n", " "))
+
+    def _persist_outage(self, delay=None):
+        store = getattr(self.indigo_plugin, "outageStore", None)
+        if store is None:
+            return
+        try:
+            record = None
+            if self._detached_at is not None:
+                now = time.time()
+                elapsed = max(0, time.monotonic() - self._detached_at)
+                record = {
+                    "address": self._outage_address(), "started": now - elapsed,
+                    "due": now + (delay if delay is not None else
+                                  self.initial_connection_timeout),
+                    "daily": self._daily_reminder_reported}
+            store.save(self.indigoDevice.id, record)
+        except Exception as error:
+            log_error(self, "Unable to save outage for %s: %s",
+                              self._error_identity(), str(error).replace("\n", " "))

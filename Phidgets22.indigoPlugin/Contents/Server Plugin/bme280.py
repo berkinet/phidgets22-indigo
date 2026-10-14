@@ -1,4 +1,4 @@
-from error_reporting import log_error
+from error_reporting import log_error, set_device_error
 # -*- coding: utf-8 -*-
 
 """BME280/BMP280 environmental sensor on a shared ADP0001 I2C bus."""
@@ -238,6 +238,7 @@ class BME280Phidget(I2CPeripheralBase):
             adapter = self._resolveAdapter()
             if getattr(adapter, "_state", None) != "attached":
                 self._state = "starting"
+                set_device_error(self, "Provider unavailable")
                 return
             self._generation += 1
             generation = self._generation

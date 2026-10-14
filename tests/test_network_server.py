@@ -286,10 +286,36 @@ class NetworkServerDeviceTests(unittest.TestCase):
             self.monitor._unavailableReminder(generation)
 
         arguments = self.logger.error.call_args.args
-        self.assertIn("remains unavailable after %.1f seconds", arguments[0])
-        self.assertEqual(arguments[1:], ("CM-Spare", 45.0))
+        self.assertIn("remains unavailable after %s", arguments[0])
+        self.assertEqual(arguments[1:], ("", "CM-Spare", "00:00 hours/minutes"))
         self.assertTrue(self.monitor._unavailable_announced)
         self.assertIsNotNone(self.monitor._unavailable_timer)
+
+    def test_daily_outage_record_survives_monitor_restart(self):
+        import tempfile
+        import network_server
+        from outage_store import OutageStore
+        with tempfile.TemporaryDirectory() as directory:
+            self.plugin.outageStore = OutageStore(directory)
+            self.plugin.outageStore.save(self.device.id, dict(
+                address=["networkServer", "CM-Spare"], started=100000,
+                due=250000, daily=True))
+            self.monitor.stop()
+            with mock.patch.object(network_server.time, 'time', return_value=200000), \
+                    mock.patch.object(network_server.time, 'monotonic', return_value=500), \
+                    mock.patch.object(network_server.threading, 'Timer') as timer:
+                self.monitor.start()
+                self.monitor.serverInitiallyUnavailable()
+                self.assertEqual(self.monitor._detached_at, -99500)
+                self.assertEqual(self.device.states['availability'], 'Offline')
+                unavailable_calls = [call for call in timer.call_args_list
+                    if call.args[1] == self.monitor._unavailableReminder]
+                self.assertEqual(unavailable_calls[-1].args[0], 50000)
+                self.monitor._unavailableReminder(self.monitor._unavailable_generation)
+                record = self.plugin.outageStore.load(self.device.id)
+                self.assertEqual(record['due'], 286400)
+                self.monitor.serverAvailable(server())
+                self.assertIsNone(self.plugin.outageStore.load(self.device.id))
 
     def test_recovery_after_escalation_is_reported(self):
         self.monitor.serverAvailable(server())

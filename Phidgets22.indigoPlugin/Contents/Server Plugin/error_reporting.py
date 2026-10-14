@@ -97,3 +97,13 @@ def runtime_boundary(operation, stopped=True):
                 return None
         return guarded
     return decorate
+
+
+def set_device_error(owner, message):
+    try:
+        owner.indigoDevice.setErrorStateOnServer(message)
+        return True
+    except Exception as error:
+        log_error(owner, "Unable to publish device availability: device='%s'; %s",
+                  getattr(owner.indigoDevice, 'name', 'unknown'), error)
+        return False

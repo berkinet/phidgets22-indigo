@@ -1,3 +1,5 @@
+from outage_store import OutagePersistence
+from outage_message import outage_duration, reminder_cadence
 from error_reporting import runtime_boundary
 # -*- coding: utf-8 -*-
 
@@ -10,7 +12,7 @@ import time
 
 import indigo
 
-from state_publisher import update_indigo_state
+from state_publisher import update_indigo_state, update_indigo_states
 from server_discovery import channel_server_records
 
 from Phidget22.Net import Net
@@ -21,7 +23,7 @@ def _timestamp():
     return datetime.datetime.now().astimezone().isoformat(timespec="seconds")
 
 
-class NetworkServerDevice(object):
+class NetworkServerDevice(OutagePersistence):
     """Monitor one advertised Phidget server without owning a channel."""
 
     def __init__(self, indigo_plugin, indigoDevice, serverName, logger):
@@ -31,6 +33,8 @@ class NetworkServerDevice(object):
         self.logger = logger
         self._state = "stopped"
         self._lock = threading.RLock()
+        self._daily_reminder_reported = False
+        self._restored_reminder_due = None
         self._detached_at = None
         self._pending_detached_at = None
         self._ever_attached = False
@@ -53,9 +57,20 @@ class NetworkServerDevice(object):
             1, int(indigo_plugin.pluginPrefs.get(
                 "detachedReminderInterval", "3600")))
 
+    def _outage_address(self):
+        return ["networkServer", self.serverName]
+
+    def _error_identity(self):
+        return "network server '%s' id=%s" % (self.serverName, self.indigoDevice.id)
+
+    @property
+    def initial_connection_timeout(self):
+        return self._initial_unavailable_timeout
+
     def start(self):
         with self._lock:
             self._state = "detached"
+            self._restore_outage()
         # A server already present in the discovery cache is applied
         # synchronously during registration. Ensure Indigo knows the dynamic
         # states before that first update is attempted.
@@ -63,6 +78,8 @@ class NetworkServerDevice(object):
         self.indigo_plugin.registerNetworkServerDevice(self)
 
     def stop(self):
+        with self._lock:
+            self._state = "stopped"
         self._cancel_detach_timer()
         self._cancel_unavailable_timer()
         self._cancel_liveness_timer()
@@ -83,6 +100,9 @@ class NetworkServerDevice(object):
                 self._reconnect_count += 1
             self._state = "attached"
             self._detached_at = None
+            self._restored_reminder_due = None
+            self._daily_reminder_reported = False
+            self._persist_outage()
             self._pending_detached_at = None
             first_attachment = not self._ever_attached
             self._ever_attached = True
@@ -130,11 +150,13 @@ class NetworkServerDevice(object):
                 else " after %.1f seconds" % outage_seconds)
         self._schedule_liveness_check()
 
+    @runtime_boundary("Network server startup availability")
     def serverInitiallyUnavailable(self):
         """Begin monitoring a configured server absent during plugin startup."""
         with self._lock:
             self._state = "detached"
-            self._detached_at = time.monotonic()
+            if self._detached_at is None:
+                self._detached_at = time.monotonic()
             self._unavailable_announced = False
         self._update_states({
             "onOffState": False,
@@ -331,6 +353,10 @@ class NetworkServerDevice(object):
             if self._state != "detached":
                 return
             generation = self._unavailable_generation
+            due = self._restored_reminder_due
+            if due is not None:
+                delay = max(self._initial_unavailable_timeout, due - time.time())
+            self._persist_outage(delay)
             timer = threading.Timer(
                 delay, self._unavailableReminder, args=(generation,))
             timer.daemon = True
@@ -347,15 +373,19 @@ class NetworkServerDevice(object):
             unavailable_for = max(
                 0.0, time.monotonic() - self._detached_at)
             self._unavailable_announced = True
+        first_daily = unavailable_for >= 86400 and not self._daily_reminder_reported
+        if unavailable_for >= 86400:
+            self._daily_reminder_reported = True
+        self._restored_reminder_due = None
         self.logger.error(
-            "Phidget network server '%s' remains unavailable after %.1f "
-            "seconds; awaiting rediscovery",
-            self.serverName, unavailable_for)
-        self._schedule_unavailable_timer(self._reminder_interval)
+            "%sPhidget network server '%s' remains unavailable after %s; awaiting rediscovery",
+            reminder_cadence(unavailable_for, first_daily), self.serverName,
+            outage_duration(unavailable_for))
+        self._schedule_unavailable_timer(max(86400, self._reminder_interval)
+                                         if unavailable_for >= 86400 else self._reminder_interval)
 
     def _update_states(self, values):
-        for key, value in values.items():
-            update_indigo_state(self, key, value)
+        update_indigo_states(self, values, logger=self.logger)
 
     def getDeviceStateList(self):
         states = []

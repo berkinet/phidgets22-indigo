@@ -1,3 +1,4 @@
+from error_reporting import set_device_error
 from error_reporting import runtime_boundary
 # -*- coding: utf-8 -*-
 
@@ -282,7 +283,11 @@ class I2CLCDPhidget(LCDPhidget):
 
     def providerStopping(self):
         self._cancelProviderRetry()
-        self._state = "detached"
+        with self._lifecycle_lock:
+            self._lifecycle_epoch += 1
+            self._cancel_initialization_retry()
+            self._state = "detached"
+            set_device_error(self, "Provider unavailable")
         super(I2CLCDPhidget, self).providerStopping()
 
     def stop(self):

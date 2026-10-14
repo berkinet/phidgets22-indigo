@@ -4,7 +4,7 @@
 
 import threading
 
-from error_reporting import log_error, runtime_boundary
+from error_reporting import log_error, runtime_boundary, set_device_error
 
 from state_publisher import update_indigo_state
 from runtime_registry import registry_for
@@ -74,6 +74,7 @@ class I2CPeripheralBase(object):
             timer, self._timer = self._timer, None
         if timer is not None:
             timer.cancel()
+        set_device_error(self, "Provider unavailable")
 
     def _pollInterruptedByProviderDetach(self):
         """Quiesce a poll that raced the physical adapter detach callback."""

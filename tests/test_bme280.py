@@ -194,7 +194,7 @@ class BME280Tests(unittest.TestCase):
 
         self.assertEqual(wrapper._state, "detached")
         wrapper.logger.error.assert_not_called()
-        device.setErrorStateOnServer.assert_not_called()
+        device.setErrorStateOnServer.assert_called_with("Provider unavailable")
 
     def test_transport_error_retries_without_traceback_and_reports_recovery(self):
         wrapper, adapter, device = self.wrapper(0x60)

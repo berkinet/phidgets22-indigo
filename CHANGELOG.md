@@ -1,5 +1,18 @@
 # Release notes
 
+## 2026.1.42 — 2026-10-14
+
+- Distinguish attached-but-uninitialized channels from physical detachment.
+  Transient initialization failures get up to five increasing-delay retries;
+  non-retryable failures remain actionable and visible to diagnostics.
+- Logical I2C sensors/displays publish provider unavailability; successful
+  peripheral initialization/read clears it.
+- Network Server devices share outage persistence and daily backoff with native
+  channels, retaining immediate Offline display on startup.
+- RFID initialization preserves unexpected failure categories instead of
+  misclassifying all failures as missing hardware.
+
+
 ## 2026.1.41 — 2026-10-14
 
 - Shared bounded fault reporting preserves first/distinct errors and limits repeats.

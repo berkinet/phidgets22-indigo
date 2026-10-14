@@ -1,5 +1,5 @@
 from error_reporting import runtime_boundary
-from error_reporting import log_error
+from error_reporting import log_error, concise_error, set_device_error
 # -*- coding: utf-8 -*-
 #
 # Bulk of the code for actually interacting with the phidget devices.
@@ -10,6 +10,7 @@ import threading
 import time
 import sys
 
+from outage_store import OutagePersistence
 from outage_message import outage_duration, reminder_cadence
 import phidget_util
 from config_util import saved_bool
@@ -44,7 +45,7 @@ class ChannelInfo():
         self.netInfo = netInfo if netInfo is not None else NetInfo()
 
 
-class PhidgetBase(object):
+class PhidgetBase(OutagePersistence):
     """
     Base class for phidget devices living in Indigo.
     This will be extended for the various types of devices.
@@ -83,6 +84,9 @@ class PhidgetBase(object):
         self._detach_grace_timer = None
         self._detach_error_timer = None
         self._lifecycle_lock = threading.RLock()
+        self._initialization_error = None
+        self._initialization_retry_timer = None
+        self._initialization_retry_attempts = 0
         self._lifecycle_epoch = 0
         self._timer_generation = 0
         self._detach_generation = 0
@@ -128,54 +132,62 @@ class PhidgetBase(object):
                               self._error_identity(), str(error).replace("\n", " "))
             return True
 
+    def isReady(self):
+        return self._state == "attached" and not self._initialization_error
+
+    def reportInitializationFailure(self):
+        retry = ("bounded initialization retries remain active"
+                 if self._initialization_retry_timer is not None else
+                 "check configuration and restart this Indigo device after correcting it")
+        log_error(self, "Phidget is attached but initialization failed: %s; %s; %s",
+                  self._identity(), self._initialization_error, retry)
+
+    def _cancel_initialization_retry(self):
+        timer, self._initialization_retry_timer = self._initialization_retry_timer, None
+        if timer is not None:
+            timer.cancel()
+
+    def _attachment_failed(self, epoch, error):
+        with self._lifecycle_lock:
+            if epoch != self._lifecycle_epoch or self._state in ("stopping", "stopped"):
+                return
+            self._state = "detached"
+            if self._detached_at is None:
+                self._detached_at = time.monotonic()
+            if isinstance(error, PhidgetException) and error.code == ErrorCode.EPHIDGET_NOTATTACHED:
+                self.logger.debug("Phidget detached during attachment initialization; awaiting automatic reattach: %s", self._identity())
+                return
+            self._initialization_error = concise_error(error)
+            set_device_error(self, 'Initialization failed')
+            self._cancel_initialization_retry()
+            retryable = (isinstance(error, PeripheralUnavailableError) or
+                         isinstance(error, PhidgetException) and error.code in
+                         (ErrorCode.EPHIDGET_TIMEOUT, ErrorCode.EPHIDGET_UNEXPECTED))
+            if retryable and self._initialization_retry_attempts < 5:
+                self._initialization_retry_attempts += 1
+                timer = threading.Timer(min(60, 5 * 2 ** (self._initialization_retry_attempts - 1)),
+                                        self._retry_initialization, args=(epoch,))
+                timer.daemon = True
+                self._initialization_retry_timer = timer
+                timer.start()
+            self._persist_outage()
+            self.reportInitializationFailure()
+
+    @runtime_boundary("Phidget initialization retry")
+    def _retry_initialization(self, epoch):
+        with self._lifecycle_lock:
+            if epoch != self._lifecycle_epoch or self._state != "detached":
+                return
+            self._initialization_retry_timer = None
+        if self.phidget.getAttached():
+            self.onAttachHandler(self.phidget)
+
     def _outage_address(self):
         info = self.channelInfo
         return [info.serialNumber, info.hubPort, info.channel,
                 info.isHubPortDevice, info.netInfo.isRemote,
                 info.netInfo.serverName, self.indigoDevice.deviceTypeId
                 if hasattr(self.indigoDevice, "deviceTypeId") else ""]
-
-    def _restore_outage(self):
-        self._restored_reminder_due = None
-        store = getattr(self.indigo_plugin, "outageStore", None)
-        if store is None:
-            return
-        try:
-            record = store.load(self.indigoDevice.id)
-            if record is None:
-                return
-            if record["address"] != self._outage_address():
-                return
-            now = time.time()
-            started, due = float(record["started"]), float(record["due"])
-            if not (math.isfinite(started) and math.isfinite(due) and
-                    0 < started <= now and started <= due):
-                raise ValueError("invalid outage timestamps")
-            self._detached_at = time.monotonic() - (now - started)
-            self._restored_reminder_due = due
-            self._daily_reminder_reported = record.get("daily") is True
-        except Exception as error:
-            self.logger.warning("Ignoring invalid saved outage for %s: %s",
-                                self._error_identity(), str(error).replace("\n", " "))
-
-    def _persist_outage(self, delay=None):
-        store = getattr(self.indigo_plugin, "outageStore", None)
-        if store is None:
-            return
-        try:
-            record = None
-            if self._detached_at is not None:
-                now = time.time()
-                elapsed = max(0, time.monotonic() - self._detached_at)
-                record = {
-                    "address": self._outage_address(), "started": now - elapsed,
-                    "due": now + (delay if delay is not None else
-                                  self.initial_connection_timeout),
-                    "daily": self._daily_reminder_reported}
-            store.save(self.indigoDevice.id, record)
-        except Exception as error:
-            log_error(self, "Unable to save outage for %s: %s",
-                              self._error_identity(), str(error).replace("\n", " "))
 
     def _unavailable_message(self, detached_for):
         return ("Indigo device '%s' remains unavailable after %s; Physical Phidget "
@@ -426,6 +438,9 @@ class PhidgetBase(object):
 
     def start(self):
         with self._lifecycle_lock:
+            self._cancel_initialization_retry()
+            self._initialization_error = None
+            self._initialization_retry_attempts = 0
             self._lifecycle_epoch += 1
             self._state = "starting"
             self._detached_at = time.monotonic()
@@ -471,6 +486,9 @@ class PhidgetBase(object):
             operational_detach = self._attach_count > 0
             self.timer = None
         try:
+            if self._initialization_error:
+                self.reportInitializationFailure()
+                return
             if not self.isChannelDetached():
                 return
             with self._lifecycle_lock:
@@ -578,6 +596,9 @@ class PhidgetBase(object):
             with self._lifecycle_lock:
                 if self._state in ("stopping", "stopped"):
                     return
+                self._cancel_initialization_retry()
+                self._initialization_error = None
+                self._initialization_retry_attempts = 0
                 self._lifecycle_epoch += 1
                 self._state = "detached"
                 if self._detached_at is None:
@@ -614,6 +635,7 @@ class PhidgetBase(object):
             with self._lifecycle_lock:
                 if self._state in ("stopping", "stopped"):
                     return
+                self._cancel_initialization_retry()
                 self._lifecycle_epoch += 1
                 epoch = self._lifecycle_epoch
                 detached_for = time.monotonic() - self._detached_at if self._detached_at else 0
@@ -624,59 +646,8 @@ class PhidgetBase(object):
                     return
                 self._cache_runtime_server(ph)
                 self._update_connection_states()
-        except PeripheralUnavailableError as error:
-            with self._lifecycle_lock:
-                if epoch != self._lifecycle_epoch or self._state in ("stopping", "stopped"):
-                    return
-                self._state = "detached"
-                if self._detached_at is None:
-                    self._detached_at = time.monotonic()
-            try:
-                self.indigoDevice.setErrorStateOnServer("Initialization failed")
-            except Exception:
-                pass
-            log_error(self,
-                "Configured peripheral unavailable: %s: %s",
-                self._identity(), error)
-            return
-        except PhidgetException as error:
-            if error.code == ErrorCode.EPHIDGET_NOTATTACHED:
-                with self._lifecycle_lock:
-                    if epoch != self._lifecycle_epoch or self._state in ("stopping", "stopped"):
-                        return
-                    self._state = "detached"
-                    if self._detached_at is None:
-                        self._detached_at = time.monotonic()
-                self.logger.debug(
-                    "Phidget detached during attachment initialization; "
-                    "awaiting automatic reattach: %s", self._identity())
-                return
-            with self._lifecycle_lock:
-                if epoch != self._lifecycle_epoch or self._state in ("stopping", "stopped"):
-                    return
-                self._state = "detached"
-                if self._detached_at is None:
-                    self._detached_at = time.monotonic()
-            try:
-                self.indigoDevice.setErrorStateOnServer('Initialization failed')
-            except Exception:
-                pass
-            log_error(self, "Phidget attached but initialization failed: %s: %s",
-                              self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
-            return
-        except Exception:
-            with self._lifecycle_lock:
-                if epoch != self._lifecycle_epoch or self._state in ("stopping", "stopped"):
-                    return
-                self._state = "detached"
-                if self._detached_at is None:
-                    self._detached_at = time.monotonic()
-            try:
-                self.indigoDevice.setErrorStateOnServer('Initialization failed')
-            except Exception:
-                pass
-            log_error(self, "Phidget attached but initialization failed: %s: %s",
-                              self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
+        except Exception as error:
+            self._attachment_failed(epoch, error)
             return
 
         try:
@@ -688,6 +659,8 @@ class PhidgetBase(object):
                 self._cancel_detach_error_timer()
                 with self._lifecycle_lock:
                     self._state = "attached"
+                    self._initialization_error = None
+                    self._initialization_retry_attempts = 0
                     self._daily_reminder_reported = False
                     self._restored_reminder_due = None
                     self._detached_at = None
@@ -736,6 +709,7 @@ class PhidgetBase(object):
         with self._lifecycle_lock:
             if self._state == "stopped":
                 return
+            self._cancel_initialization_retry()
             self._lifecycle_epoch += 1
             self._state = "stopping"
         self._cancel_attach_timer()

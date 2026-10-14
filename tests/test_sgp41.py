@@ -154,7 +154,7 @@ class SGP41Tests(unittest.TestCase):
 
         self.assertEqual(wrapper._state, "detached")
         wrapper.logger.error.assert_not_called()
-        device.setErrorStateOnServer.assert_not_called()
+        device.setErrorStateOnServer.assert_called_with("Provider unavailable")
 
     def test_poll_interval_accounts_for_sensor_transaction_time(self):
         wrapper, _, _ = self.wrapper()

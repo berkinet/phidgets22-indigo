@@ -14,10 +14,10 @@ Authorized 14 October 2026. Baseline 2026.1.39, bcbc788.
 - [x] Regression tests and release.
 
 ## Stage 3: availability and recovery
-- [ ] Native initialization failure has explicit status and bounded retry.
-- [ ] Logical I2C startup/provider loss publishes unavailability.
-- [ ] Server and channel outage persistence/cadence aligned.
-- [ ] Regression tests and release.
+- [x] Native initialization failure has explicit status and bounded retry.
+- [x] Logical I2C startup/provider loss publishes unavailability.
+- [x] Server and channel outage persistence/cadence aligned.
+- [x] Regression tests and release.
 
 ## Stage 4: functional corrections
 - [ ] Fahrenheit delta converts to SDK Celsius; formula arity checks.
@@ -38,3 +38,5 @@ Live hardware acceptance is recorded separately from automated evidence.
 Stage 1 automated acceptance: 422 tests; version 2026.1.40. Live acceptance pending.
 
 Stage 2 automated acceptance: 429 tests; version 2026.1.41.
+
+Stage 3 automated acceptance: 434 tests; version 2026.1.42.

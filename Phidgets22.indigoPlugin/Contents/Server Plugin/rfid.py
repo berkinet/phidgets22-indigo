@@ -9,6 +9,7 @@ import rfid_tags
 from rfid_presence import RFIDPresence
 from rfid_outputs import RFIDOutputs, OUTPUTS
 
+from Phidget22.PhidgetException import PhidgetException
 from Phidget22.Devices.RFID import RFID
 from phidget import PhidgetBase, PeripheralUnavailableError
 
@@ -130,8 +131,8 @@ class RFIDPhidget(PhidgetBase):
                     self._publish_tag(True, tag, protocol, notify=True)
                 else:
                     self._publish_tag(False)
-        except Exception as error:
-            raise PeripheralUnavailableError("RFID initialization: %s" % str(error).replace("\n", " ")) from None
+        except PhidgetException:
+            raise
 
     def onTagHandler(self, ph, tag, protocol):
         try:

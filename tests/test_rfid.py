@@ -95,7 +95,7 @@ class RFIDTests(unittest.TestCase):
         self.assertTrue(reader.antennaEnabled)
         reader.logger.error.assert_called_once()
         reader.indigoDevice.setErrorStateOnServer.assert_called_once()
-        with self.assertRaises(PeripheralUnavailableError):
+        with self.assertRaisesRegex(RuntimeError, "unplugged"):
             reader.configureAttachedPhidget(reader.phidget)
 
     def test_callback_and_trigger_failures_do_not_escape(self):
