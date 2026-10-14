@@ -4,6 +4,8 @@
 
 import threading
 
+from error_reporting import log_error, runtime_boundary
+
 from state_publisher import update_indigo_state
 from runtime_registry import registry_for
 
@@ -43,10 +45,27 @@ class I2CPeripheralBase(object):
             publish(state_id, value)
 
     def _schedulePoll(self, generation, interval):
-        timer = threading.Timer(float(interval), self._poll, (generation,))
+        timer = threading.Timer(float(interval), self._pollSafely, (generation,))
         timer.daemon = True
         self._timer = timer
         timer.start()
+
+    @runtime_boundary("I2C polling")
+    def _pollSafely(self, generation):
+        with self._lock:
+            if generation != self._generation or self._state != "attached":
+                return
+            self._timer = None
+        try:
+            self._poll(generation)
+        except Exception as error:
+            log_error(self, "I2C poll callback failed: device='%s'; %s",
+                      self.indigoDevice.name, error)
+        finally:
+            with self._lock:
+                if (generation == self._generation and self._state == "attached" and
+                        self._timer is None):
+                    self._schedulePoll(generation, getattr(self, 'pollInterval', 1.0))
 
     def providerStopping(self):
         with self._lock:

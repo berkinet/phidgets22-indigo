@@ -1,3 +1,5 @@
+from error_reporting import runtime_boundary
+from error_reporting import log_error
 # -*- coding: utf-8 -*-
 
 """GPIO channels exposed by an ADP0001 selected through an Indigo adapter."""
@@ -32,6 +34,7 @@ class AdapterGPIOInputPhidget(DigitalInputPhidget):
         }
         ph.setInputMode(modes[self.inputMode])
 
+    @runtime_boundary("_publishPendingState")
     def _publishPendingState(self):
         with self._debounce_lock:
             state = self._pending_state
@@ -39,6 +42,7 @@ class AdapterGPIOInputPhidget(DigitalInputPhidget):
         if self._state == "attached" and state is not None:
             self.updateIndigoStatus(bool(state) != self.inverted)
 
+    @runtime_boundary("onStateChangeHandler")
     def onStateChangeHandler(self, ph, state):
         if self.debounceMilliseconds <= 0:
             self.updateIndigoStatus(bool(state) != self.inverted)
@@ -55,6 +59,7 @@ class AdapterGPIOInputPhidget(DigitalInputPhidget):
             old_timer.cancel()
         timer.start()
 
+    @runtime_boundary("onAttachHandler")
     def onAttachHandler(self, ph):
         super(AdapterGPIOInputPhidget, self).onAttachHandler(ph)
         if self._state == "attached":
@@ -98,12 +103,8 @@ class AdapterGPIOOutputPhidget(DigitalOutputPhidget):
             self.updateIndigoStatus()
             return
         else:
-            self.logger.error("Unexpected GPIO output action: %s",
+            log_error(self, "Unexpected GPIO output action: %s",
                               action.deviceAction)
             return
-        self.phidget.setState_async(state, self.asyncSetResult)
-
-    def asyncSetResult(self, ch, res, details):
-        if res != ErrorCode.EPHIDGET_OK:
-            self.logger.error("GPIO output failure: %i: %s", res, details)
-        self.updateIndigoStatus()
+        self.phidget.setState_async(state, self._result_callback(
+            "Turn On" if state else "Turn Off", state))

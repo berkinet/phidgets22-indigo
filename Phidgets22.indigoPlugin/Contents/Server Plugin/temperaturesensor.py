@@ -1,3 +1,4 @@
+from error_reporting import runtime_boundary
 # -*- coding: utf-8 -*-
 import indigo
 
@@ -42,6 +43,7 @@ class TemperatureSensorPhidget(PhidgetBase):
             self.phidget.setTemperatureChangeTrigger(newTemperatureChangeTrigger)
 
 
+    @runtime_boundary("onTemperatureChangeHandler")
     def onTemperatureChangeHandler(self, ph, temperature):
         self.updateStateOnServer("tempC", value=temperature, decimalPlaces=self.decimalPlaces)
         self.updateStateOnServer("tempF", value=(9.0/5.0 * temperature + 32), decimalPlaces=self.decimalPlaces)

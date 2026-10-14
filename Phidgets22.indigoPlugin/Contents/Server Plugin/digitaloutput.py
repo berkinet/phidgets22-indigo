@@ -1,3 +1,5 @@
+from error_reporting import runtime_boundary
+from error_reporting import log_error, clear_faults
 # -*- coding: utf-8 -*-
 
 from contextlib import nullcontext
@@ -20,13 +22,14 @@ class DigitalOutputPhidget(PhidgetBase):
             self.updateStateOnServer("brightnessLevel", value=brightnessLevel, uiValue="%d" % brightnessLevel)
             self.updateStateOnServer("onOffState", value=onOffState, uiValue="on" if onOffState else "off")
         except Exception as e:
-            self.logger.error('Digital output status read failed: %s; %s', self._identity(), str(e))
+            log_error(self, 'Digital output status read failed: %s; %s', self._identity(), str(e))
 
     def addPhidgetHandlers(self):
         self.phidget.setOnErrorHandler(self.onErrorHandler)
         self.phidget.setOnAttachHandler(self.onAttachHandler)
         self.phidget.setOnDetachHandler(self.onDetachHandler)
 
+    @runtime_boundary("onAttachHandler")
     def onAttachHandler(self, ph):
         super(DigitalOutputPhidget, self).onAttachHandler(ph)
         if self._state == "attached":
@@ -58,7 +61,7 @@ class DigitalOutputPhidget(PhidgetBase):
         elif action.deviceAction == indigo.kDeviceAction.RequestStatus:
             self.updateIndigoStatus()
         else:
-            self.logger.error("Unexpected action: %s" % action.deviceAction)
+            log_error(self, "Unexpected action: %s" % action.deviceAction)
 
     def _result_callback(self, operation, requested):
         # Capture each request separately; completion order may differ from submission.
@@ -75,6 +78,7 @@ class DigitalOutputPhidget(PhidgetBase):
     def _clear_detached_write_failures(self):
         with getattr(self, "_lifecycle_lock", nullcontext()):
             self._detached_write_failures = set()
+            clear_faults(self)
 
     def _first_detached_write_failure(self, operation, requested):
         with getattr(self, "_lifecycle_lock", nullcontext()):
@@ -87,6 +91,7 @@ class DigitalOutputPhidget(PhidgetBase):
             failures.add(key)
             return True
 
+    @runtime_boundary("asyncSetResult")
     def asyncSetResult(self, ch, res, details, operation="unspecified write", requested=None, identity=None):
         if res != ErrorCode.EPHIDGET_OK:
             detached = res == ErrorCode.EPHIDGET_NOTATTACHED
@@ -101,7 +106,7 @@ class DigitalOutputPhidget(PhidgetBase):
             if detached:
                 message += ("; repeated failures for this request are suppressed until recovery. "
                             "Command was not applied or queued; automatic attachment remains active.")
-            self.logger.error(message,
+            log_error(self, message,
                               res, details, identity, operation, requested)
             return
         self._clear_detached_write_failures()

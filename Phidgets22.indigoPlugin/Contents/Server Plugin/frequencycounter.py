@@ -1,3 +1,4 @@
+from error_reporting import runtime_boundary
 # -*- coding: utf-8 -*-
 import indigo
 
@@ -50,9 +51,11 @@ class FrequencyCounterPhidget(PhidgetBase):
             self.phidget.setFilterType(self.filterType)
 
 
+    @runtime_boundary("onFrequencyChangeHandler")
     def onFrequencyChangeHandler(self, ph, frequency):
         self.updateStateOnServer("frequency", value=frequency,  decimalPlaces=self.decimalPlaces)
 
+    @runtime_boundary("onCountChangeHandler")
     def onCountChangeHandler(self, ph, count, timeChange):
         self.updateStateOnServer("count", value=ph.getCount())
         self.updateStateOnServer("timeChange", value=timeChange,  decimalPlaces=self.decimalPlaces)

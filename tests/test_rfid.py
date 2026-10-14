@@ -221,7 +221,7 @@ class SimulationTests(unittest.TestCase):
         reader.simulateTag("", 1)
         reader.simulateTag("123", 99)
         self.assertFalse(reader.states["tagPresent"])
-        self.assertEqual(reader.logger.error.call_count, 3)
+        self.assertEqual(reader.logger.error.call_count, 2)
         reader.setAntennaEnabled(True)
         reader.simulateTag("123", 1)
         self.assertTrue(reader.states["tagPresent"])

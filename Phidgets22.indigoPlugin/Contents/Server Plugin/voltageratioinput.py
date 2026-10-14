@@ -1,3 +1,5 @@
+from error_reporting import log_error
+from error_reporting import runtime_boundary
 # -*- coding: utf-8 -*-
 import indigo
 
@@ -147,10 +149,11 @@ class VoltageRatioInputPhidget(PhidgetBase):
                     arguments["decimalPlaces"] = self.decimalPlaces
                 self.updateStateOnServer(self.customState, **arguments)
         except Exception as error:
-            self.logger.error("Voltage-ratio update failed: device='%s' input=%r: %s",
+            log_error(self, "Voltage-ratio update failed: device='%s' input=%r: %s",
                               self.indigoDevice.name, voltageRatio,
                               str(error).replace("\n", " "))
 
+    @runtime_boundary("onSensorChangeHandler")
     def onSensorChangeHandler(self, ph, sensorValue, sensorUnit):
         self.updateStateOnServer(self.sensorStateName , value=sensorValue, decimalPlaces=self.decimalPlaces)
         if self.sensorStateName == "tempC":

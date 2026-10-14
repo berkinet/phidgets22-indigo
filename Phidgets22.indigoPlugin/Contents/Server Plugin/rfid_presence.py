@@ -1,3 +1,4 @@
+from error_reporting import runtime_boundary
 # -*- coding: utf-8 -*-
 """Per-reader presence held until a delay after the last qualifying tag leaves."""
 import threading
@@ -13,6 +14,7 @@ def clear_delay_seconds(props):
 class RFIDPresence(object):
     def __init__(self, owner, timer_factory=threading.Timer, clock=time.monotonic):
         self.owner = owner
+        self.logger = getattr(owner, "logger", None)
         self.timer_factory = timer_factory
         self.clock = clock
         self.active = False
@@ -81,6 +83,7 @@ class RFIDPresence(object):
                     self.owner._report("presence countdown", error)
             # Repeated loss or denied tags must not restart an existing delay.
 
+    @runtime_boundary("_expire")
     def _expire(self, generation):
         with self.owner._tag_lock:
             if (self.stopped or generation != self.generation or

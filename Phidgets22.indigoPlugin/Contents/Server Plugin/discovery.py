@@ -1,3 +1,6 @@
+from error_reporting import log_error
+import sys
+from error_reporting import concise_error
 # -*- coding: utf-8 -*-
 
 """Read-only inventory of channels observed by a Phidget Manager."""
@@ -415,7 +418,7 @@ class DiscoveryInventory(object):
                 self.channels[channel_key(description)] = description
             self.logger.debug("Discovery observed attach: %s", format_channel(description))
         except Exception:
-            self.logger.exception("Unable to record discovered Phidget channel")
+            log_error(self, "Unable to record discovered Phidget channel: %s", concise_error(sys.exc_info()[1]))
 
     def _on_detach(self, manager, channel):
         try:
@@ -424,4 +427,4 @@ class DiscoveryInventory(object):
                 self.channels.pop(channel_key(description), None)
             self.logger.debug("Discovery observed detach: %s", format_channel(description))
         except Exception:
-            self.logger.exception("Unable to remove detached Phidget channel from discovery inventory")
+            log_error(self, "Unable to remove detached Phidget channel from discovery inventory: %s", concise_error(sys.exc_info()[1]))

@@ -868,7 +868,7 @@ class DiscoveryUiMixin(object):
                     except Exception:
                         self.logger.warning(
                             "Unable to verify I2C address 0x%02X during LCD "
-                            "configuration", i2c_address, exc_info=True)
+                            "configuration", i2c_address)
 
             pins = []
             for field in ("lcdI2CRSPin", "lcdI2CRWPin",

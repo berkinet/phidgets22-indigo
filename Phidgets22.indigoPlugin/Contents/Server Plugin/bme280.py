@@ -1,3 +1,4 @@
+from error_reporting import log_error
 # -*- coding: utf-8 -*-
 
 """BME280/BMP280 environmental sensor on a shared ADP0001 I2C bus."""
@@ -5,7 +6,8 @@
 import struct
 import threading
 import time
-import traceback
+import sys
+from error_reporting import concise_error
 
 import indigo
 
@@ -191,7 +193,7 @@ class BME280Phidget(I2CPeripheralBase):
             except PeripheralUnavailableError as error:
                 message = str(error)
                 if message != self._offline_message:
-                    self.logger.error(
+                    log_error(self,
                         "Configured peripheral unavailable: device='%s': %s",
                         self.indigoDevice.name, message)
                     self._offline_message = message
@@ -214,7 +216,7 @@ class BME280Phidget(I2CPeripheralBase):
                             "the next poll: device='%s' (%s)", code,
                             self.indigoDevice.name, detail)
                     elif self._transport_error_count == 3:
-                        self.logger.error(
+                        log_error(self,
                             "BME280/BMP280 transport error 0x%02x on %d "
                             "consecutive polls; retries remain active: "
                             "device='%s' (%s)", code,
@@ -224,9 +226,9 @@ class BME280Phidget(I2CPeripheralBase):
                         "I2C transport error; retrying")
             except Exception:
                 if not self._pollInterruptedByProviderDetach():
-                    self.logger.error(
-                        "BME280/BMP280 poll failed: device='%s'\n%s",
-                        self.indigoDevice.name, traceback.format_exc())
+                    log_error(self,
+                        "BME280/BMP280 poll failed: device='%s': %s",
+                        self.indigoDevice.name, concise_error(sys.exc_info()[1]))
                     self.indigoDevice.setErrorStateOnServer("I2C read failed")
             if generation == self._generation and self._state == "attached":
                 self._schedulePoll(generation, self.pollInterval)
@@ -240,7 +242,7 @@ class BME280Phidget(I2CPeripheralBase):
             self._generation += 1
             generation = self._generation
             self._state = "attached"
-            self._poll(generation)
+            self._pollSafely(generation)
 
     def providerReattached(self):
         with self._lock:
@@ -250,7 +252,7 @@ class BME280Phidget(I2CPeripheralBase):
             self._generation += 1
             generation = self._generation
             self._state = "attached"
-            self._poll(generation)
+            self._pollSafely(generation)
 
     def _identity(self):
         return "device='%s' id=%s type=%s adapter=%s address=0x%02X" % (

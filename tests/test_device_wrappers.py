@@ -188,12 +188,14 @@ class DeviceWrapperTests(unittest.TestCase):
         wrapper.updateIndigoStatus.assert_not_called()
         wrapper.logger.error.assert_not_called()
 
-    def test_non_detach_async_errors_are_not_suppressed(self):
+    def test_repeated_non_detach_errors_are_bounded_but_distinct_errors_visible(self):
         wrapper = object.__new__(digitaloutput.DigitalOutputPhidget)
         wrapper.logger = mock.Mock()
         wrapper.updateIndigoStatus = mock.Mock()
         for _ in range(2):
             wrapper.asyncSetResult(None, 3, "Timed Out", "Turn Off", False)
+        self.assertEqual(wrapper.logger.error.call_count, 1)
+        wrapper.asyncSetResult(None, 2, "Invalid argument", "Turn Off", False)
         self.assertEqual(wrapper.logger.error.call_count, 2)
         wrapper.updateIndigoStatus.assert_not_called()
 

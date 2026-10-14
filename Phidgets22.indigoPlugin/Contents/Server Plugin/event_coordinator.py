@@ -1,3 +1,6 @@
+import logging
+from error_reporting import log_error
+from error_reporting import runtime_boundary
 # -*- coding: utf-8 -*-
 
 """Cancellable, paired detach/attach event delivery."""
@@ -8,13 +11,22 @@ import indigo
 
 
 class EventCoordinator(object):
-    def __init__(self, timer_factory=threading.Timer):
+    def __init__(self, timer_factory=threading.Timer, logger=None):
+        self.logger = logger if logger is not None else logging.getLogger("Phidgets22")
         self.triggers = {}
         self._lock = threading.RLock()
         self._stopped = False
         self._timers = {}
         self._reported_detaches = set()
         self._timer_factory = timer_factory
+
+    def _execute_trigger(self, trigger_id):
+        try:
+            indigo.trigger.execute(trigger_id)
+            return True
+        except Exception as error:
+            log_error(self, "Unable to execute Phidget trigger %s: %s", trigger_id, error)
+            return False
 
     def start_processing(self, trigger):
         if trigger.pluginTypeId == "firmwareUpdateAvailable":
@@ -71,6 +83,7 @@ class EventCoordinator(object):
             old[0].cancel()
         timer.start()
 
+    @runtime_boundary("_execute_delayed_detach")
     def _execute_delayed_detach(self, trigger_id, source, token):
         device_id = source.indigoDevice.id
         with self._lock:
@@ -85,9 +98,11 @@ class EventCoordinator(object):
             self._timers.pop(trigger_id, None)
             if getattr(source, "_state", None) != "detached":
                 return
-            self._reported_detaches.add(device_id)
-        indigo.trigger.execute(trigger_id)
+        if self._execute_trigger(trigger_id):
+            with self._lock:
+                self._reported_detaches.add(device_id)
 
+    @runtime_boundary("trigger_event")
     def trigger_event(self, source, event):
         with self._lock:
             if self._stopped:
@@ -113,10 +128,9 @@ class EventCoordinator(object):
             if event == "deviceDetached" and delay > 0:
                 self._schedule_detach(trigger_id, source, delay)
             else:
-                if event == "deviceDetached":
+                if self._execute_trigger(trigger_id) and event == "deviceDetached":
                     with self._lock:
                         self._reported_detaches.add(device_id)
-                indigo.trigger.execute(trigger_id)
 
     def turn_on_requested(self, device, logger):
         """Report command receipt, independently of state or hardware success."""
@@ -135,6 +149,7 @@ class EventCoordinator(object):
                     trigger_id, device.name, device.id,
                     str(error).replace("\n", " "))
 
+    @runtime_boundary("trigger_global_event")
     def trigger_global_event(self, event):
         with self._lock:
             trigger_ids = [trigger_id for trigger_id, details
@@ -142,7 +157,7 @@ class EventCoordinator(object):
                            if details["devid"] is None and
                            details["event"] == event]
         for trigger_id in trigger_ids:
-            indigo.trigger.execute(trigger_id)
+            self._execute_trigger(trigger_id)
 
     def stop(self):
         with self._lock:

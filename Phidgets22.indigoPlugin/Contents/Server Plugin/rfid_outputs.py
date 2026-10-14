@@ -1,3 +1,4 @@
+from error_reporting import runtime_boundary
 # -*- coding: utf-8 -*-
 """The 1024's three DigitalOutput channels, owned by one RFID device."""
 import threading
@@ -14,6 +15,7 @@ OUTPUTS = (
 class RFIDOutputs:
     def __init__(self, owner, simulated=False):
         self.owner = owner
+        self.logger = getattr(owner, "logger", None)
         self.simulated = simulated
         self.lock = threading.RLock()
         self.handles = {}
@@ -94,6 +96,7 @@ class RFIDOutputs:
             for channel in range(3):
                 self._error(channel, "status timer", error)
 
+    @runtime_boundary("_poll")
     def _poll(self, generation):
         with self.lock:
             if not self.running or generation != self.generation:
@@ -103,6 +106,7 @@ class RFIDOutputs:
                 self.refresh(channel, handle)
             self._schedule()
 
+    @runtime_boundary("refresh")
     def refresh(self, channel, handle):
         with self.lock:
             if not self.running or self.handles.get(channel) is not handle:
@@ -116,6 +120,7 @@ class RFIDOutputs:
             except Exception as error:
                 self._error(channel, "state read", error)
 
+    @runtime_boundary("detached")
     def detached(self, channel, handle):
         with self.lock:
             if not self.running or self.handles.get(channel) is not handle:
@@ -125,6 +130,7 @@ class RFIDOutputs:
             except Exception as error:
                 self._error(channel, "detach", error)
 
+    @runtime_boundary("failed")
     def failed(self, channel, handle, code, description):
         with self.lock:
             if self.running and self.handles.get(channel) is handle:

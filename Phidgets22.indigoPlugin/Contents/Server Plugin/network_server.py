@@ -1,3 +1,4 @@
+from error_reporting import runtime_boundary
 # -*- coding: utf-8 -*-
 
 """Indigo representation of a discovered Phidget Network Server."""
@@ -69,6 +70,7 @@ class NetworkServerDevice(object):
         with self._lock:
             self._state = "stopped"
 
+    @runtime_boundary("serverAvailable")
     def serverAvailable(self, server):
         self._cancel_detach_timer()
         self._cancel_unavailable_timer()
@@ -153,6 +155,7 @@ class NetworkServerDevice(object):
         self._schedule_unavailable_timer(self._initial_unavailable_timeout)
         self._schedule_liveness_check()
 
+    @runtime_boundary("serverUnavailable")
     def serverUnavailable(self):
         with self._lock:
             if self._state != "attached":
@@ -187,7 +190,20 @@ class NetworkServerDevice(object):
             self._liveness_timer = timer
         timer.start()
 
+    @runtime_boundary("Network server liveness")
     def _check_liveness(self, generation):
+        try:
+            self._check_liveness_impl(generation)
+        except Exception as error:
+            from error_reporting import log_error
+            log_error(self, "Network server liveness check failed: server='%s'; %s",
+                      self.serverName, error)
+            with self._lock:
+                if (generation == self._liveness_generation and
+                        self._state in ("attached", "detached")):
+                    self._schedule_liveness_check()
+
+    def _check_liveness_impl(self, generation):
         """Detect a hard network loss when SDK removal discovery goes stale."""
         with self._lock:
             if (generation != self._liveness_generation or
@@ -266,6 +282,7 @@ class NetworkServerDevice(object):
         if timer is not None:
             timer.cancel()
 
+    @runtime_boundary("_confirmUnavailable")
     def _confirmUnavailable(self, generation):
         with self._lock:
             if (generation != self._detach_generation or
@@ -320,6 +337,7 @@ class NetworkServerDevice(object):
             self._unavailable_timer = timer
         timer.start()
 
+    @runtime_boundary("_unavailableReminder")
     def _unavailableReminder(self, generation):
         with self._lock:
             if (generation != self._unavailable_generation or

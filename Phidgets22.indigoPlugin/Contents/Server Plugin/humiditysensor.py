@@ -1,3 +1,4 @@
+from error_reporting import runtime_boundary
 # -*- coding: utf-8 -*-
 import indigo
 
@@ -32,6 +33,7 @@ class HumiditySensorPhidget(PhidgetBase):
         if newHumidityChangeTrigger is not None:
             self.phidget.setHumidityChangeTrigger(newHumidityChangeTrigger)
 
+    @runtime_boundary("onHumidityChangeHandler")
     def onHumidityChangeHandler(self, ph, humidity):
         self.updateStateOnServer("humidity", value=humidity, decimalPlaces=self.decimalPlaces)
         self.indigoDevice.updateStateImageOnServer(indigo.kStateImageSel.HumiditySensorOn)

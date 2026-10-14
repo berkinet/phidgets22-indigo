@@ -1,8 +1,12 @@
+from error_reporting import runtime_boundary
+from error_reporting import log_warning
+from error_reporting import log_error
 # -*- coding: utf-8 -*-
 
 import math
 import threading
-import traceback
+import sys
+from error_reporting import concise_error
 
 import indigo
 
@@ -172,6 +176,7 @@ class LCDPhidget(PhidgetBase):
                     # Preserve coordinate-based settings saved by v0.2.1.35.
                     self._write_text(self.initialText, self.initialX, self.initialY)
 
+    @runtime_boundary("onAttachHandler")
     def onAttachHandler(self, ph):
         super(LCDPhidget, self).onAttachHandler(ph)
         if self._state == "attached":
@@ -188,11 +193,12 @@ class LCDPhidget(PhidgetBase):
                 "LCD attachment action group executed: device='%s' groupId=%d",
                 self.indigoDevice.name, self.initialActionGroupId)
         except Exception:
-            self.logger.error(
+            log_error(self,
                 "Unable to execute LCD attachment action group: device='%s' "
-                "groupId=%d\n%s", self.indigoDevice.name,
-                self.initialActionGroupId, traceback.format_exc())
+                "groupId=%d: %s", self.indigoDevice.name,
+                self.initialActionGroupId, concise_error(sys.exc_info()[1]))
 
+    @runtime_boundary("onDetachHandler")
     def onDetachHandler(self, ph):
         with self._display_lock:
             self._cancel_animation_locked()
@@ -218,7 +224,7 @@ class LCDPhidget(PhidgetBase):
             if self._state != "attached":
                 replaced = self._pending_display_request is not None
                 self._pending_display_request = callback
-                self.logger.warning(
+                log_warning(self,
                     "LCD display request %s until attachment: device='%s'",
                     "replaced the previously queued request" if replaced else "queued",
                     self.indigoDevice.name)
@@ -231,7 +237,7 @@ class LCDPhidget(PhidgetBase):
                     raise
                 self._state = "detached"
                 self._pending_display_request = callback
-                self.logger.warning(
+                log_warning(self,
                     "LCD display request interrupted by provider detach and "
                     "queued until attachment: device='%s'",
                     self.indigoDevice.name)
@@ -249,9 +255,9 @@ class LCDPhidget(PhidgetBase):
                     "Queued LCD display request applied after attachment: device='%s'",
                     self.indigoDevice.name)
             except Exception:
-                self.logger.error(
-                    "Queued LCD display request failed after attachment: device='%s'\n%s",
-                    self.indigoDevice.name, traceback.format_exc())
+                log_error(self,
+                    "Queued LCD display request failed after attachment: device='%s': %s",
+                    self.indigoDevice.name, concise_error(sys.exc_info()[1]))
 
     def _ensure_attached(self):
         if self._state != "attached":
@@ -286,7 +292,7 @@ class LCDPhidget(PhidgetBase):
         if len(text) <= width:
             return text
         clipped = text[:width]
-        self.logger.warning(
+        log_warning(self,
             "LCD %s text clipped: device='%s', line=%d, width=%d, "
             "original=%r, displayed=%r",
             context, self.indigoDevice.name, line_number, width, text, clipped)
@@ -567,6 +573,7 @@ class LCDPhidget(PhidgetBase):
         self.phidget.flush()
         self.lastText = "Spinning wireframe donut"
 
+    @runtime_boundary("_animation_tick")
     def _animation_tick(self, generation):
         with self._display_lock:
             if (generation != self._animation_generation or
@@ -596,14 +603,14 @@ class LCDPhidget(PhidgetBase):
                 if (self._animation_transport_error_count <
                         self.ANIMATION_TIMEOUT_LIMIT):
                     if self._animation_transport_error_count == 1:
-                        self.logger.warning(
+                        log_warning(self,
                             "LCD animation transport error 0x%02x; retrying: "
                             "device='%s' (%s)", code,
                             self.indigoDevice.name, detail)
                     self._schedule_animation_locked(
                         generation, self.ANIMATION_TIMEOUT_RETRY_SECONDS)
                     return
-                self.logger.error(
+                log_error(self,
                     "LCD animation stopped after %d consecutive transport "
                     "errors 0x%02x: device='%s' (%s)",
                     self._animation_transport_error_count, code,
@@ -611,8 +618,8 @@ class LCDPhidget(PhidgetBase):
                 self._cancel_animation_locked()
                 self.updateIndigoStatus()
             except Exception:
-                self.logger.error("LCD animation stopped after a write error: device='%s'\n%s",
-                                  self.indigoDevice.name, traceback.format_exc())
+                log_error(self, "LCD animation stopped after a write error: device='%s': %s",
+                                  self.indigoDevice.name, concise_error(sys.exc_info()[1]))
                 self._cancel_animation_locked()
                 self.updateIndigoStatus()
 

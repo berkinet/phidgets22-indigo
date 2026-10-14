@@ -1,3 +1,4 @@
+from error_reporting import log_error
 # -*- coding: utf-8 -*-
 
 """Asynchronous, read-only collection of server and device versions."""
@@ -9,7 +10,8 @@ import os
 import re
 import tarfile
 import threading
-import traceback
+import sys
+from error_reporting import concise_error
 from urllib.request import Request, urlopen
 
 import indigo
@@ -138,8 +140,8 @@ class VersionCollector(object):
             try:
                 firmware_catalog = FirmwareCatalog.loaded(CATALOG_PATH)
             except Exception:
-                logger.warning("Unable to load firmware catalog:\n%s",
-                               traceback.format_exc())
+                logger.warning("Unable to load firmware catalog:: %s",
+                               concise_error(sys.exc_info()[1]))
                 firmware_catalog = FirmwareCatalog(())
         self.firmware_catalog = firmware_catalog
         if self._remote_catalog_enabled:
@@ -253,8 +255,8 @@ class VersionCollector(object):
         try:
             self.collect()
         except Exception:
-            self.logger.error("Version collection failed; next check remains scheduled:\n%s",
-                              traceback.format_exc())
+            log_error(self, "Version collection failed; next check remains scheduled:: %s",
+                              concise_error(sys.exc_info()[1]))
         finally:
             self._collection_lock.release()
             if self.interval:

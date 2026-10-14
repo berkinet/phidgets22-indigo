@@ -472,7 +472,7 @@ class ConfigurationTests(unittest.TestCase):
     def test_plugin_version_matches_release(self):
         plist = (SERVER_PLUGIN.parent / "Info.plist").read_text()
 
-        self.assertIn("<string>2026.1.40</string>", plist)
+        self.assertIn("<string>2026.1.41</string>", plist)
         self.assertIn("<string>com.yikes.eric.phidgets-indigo</string>", plist)
 
     def test_detach_error_delay_is_conditionally_visible(self):
@@ -1652,9 +1652,11 @@ class ConfigurationTests(unittest.TestCase):
         active_lcd.writeLines.assert_not_called()
 
         reject_props = dict(base_props, staticOverflowBehavior="reject")
-        with self.assertRaisesRegex(ValueError, "exceeds the 20-character"):
-            instance.lcdSetDisplay(
-                types.SimpleNamespace(deviceId=42, props=reject_props), None)
+        instance.logger = mock.Mock()
+        instance.lcdSetDisplay(
+            types.SimpleNamespace(deviceId=42, props=reject_props), None)
+        instance.logger.error.assert_called_once()
+        self.assertIn("exceeds the 20-character", str(instance.logger.error.call_args))
 
     def test_lcd_action_fields_follow_selected_device_height(self):
         instance = object.__new__(plugin.Plugin)

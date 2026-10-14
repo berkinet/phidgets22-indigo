@@ -1,10 +1,12 @@
+from error_reporting import log_error
 # -*- coding: utf-8 -*-
 
 """Sensirion SGP41 VOC/NOx sensor on a shared ADP0001 I2C bus."""
 
 import threading
 import time
-import traceback
+import sys
+from error_reporting import concise_error
 
 import indigo
 
@@ -234,14 +236,14 @@ class SGP41Phidget(I2CPeripheralBase):
                             "SGP41 reading discarded; retrying on the next poll: device='%s': %s",
                             self.indigoDevice.name, error)
                     elif self._response_error_count == 3:
-                        self.logger.error(
+                        log_error(self,
                             "SGP41 repeated invalid responses; retries remain active: device='%s': %s",
                             self.indigoDevice.name, error)
                     self.indigoDevice.setErrorStateOnServer("Invalid I2C response; retrying")
             except PeripheralUnavailableError as error:
                 message = str(error)
                 if message != self._offline_message:
-                    self.logger.error("Configured peripheral unavailable: device='%s': %s",
+                    log_error(self, "Configured peripheral unavailable: device='%s': %s",
                                       self.indigoDevice.name, message)
                     self._offline_message = message
                 self.indigoDevice.setErrorStateOnServer("No response at 0x59")
@@ -262,7 +264,7 @@ class SGP41Phidget(I2CPeripheralBase):
                             "poll: device='%s' (%s)", code,
                             self.indigoDevice.name, detail)
                     elif self._transport_error_count == 3:
-                        self.logger.error(
+                        log_error(self,
                             "SGP41 transport error 0x%02x on %d consecutive "
                             "polls; retries remain active: device='%s' (%s)",
                             code, self._transport_error_count,
@@ -271,8 +273,8 @@ class SGP41Phidget(I2CPeripheralBase):
                         "I2C transport error; retrying")
             except Exception:
                 if not self._pollInterruptedByProviderDetach():
-                    self.logger.error("SGP41 poll failed: device='%s'\n%s",
-                                      self.indigoDevice.name, traceback.format_exc())
+                    log_error(self, "SGP41 poll failed: device='%s': %s",
+                                      self.indigoDevice.name, concise_error(sys.exc_info()[1]))
                     self.indigoDevice.setErrorStateOnServer("I2C read failed")
             if generation == self._generation and self._state == "attached":
                 elapsed = time.monotonic() - poll_started
@@ -290,7 +292,7 @@ class SGP41Phidget(I2CPeripheralBase):
             self.indigoDevice.stateListOrDisplayStateIdChanged()
             self._generation += 1
             self._state = "attached"
-            self._poll(self._generation)
+            self._pollSafely(self._generation)
 
     def providerReattached(self):
         with self._lock:
@@ -299,7 +301,7 @@ class SGP41Phidget(I2CPeripheralBase):
             self.indigoDevice.stateListOrDisplayStateIdChanged()
             self._generation += 1
             self._state = "attached"
-            self._poll(self._generation)
+            self._pollSafely(self._generation)
 
     def stop(self):
         self.providerStopping()

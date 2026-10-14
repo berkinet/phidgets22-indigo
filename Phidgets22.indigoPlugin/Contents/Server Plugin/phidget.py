@@ -1,3 +1,5 @@
+from error_reporting import runtime_boundary
+from error_reporting import log_error
 # -*- coding: utf-8 -*-
 #
 # Bulk of the code for actually interacting with the phidget devices.
@@ -172,7 +174,7 @@ class PhidgetBase(object):
                     "daily": self._daily_reminder_reported}
             store.save(self.indigoDevice.id, record)
         except Exception as error:
-            self.logger.error("Unable to save outage for %s: %s",
+            log_error(self, "Unable to save outage for %s: %s",
                               self._error_identity(), str(error).replace("\n", " "))
 
     def _unavailable_message(self, detached_for):
@@ -289,7 +291,7 @@ class PhidgetBase(object):
             try:
                 self.updateStateOnServer(key, value=value)
             except Exception:
-                self.logger.debug("Unable to update connection state %s for %s:\n%s",
+                self.logger.debug("Unable to update connection state %s for %s:: %s",
                                   key, self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
 
     def _cancel_attach_timer(self):
@@ -384,6 +386,7 @@ class PhidgetBase(object):
             self._detach_error_timer = timer
         timer.start()
 
+    @runtime_boundary("detachErrorHandler")
     def detachErrorHandler(self, generation):
         with self._lifecycle_lock:
             if (generation != self._detach_error_generation or
@@ -392,10 +395,11 @@ class PhidgetBase(object):
             self._detach_error_timer = None
             detached_for = (time.monotonic() - self._detached_at
                             if self._detached_at else 0)
-        self.logger.error(
+        log_error(self,
             "Phidget remains detached after %.1f seconds: %s",
             detached_for, self._identity())
 
+    @runtime_boundary("detachGraceHandler")
     def detachGraceHandler(self, generation):
         """Publish a detach only when it survives the transient grace period."""
         with self._lifecycle_lock:
@@ -417,7 +421,7 @@ class PhidgetBase(object):
                     detached_for, self._identity())
             self.indigo_plugin.triggerEvent(self, "deviceDetached")
         except Exception:
-            self.logger.error("Detach grace handler failed: %s\n%s",
+            log_error(self, "Detach grace handler failed: %s: %s",
                               self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
 
     def start(self):
@@ -452,10 +456,11 @@ class PhidgetBase(object):
             try:
                 self.phidget.close()
             except Exception:
-                self.logger.debug("Cleanup close failed after start error: %s\n%s",
+                self.logger.debug("Cleanup close failed after start error: %s: %s",
                                   self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
             raise
 
+    @runtime_boundary("connectionTimeoutHandler")
     def connectionTimeoutHandler(self, generation):
         with self._lifecycle_lock:
             if generation != self._timer_generation or self._state not in ("starting", "detached"):
@@ -492,7 +497,7 @@ class PhidgetBase(object):
                 if coordinator is not None:
                     coordinator(self, detached_for)
                 else:
-                    self.logger.error(
+                    log_error(self,
                         "Phidget channel remained in use for %.1f seconds. Check "
                         "for another Indigo plugin instance, Phidget Control Panel, "
                         "or another program using it: %s",
@@ -506,7 +511,7 @@ class PhidgetBase(object):
                     coordinator(
                         self, detached_for, self._startup_error_message)
                 else:
-                    self.logger.error(
+                    log_error(self,
                         "%s on %s",
                         self._error_identity(), self._startup_error_message)
             else:
@@ -515,11 +520,11 @@ class PhidgetBase(object):
                 if coordinator is not None and detached_for < 86400:
                     coordinator(self, detached_for, state)
                 else:
-                    self.logger.error(
+                    log_error(self,
                         "%s%s", reminder_cadence(detached_for, first_daily),
                         self._unavailable_message(detached_for))
         except Exception:
-            self.logger.error("Attach-timeout handler failed: %s\n%s",
+            log_error(self, "Attach-timeout handler failed: %s: %s",
                               self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
         finally:
             self._schedule_detached_reminder(generation)
@@ -565,9 +570,9 @@ class PhidgetBase(object):
                 " (suppressed)" if suppressed else "",
                 self._concise_error_message(errorString))
         except Exception:
-            self.logger.error("Phidget error handler failed: %s\n%s",
+            log_error(self, "Phidget error handler failed: %s: %s",
                               self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
-    
+
     def onDetachHandler(self, ph):
         try:
             with self._lifecycle_lock:
@@ -590,18 +595,18 @@ class PhidgetBase(object):
                 try:
                     coordinator(self)
                 except Exception:
-                    self.logger.error(
-                        "Unable to quiesce dependent devices after detach: %s\n%s",
+                    log_error(self,
+                        "Unable to quiesce dependent devices after detach: %s: %s",
                         self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
             self._schedule_detach_grace_timer()
             self._schedule_attach_timer()
             try:
                 phidget_util.logPhidgetEvent(ph, self.logger.debug, "Detached '" + self.indigoDevice.name + "'")
             except Exception:
-                self.logger.debug("Unable to format detach diagnostics: %s\n%s",
+                self.logger.debug("Unable to format detach diagnostics: %s: %s",
                                   self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
         except Exception:
-            self.logger.error("Detach handler failed: %s\n%s",
+            log_error(self, "Detach handler failed: %s: %s",
                               self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
 
     def onAttachHandler(self, ph):
@@ -630,7 +635,7 @@ class PhidgetBase(object):
                 self.indigoDevice.setErrorStateOnServer("Initialization failed")
             except Exception:
                 pass
-            self.logger.error(
+            log_error(self,
                 "Configured peripheral unavailable: %s: %s",
                 self._identity(), error)
             return
@@ -656,7 +661,7 @@ class PhidgetBase(object):
                 self.indigoDevice.setErrorStateOnServer('Initialization failed')
             except Exception:
                 pass
-            self.logger.error("Phidget attached but initialization failed: %s\n%s",
+            log_error(self, "Phidget attached but initialization failed: %s: %s",
                               self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
             return
         except Exception:
@@ -670,7 +675,7 @@ class PhidgetBase(object):
                 self.indigoDevice.setErrorStateOnServer('Initialization failed')
             except Exception:
                 pass
-            self.logger.error("Phidget attached but initialization failed: %s\n%s",
+            log_error(self, "Phidget attached but initialization failed: %s: %s",
                               self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
             return
 
@@ -716,10 +721,10 @@ class PhidgetBase(object):
                 try:
                     phidget_util.logPhidgetEvent(ph, self.logger.debug, "Attached '" + self.indigoDevice.name + "'")
                 except Exception:
-                    self.logger.debug("Unable to format attach diagnostics: %s\n%s",
+                    self.logger.debug("Unable to format attach diagnostics: %s: %s",
                                       self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
         except Exception:
-            self.logger.error("Attach completion handler failed: %s\n%s",
+            log_error(self, "Attach completion handler failed: %s: %s",
                               self._identity(), str(sys.exc_info()[1]).replace("\n", " "))
 
     def configureAttachedPhidget(self, ph):
@@ -786,7 +791,7 @@ class PhidgetBase(object):
     #
 
     def outOfRangeError(self, field, minValue, maxValue, value):
-        self.logger.error(
+        log_error(self,
             "Out of range %s for Indigo device '%s' (%d): %s "
             "(valid range: [%s-%s])",
             field, self.indigoDevice.name, self.indigoDevice.id,

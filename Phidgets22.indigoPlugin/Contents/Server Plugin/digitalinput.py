@@ -1,3 +1,4 @@
+from error_reporting import runtime_boundary
 # -*- coding: utf-8 -*-
 import datetime
 
@@ -39,6 +40,7 @@ class DigitalInputPhidget(PhidgetBase):
         self.updateStateOnServer(key="lastUpdate", value=now)
         self.indigoDevice.updateStateImageOnServer(stateImage)
 
+    @runtime_boundary("onStateChangeHandler")
     def onStateChangeHandler(self, ph, state):
         if self.logRawStateChanges:
             self._rawStateChangeSequence += 1

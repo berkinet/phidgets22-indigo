@@ -1,3 +1,4 @@
+from error_reporting import log_error
 # -*- coding: utf-8 -*-
 """RFID presence sensing with optional per-reader tag policy."""
 import datetime
@@ -54,12 +55,12 @@ class RFIDPhidget(PhidgetBase):
         self.phidget.setOnTagLostHandler(self.onTagLostHandler)
 
     def _report(self, operation, error):
-        self.logger.error("RFID %s failed for '%s': %s", operation,
+        log_error(self, "RFID %s failed for '%s': %s", operation,
                           self.indigoDevice.name, str(error).replace("\n", " "))
         try:
             self.indigoDevice.setErrorStateOnServer("RFID %s failed" % operation)
         except Exception as state_error:
-            self.logger.error("Unable to report RFID error for '%s': %s",
+            log_error(self, "Unable to report RFID error for '%s': %s",
                               self.indigoDevice.name, str(state_error).replace("\n", " "))
 
     def _publish_tag(self, present, tag=None, protocol=None, notify=False, updatePresence=True):
@@ -73,7 +74,7 @@ class RFIDPhidget(PhidgetBase):
             try:
                 rfid_tags.remember(self.indigo_plugin, self.indigoDevice.id, str(tag), protocol, timestamp)
             except Exception as error:
-                self.logger.error("RFID history update failed for '%s': %s", self.indigoDevice.name,
+                log_error(self, "RFID history update failed for '%s': %s", self.indigoDevice.name,
                                   str(error).replace("\n", " "))
             try:
                 allowed, reason = rfid_tags.evaluate_with_reason(
@@ -89,7 +90,7 @@ class RFIDPhidget(PhidgetBase):
             except Exception as error:
                 allowed, status = False, "Error"
                 policy_error = str(error).replace("\n", " ")
-                self.logger.error(
+                log_error(self,
                     "RFID list check failed: reader=%r id=%s tag=%r protocol=%s: %s",
                     self.indigoDevice.name, self.indigoDevice.id, str(tag),
                     rfid_tags.PROTOCOLS.get(protocol, str(protocol)), policy_error)

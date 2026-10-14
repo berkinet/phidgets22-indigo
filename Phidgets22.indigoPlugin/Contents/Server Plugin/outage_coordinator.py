@@ -1,3 +1,4 @@
+from error_reporting import runtime_boundary
 # -*- coding: utf-8 -*-
 
 """Coalesced reporting for channel, physical-device, and server outages."""
@@ -109,6 +110,7 @@ class OutageCoordinator(object):
             self._timers.pop((kind, key), None)
             return self._batches[kind].pop(key, default)
 
+    @runtime_boundary("flush_startup_open_failure")
     def flush_startup_open_failure(self, key, token=None):
         pending = self._take_batch(
             "startup-open-failure", key, {}, token)
@@ -143,6 +145,7 @@ class OutageCoordinator(object):
             longest, first.serverDisplayName(), first.channelInfo.serialNumber,
             len(affected), names, "; ".join(messages))
 
+    @runtime_boundary("flush_startup_unavailable")
     def flush_startup_unavailable(self, physical_device, token=None):
         pending = self._take_batch(
             "startup-unavailable", physical_device, {}, token)
@@ -189,6 +192,7 @@ class OutageCoordinator(object):
                 phidget.channelInfo.serialNumber, status, phidget.serverDisplayName(),
                 phidget.channelInfo.hubPort, phidget.channelInfo.channel)
 
+    @runtime_boundary("flush_startup_contention")
     def flush_startup_contention(self, key, token=None):
         pending = self._take_batch("startup-contention", key, {}, token)
         affected = [
@@ -212,6 +216,7 @@ class OutageCoordinator(object):
             longest, first.serverDisplayName(), first.channelInfo.serialNumber,
             first.channelInfo.hubPort, names)
 
+    @runtime_boundary("flush_detach")
     def flush_detach(self, server_key, token=None):
         pending = self._take_batch("detach", server_key, set(), token)
         configured = self._channels_for_server(server_key)
@@ -242,6 +247,7 @@ class OutageCoordinator(object):
                     "automatic reattach: %s", detached_for,
                     phidget._identity())
 
+    @runtime_boundary("flush_recovery")
     def flush_recovery(self, server_key, token=None):
         pending = self._take_batch("recovery", server_key, {}, token)
         with self._lock:

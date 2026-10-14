@@ -1,3 +1,4 @@
+from error_reporting import runtime_boundary
 # -*- coding: utf-8 -*-
 
 """Configurable HD44780/PCF8574 transport over a shared DataAdapter."""
@@ -254,6 +255,7 @@ class I2CLCDPhidget(LCDPhidget):
         self._provider_retry_timer = timer
         timer.start()
 
+    @runtime_boundary("_retryProvider")
     def _retryProvider(self, generation):
         if (generation != self._provider_retry_generation or
                 self._state in ("stopping", "stopped")):
@@ -261,6 +263,7 @@ class I2CLCDPhidget(LCDPhidget):
         self._provider_retry_timer = None
         self.phidget.providerAttached()
 
+    @runtime_boundary("onAttachHandler")
     def onAttachHandler(self, ph):
         super(I2CLCDPhidget, self).onAttachHandler(ph)
         if self._state == "attached":

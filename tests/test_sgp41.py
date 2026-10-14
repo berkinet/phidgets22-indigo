@@ -139,7 +139,7 @@ class SGP41Tests(unittest.TestCase):
         device.setErrorStateOnServer.assert_called_with("No response at 0x59")
         delay, callback, args = timer.call_args.args
         self.assertAlmostEqual(delay, 0.95)
-        self.assertEqual(callback, wrapper._poll)
+        self.assertEqual(callback, wrapper._pollSafely)
         self.assertEqual(args, (wrapper._generation,))
 
     def test_detach_during_poll_stops_quietly(self):
@@ -166,7 +166,7 @@ class SGP41Tests(unittest.TestCase):
 
         delay, callback, args = timer.call_args.args
         self.assertAlmostEqual(delay, 0.95)
-        self.assertEqual(callback, wrapper._poll)
+        self.assertEqual(callback, wrapper._pollSafely)
         self.assertEqual(args, (wrapper._generation,))
 
     def test_transport_error_retries_quietly_and_reports_recovery(self):

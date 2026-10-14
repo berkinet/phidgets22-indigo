@@ -8,10 +8,10 @@ Authorized 14 October 2026. Baseline 2026.1.39, bcbc788.
 - [x] Regression tests and release.
 
 ## Stage 2: reporting and boundaries
-- [ ] Concise first/reminder/recovery reporting shared across runtime paths.
-- [ ] Guard SDK/timer/action boundaries; remove traceback output at every level.
-- [ ] GPIO uses shared output completion; no reads after failed writes.
-- [ ] Regression tests and release.
+- [x] Concise first/reminder/recovery reporting shared across runtime paths.
+- [x] Guard SDK/timer/action boundaries; remove traceback output at every level.
+- [x] GPIO uses shared output completion; no reads after failed writes.
+- [x] Regression tests and release.
 
 ## Stage 3: availability and recovery
 - [ ] Native initialization failure has explicit status and bounded retry.
@@ -36,3 +36,5 @@ custom distribution ZIP, broad rewrite. RFID history is already bounded.
 Live hardware acceptance is recorded separately from automated evidence.
 
 Stage 1 automated acceptance: 422 tests; version 2026.1.40. Live acceptance pending.
+
+Stage 2 automated acceptance: 429 tests; version 2026.1.41.

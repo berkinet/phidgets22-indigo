@@ -2,7 +2,8 @@
 
 """Consistent Indigo state publication for every runtime device."""
 
-import traceback
+import sys
+from error_reporting import concise_error
 
 from signed_value import publish_signed_value
 
@@ -35,6 +36,6 @@ def update_indigo_states(owner, values, logger=None, ui_values=None):
             if logger is not None:
                 device = getattr(owner, "indigoDevice", None)
                 logger.debug(
-                    "Unable to update state %s for device='%s' id=%s:\n%s",
+                    "Unable to update state %s for device='%s' id=%s:: %s",
                     key, getattr(device, "name", "unknown"),
-                    getattr(device, "id", "unknown"), traceback.format_exc())
+                    getattr(device, "id", "unknown"), concise_error(sys.exc_info()[1]))

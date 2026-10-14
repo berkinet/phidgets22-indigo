@@ -1,3 +1,5 @@
+from error_reporting import runtime_boundary
+from error_reporting import log_error
 # -*- coding: utf-8 -*-
 
 """Indigo action dispatch and action-configuration UI callbacks."""
@@ -27,11 +29,12 @@ class ActionsMixin(object):
                 raise ValueError("device is not active")
             return runtime_device.actionControlDevice(action)
         except Exception as error:
-            self.logger.error(
+            log_error(self,
                 "Unable to process device command: device='%s' id=%s action=%s: %s",
                 device.name, device.id, action.deviceAction,
                 str(error).replace("\n", " "))
 
+    @runtime_boundary("actionControlSensor")
     def actionControlSensor(self, action, device):
         runtime_device = registry_for(self).get(device.id)
         if runtime_device is not None:
@@ -58,15 +61,19 @@ class ActionsMixin(object):
             raise ValueError("LCD device '%s' is not active" % device_name)
         return lcd
 
+    @runtime_boundary("lcdClear")
     def lcdClear(self, action, device=None):
         self._lcdForAction(action, device).clear()
 
+    @runtime_boundary("lcdSleep")
     def lcdSleep(self, action, device=None):
         self._lcdForAction(action, device).setSleeping(True)
 
+    @runtime_boundary("lcdWake")
     def lcdWake(self, action, device=None):
         self._lcdForAction(action, device).setSleeping(False)
 
+    @runtime_boundary("lcdSetDisplay")
     def lcdSetDisplay(self, action, device=None):
         line_count = int(action.props.get("lineCount", 0))
         mode = action.props.get("animationMode", "static")
@@ -169,6 +176,7 @@ class ActionsMixin(object):
 
         lcd.runDisplayWhenAttached(apply_display)
 
+    @runtime_boundary("lcdStopAnimation")
     def lcdStopAnimation(self, action, device=None):
         self._lcdForAction(action, device).turnOff()
 
@@ -424,7 +432,7 @@ class ActionsMixin(object):
                 raise ValueError("RFID reader %s is not active" % device_id)
             reader.setAntennaEnabled(enabled)
         except Exception as error:
-            self.logger.error("RFID antenna action failed: %s", str(error).replace("\n", " "))
+            log_error(self, "RFID antenna action failed: %s", str(error).replace("\n", " "))
 
     def rfidEnableAntenna(self, action, device=None):
         self._rfidAntenna(action, device, True)
@@ -445,7 +453,7 @@ class ActionsMixin(object):
                 raise ValueError("select On or Off")
             reader.setOutput(channels[action.pluginTypeId], state == "on")
         except Exception as error:
-            self.logger.error("RFID output action failed: %s", str(error).replace("\n", " "))
+            log_error(self, "RFID output action failed: %s", str(error).replace("\n", " "))
 
     def _simulateRFID(self, action, device, lost=False):
         try:
@@ -459,7 +467,7 @@ class ActionsMixin(object):
             else:
                 reader.simulateTag(action.props.get("tag", ""), int(action.props.get("protocol", 1)))
         except Exception as error:
-            self.logger.error("RFID simulation action failed: %s", str(error).replace("\n", " "))
+            log_error(self, "RFID simulation action failed: %s", str(error).replace("\n", " "))
 
     def rfidSimulateTag(self, action, device=None):
         self._simulateRFID(action, device)

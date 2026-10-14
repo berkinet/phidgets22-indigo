@@ -1,5 +1,14 @@
 # Release notes
 
+## 2026.1.41 — 2026-10-14
+
+- Shared bounded fault reporting preserves first/distinct errors and limits repeats.
+- Guard SDK, timer and action boundaries; poll/liveness failures retain scheduling.
+- GPIO outputs reuse contextual async completion without reads after failed writes.
+- Remove explicit Python traceback output at every Indigo logging level.
+- Contain trigger execution failures without abandoning unrelated triggers.
+
+
 ## 2026.1.40 — 2026-10-14
 
 - Lifecycle epochs invalidate attachment initialization and async write

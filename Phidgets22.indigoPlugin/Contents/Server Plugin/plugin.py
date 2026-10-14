@@ -1,3 +1,4 @@
+from error_reporting import runtime_boundary
 # -*- coding: utf-8 -*-
 
 # Originally created by Eric Perlman (@perlman):
@@ -65,7 +66,7 @@ class Plugin(BridgeUiMixin, RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin,
         self._networkServerLock = threading.RLock()
         self.phidgetInfo = PhidgetInfo()
         self.logger.setLevel(logging.DEBUG)
-        self.eventCoordinator = EventCoordinator()
+        self.eventCoordinator = EventCoordinator(logger=self.logger)
         self.trigger_dict = self.eventCoordinator.triggers
 
         self.discoveryInventory = None
@@ -100,30 +101,35 @@ class Plugin(BridgeUiMixin, RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin,
 
     def startup(self):
         self._applyPluginLoggingLevel(self.pluginPrefs)
-        if saved_bool(self.pluginPrefs.get("phidgetApiLogging", False)):
-            self.phidgetApiLogLevel = int(self.pluginPrefs["phidgetApiLogLevel"])
-            self.phidgetApiLogfile = self.pluginPrefs["phidgetApiLogfile"]
-            Log.enable(self.phidgetApiLogLevel, self.phidgetApiLogfile)
-            level_names = {
-                LogLevel.PHIDGET_LOG_CRITICAL: "Critical",
-                LogLevel.PHIDGET_LOG_ERROR: "Error",
-                LogLevel.PHIDGET_LOG_WARNING: "Warning",
-                LogLevel.PHIDGET_LOG_DEBUG: "Debug",
-                LogLevel.PHIDGET_LOG_INFO: "Info",
-                LogLevel.PHIDGET_LOG_VERBOSE: "Verbose",
-            }
-            self.logger.warning(
-                "Low-level Phidgets API logging is enabled at %s (%s); "
-                "SDK messages are being written to %s",
-                level_names.get(self.phidgetApiLogLevel, "unknown"),
-                self.phidgetApiLogLevel, self.phidgetApiLogfile)
-        else:
-            Log.disable()
-            self.phidgetApiLogLevel = 0
+        try:
+            if saved_bool(self.pluginPrefs.get("phidgetApiLogging", False)):
+                self.phidgetApiLogLevel = int(self.pluginPrefs["phidgetApiLogLevel"])
+                self.phidgetApiLogfile = self.pluginPrefs["phidgetApiLogfile"]
+                Log.enable(self.phidgetApiLogLevel, self.phidgetApiLogfile)
+                level_names = {
+                    LogLevel.PHIDGET_LOG_CRITICAL: "Critical",
+                    LogLevel.PHIDGET_LOG_ERROR: "Error",
+                    LogLevel.PHIDGET_LOG_WARNING: "Warning",
+                    LogLevel.PHIDGET_LOG_DEBUG: "Debug",
+                    LogLevel.PHIDGET_LOG_INFO: "Info",
+                    LogLevel.PHIDGET_LOG_VERBOSE: "Verbose",
+                }
+                self.logger.warning(
+                    "Low-level Phidgets API logging is enabled at %s (%s); "
+                    "SDK messages are being written to %s",
+                    level_names.get(self.phidgetApiLogLevel, "unknown"),
+                    self.phidgetApiLogLevel, self.phidgetApiLogfile)
+            else:
+                Log.disable()
+                self.phidgetApiLogLevel = 0
 
-        library_version = Phidget.getLibraryVersion()
-        self.logger.debug("Using %s" % library_version)
-        start_version_check(library_version, self.logger)
+            library_version = Phidget.getLibraryVersion()
+            self.logger.debug("Using %s" % library_version)
+            start_version_check(library_version, self.logger)
+
+        except Exception as error:
+            from error_reporting import log_error
+            log_error(self, "Unable to configure SDK diagnostics/version check; discovery continues: %s", error)
 
         try:
             self.networkMonitor = Net()
@@ -142,7 +148,7 @@ class Plugin(BridgeUiMixin, RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin,
         except Exception:
             self.discoveryInventory = None
             self.logger.warning(
-                "Unable to start Phidget discovery inventory:\n%s",
+                "Unable to start Phidget discovery inventory:: %s",
                 str(sys.exc_info()[1]).replace("\n", " "))
 
         self.versionCollector.start()
@@ -150,6 +156,7 @@ class Plugin(BridgeUiMixin, RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin,
     def _runtime_registry(self):
         return registry_for(self)
 
+    @runtime_boundary("_serverAdded")
     def _serverAdded(self, net, server, kv):
         name = str(getattr(server, "name", "") or "").strip()
         if not name:
@@ -167,6 +174,7 @@ class Plugin(BridgeUiMixin, RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin,
                     "Unable to update Phidget network server device='%s': %s",
                     monitor.indigoDevice.name, error)
 
+    @runtime_boundary("_serverRemoved")
     def _serverRemoved(self, net, server):
         name = str(getattr(server, "name", "") or "").strip()
         if not name:
@@ -299,7 +307,7 @@ class Plugin(BridgeUiMixin, RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin,
                                 "Initialization failed")
                             self.logger.error(
                                 "Unable to reinitialize I2C peripheral "
-                                "device='%s':\n%s",
+                                "device='%s':: %s",
                                 dependent.indigoDevice.name,
                                 str(sys.exc_info()[1]).replace("\n", " "))
         if not detach_announced:
@@ -362,7 +370,7 @@ class Plugin(BridgeUiMixin, RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin,
             return path
         except Exception:
             self.logger.error(
-                "Unable to export Indigo Phidget device states:\n%s",
+                "Unable to export Indigo Phidget device states:: %s",
                 str(sys.exc_info()[1]).replace("\n", " "))
             return None
 
@@ -385,14 +393,14 @@ class Plugin(BridgeUiMixin, RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin,
             self._runtime_registry().remove(device.id)
             device.setErrorStateOnServer("Unable to start")
             self.logger.error(
-                "Unable to start Phidget device='%s' id=%s model=%s: %d: %s\n%s",
+                "Unable to start Phidget device='%s' id=%s model=%s: %d: %s: %s",
                 device.name, device.id, device.deviceTypeId,
                 error.code, error.details, str(sys.exc_info()[1]).replace("\n", " "))
         except Exception:
             self._runtime_registry().remove(device.id)
             device.setErrorStateOnServer("Unable to start")
             self.logger.error(
-                "Unable to start Phidget device='%s' id=%s model=%s:\n%s",
+                "Unable to start Phidget device='%s' id=%s model=%s:: %s",
                 device.name, device.id, device.deviceTypeId,
                 str(sys.exc_info()[1]).replace("\n", " "))
 
@@ -462,7 +470,7 @@ class Plugin(BridgeUiMixin, RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin,
             phidget.stop()
         except Exception:
             self.logger.error(
-                "Unable to stop Phidget device='%s' id=%s:\n%s",
+                "Unable to stop Phidget device='%s' id=%s:: %s",
                 device.name, device.id, str(sys.exc_info()[1]).replace("\n", " "))
 
     def shutdown(self):
@@ -478,7 +486,7 @@ class Plugin(BridgeUiMixin, RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin,
                 self.networkMonitor.setOnServerRemovedHandler(None)
             except Exception:
                 self.logger.debug(
-                    "Unable to stop Phidget server monitoring:\n%s",
+                    "Unable to stop Phidget server monitoring:: %s",
                     str(sys.exc_info()[1]).replace("\n", " "))
             self.networkMonitor = None
 
@@ -497,7 +505,7 @@ class Plugin(BridgeUiMixin, RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin,
                         callback()
                     except Exception:
                         self.logger.warning(
-                            "Unable to quiesce I2C dependent during shutdown:\n%s",
+                            "Unable to quiesce I2C dependent during shutdown:: %s",
                             str(sys.exc_info()[1]).replace("\n", " "))
         # Stop providers last, after dependent timers and transactions settle.
         active.sort(key=lambda item: bool(
@@ -507,7 +515,7 @@ class Plugin(BridgeUiMixin, RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin,
                 phidget.stop()
             except Exception:
                 self.logger.warning(
-                    "Unable to stop active Phidget id=%s during shutdown:\n%s",
+                    "Unable to stop active Phidget id=%s during shutdown:: %s",
                     device_id, str(sys.exc_info()[1]).replace("\n", " "))
         self._runtime_registry().clear()
 
@@ -516,7 +524,7 @@ class Plugin(BridgeUiMixin, RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin,
                 self.discoveryInventory.stop()
             except Exception:
                 self.logger.warning(
-                    "Unable to stop Phidget discovery inventory:\n%s",
+                    "Unable to stop Phidget discovery inventory:: %s",
                     str(sys.exc_info()[1]).replace("\n", " "))
             self.discoveryInventory = None
 
@@ -524,7 +532,7 @@ class Plugin(BridgeUiMixin, RFIDManagementMixin, ActionsMixin, DiscoveryUiMixin,
             Phidget.finalize(0)
         except Exception:
             self.logger.warning(
-                "Unable to finalize Phidget library:\n%s",
+                "Unable to finalize Phidget library:: %s",
                 str(sys.exc_info()[1]).replace("\n", " "))
 
     def collectVersionsNow(self):

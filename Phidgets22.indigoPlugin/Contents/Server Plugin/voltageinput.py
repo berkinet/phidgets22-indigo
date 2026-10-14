@@ -1,3 +1,5 @@
+from error_reporting import log_error
+from error_reporting import runtime_boundary
 # -*- coding: utf-8 -*-
 import indigo
 
@@ -59,6 +61,7 @@ class VoltageInputPhidget(PhidgetBase):
         self.phidget.setSensorValueChangeTrigger(self.sensorValueChangeTrigger)
 
 
+    @runtime_boundary("onVoltageChangeHandler")
     def onVoltageChangeHandler(self, ph, voltage):
         self.updateStateOnServer("voltage_in", value=voltage, decimalPlaces=self.decimalPlaces)
         if (self.sensorType == VoltageSensorType.SENSOR_TYPE_VOLTAGE and
@@ -72,11 +75,12 @@ class VoltageInputPhidget(PhidgetBase):
                 self.updateStateOnServer(
                     self.customState, **arguments)
             except (ArithmeticError, TypeError, ValueError) as error:
-                self.logger.error(
+                log_error(self,
                     "Custom voltage formula failed: device='%s' formula=%r "
                     "input=%s: %s", self.indigoDevice.name,
                     self.customFormula, voltage, error)
 
+    @runtime_boundary("onSensorChangeHandler")
     def onSensorChangeHandler(self, ph, sensorValue, sensorUnit):
         self.updateStateOnServer(self.sensorStateName , value=sensorValue, decimalPlaces=self.decimalPlaces)
         if self.sensorStateName == "tempC":

@@ -42,6 +42,7 @@ class SensorFormulaTests(unittest.TestCase):
                                return_value=FakeChannel()):
             wrapper = voltageinput.VoltageInputPhidget(**arguments)
 
+        wrapper._state = "attached"
         wrapper.onVoltageChangeHandler(None, 2.5)
 
         self.assertEqual(
@@ -85,6 +86,7 @@ class SensorFormulaTests(unittest.TestCase):
                                return_value=FakeChannel()):
             wrapper = voltageinput.VoltageInputPhidget(**arguments)
 
+        wrapper._state = "attached"
         wrapper.onVoltageChangeHandler(None, 3.0)
 
         self.assertEqual(
@@ -106,6 +108,7 @@ class SensorFormulaTests(unittest.TestCase):
                                return_value=FakeChannel()):
             wrapper = voltageinput.VoltageInputPhidget(**arguments)
 
+        wrapper._state = "attached"
         wrapper.onVoltageChangeHandler(None, 3.0)
 
         self.assertEqual(

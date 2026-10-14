@@ -174,7 +174,7 @@ class BME280Tests(unittest.TestCase):
         self.assertIsNone(wrapper.chipId)
         device.setErrorStateOnServer.assert_called_with("No response at 0x76")
         timer.assert_called_once_with(
-            wrapper.pollInterval, wrapper._poll, (wrapper._generation,))
+            wrapper.pollInterval, wrapper._pollSafely, (wrapper._generation,))
 
     def test_detach_during_poll_stops_quietly(self):
         wrapper, adapter, device = self.wrapper(0x60)
