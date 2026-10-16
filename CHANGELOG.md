@@ -1,5 +1,11 @@
 # Release notes
 
+## 2026.1.46 — 2026-10-16
+
+- Report digital/GPIO output Not Attached write failures as bounded warnings while waiting for first attachment within the existing startup grace period.
+- Promote subsequent failures to errors after grace expires; communication loss after attachment and other write errors retain normal error reporting.
+- Failed commands remain unapplied and unqueued. Door Manager startup fault/email policy remains owned by Door Manager.
+
 ## 2026.1.45 — 2026-10-14
 
 - Preserve actual Indigo callback argument signatures through error guards, fixing LCD action dispatch and guarded validation callbacks.

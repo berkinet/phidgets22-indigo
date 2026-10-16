@@ -171,6 +171,53 @@ class DeviceWrapperTests(unittest.TestCase):
         wrapper.asyncSetResult(None, 52, "Device not Attached", "Turn Off", False)
         self.assertEqual(wrapper.logger.error.call_count, 3)
 
+    def test_first_attachment_write_failures_warn_then_promote_after_startup_grace(self):
+        for output_type in (digitaloutput.DigitalOutputPhidget,
+                            adapter_gpio.AdapterGPIOOutputPhidget):
+            with self.subTest(output=output_type.__name__):
+                wrapper = object.__new__(output_type)
+                wrapper.logger = mock.Mock()
+                wrapper.phidget = mock.Mock()
+                wrapper.updateIndigoStatus = mock.Mock()
+                wrapper._identity = lambda: "Door output"
+                wrapper._state = "starting"
+                wrapper._attach_count = 0
+                wrapper._started_at = 100
+                wrapper._detached_at = -90000  # A restored outage cannot shorten grace.
+                wrapper.initial_connection_timeout = 30
+                with mock.patch.object(digitaloutput.time, "monotonic", return_value=101):
+                    for _ in range(20):
+                        wrapper.asyncSetResult(None, 52, "Device not Attached", "Turn Off", False)
+                wrapper.logger.warning.assert_called_once()
+                wrapper.logger.error.assert_not_called()
+                message = wrapper.logger.warning.call_args.args
+                self.assertIn("Command was not applied or queued", message[0])
+                self.assertEqual(message[-2:], ("Turn Off", False))
+                with mock.patch.object(digitaloutput.time, "monotonic", return_value=130):
+                    for _ in range(20):
+                        wrapper.asyncSetResult(None, 52, "Device not Attached", "Turn Off", False)
+                wrapper.logger.error.assert_called_once()
+                wrapper.updateIndigoStatus.assert_not_called()
+                wrapper.phidget.assert_not_called()
+                self.assertEqual(wrapper.phidget.mock_calls, [])
+
+    def test_startup_grace_never_masks_operational_or_other_write_failures(self):
+        for count, result in ((1, 52), (0, 3)):
+            with self.subTest(previous_attachments=count, result=result):
+                wrapper = object.__new__(digitaloutput.DigitalOutputPhidget)
+                wrapper.logger = mock.Mock()
+                wrapper.updateIndigoStatus = mock.Mock()
+                wrapper._identity = lambda: "Door output"
+                wrapper._state = "detached"
+                wrapper._attach_count = count
+                wrapper._started_at = 100
+                wrapper.initial_connection_timeout = 30
+                with mock.patch.object(digitaloutput.time, "monotonic", return_value=101):
+                    wrapper.asyncSetResult(None, result, "Write failed", "Turn Off", False)
+                wrapper.logger.error.assert_called_once()
+                wrapper.logger.warning.assert_not_called()
+                wrapper.updateIndigoStatus.assert_not_called()
+
     def test_async_completion_from_old_lifecycle_is_ignored(self):
         wrapper = object.__new__(digitaloutput.DigitalOutputPhidget)
         wrapper._identity = lambda: "Door"

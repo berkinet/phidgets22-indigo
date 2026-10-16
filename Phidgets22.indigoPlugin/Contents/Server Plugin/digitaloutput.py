@@ -1,8 +1,9 @@
 from error_reporting import runtime_boundary
-from error_reporting import log_error, clear_faults
+from error_reporting import log_error, log_warning, clear_faults
 # -*- coding: utf-8 -*-
 
 from contextlib import nullcontext
+import time
 
 import indigo
 
@@ -85,13 +86,24 @@ class DigitalOutputPhidget(PhidgetBase):
         with getattr(self, "_lifecycle_lock", nullcontext()):
             self._detached_write_failures = set()
             clear_faults(self, "Async failure:")
+            clear_faults(self, "Output unavailable during startup:")
 
-    def _first_detached_write_failure(self, operation, requested):
+    def _waiting_for_first_attachment(self):
+        """Use the existing startup deadline, independently of persisted outage age."""
+        started = getattr(self, "_started_at", None)
+        return (getattr(self, "_attach_count", None) == 0 and
+                getattr(self, "_state", None) in ("starting", "detached") and
+                not getattr(self, "_initialization_error", None) and
+                started is not None and
+                time.monotonic() - started < self.initial_connection_timeout)
+
+    def _first_detached_write_failure(self, operation, requested, startup=False):
         with getattr(self, "_lifecycle_lock", nullcontext()):
             failures = getattr(self, "_detached_write_failures", None)
             if failures is None:
                 failures = self._detached_write_failures = set()
-            key = (operation, repr(requested))
+            # Expiring the startup grace must promote the next failure to error.
+            key = (operation, repr(requested), startup)
             if key in failures:
                 return False
             failures.add(key)
@@ -101,7 +113,8 @@ class DigitalOutputPhidget(PhidgetBase):
     def asyncSetResult(self, ch, res, details, operation="unspecified write", requested=None, identity=None):
         if res != ErrorCode.EPHIDGET_OK:
             detached = res == ErrorCode.EPHIDGET_NOTATTACHED
-            if detached and not self._first_detached_write_failure(operation, requested):
+            startup = detached and self._waiting_for_first_attachment()
+            if detached and not self._first_detached_write_failure(operation, requested, startup):
                 return
             if identity is None:
                 try:
@@ -112,8 +125,12 @@ class DigitalOutputPhidget(PhidgetBase):
             if detached:
                 message += ("; repeated failures for this request are suppressed until recovery. "
                             "Command was not applied or queued; automatic attachment remains active.")
-            log_error(self, message,
-                              res, details, identity, operation, requested)
+            if startup:
+                message = message.replace("Async failure:", "Output unavailable during startup:", 1)
+                message = message.replace("until recovery", "during the startup grace period", 1)
+                message += " Waiting for first attachment; failures after startup grace are errors."
+            report = log_warning if startup else log_error
+            report(self, message, res, details, identity, operation, requested)
             return
         self._clear_detached_write_failures()
         self.updateIndigoStatus()
