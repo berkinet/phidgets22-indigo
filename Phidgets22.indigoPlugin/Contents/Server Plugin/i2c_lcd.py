@@ -257,6 +257,25 @@ class I2CLCDPhidget(LCDPhidget):
         super(I2CLCDPhidget, self).__init__(*args, **kwargs)
         self.adapterDeviceId = int(adapterDeviceId)
 
+    def _identity(self):
+        return "%s adapterId=%s i2cAddress=0x%02X" % (
+            super(I2CLCDPhidget, self)._identity(), self.adapterDeviceId,
+            self.phidget.address)
+
+    def _attachment_failed(self, epoch, error):
+        # A provider disconnect during initialization is an outage, not bad
+        # LCD configuration. Its next attachment will reinitialize this LCD.
+        if self._displayProviderDetached():
+            with self._lifecycle_lock:
+                if epoch != self._lifecycle_epoch or self._state in ("stopped", "stopping"):
+                    return
+                self._cancel_initialization_retry()
+                self._state = "detached"
+                self._initialization_error = None
+                set_device_error(self, "Provider unavailable")
+            return
+        super(I2CLCDPhidget, self)._attachment_failed(epoch, error)
+
     def providerReattached(self):
         """Reinitialize the controller after its shared adapter reconnects."""
         return self.phidget.providerAttached()

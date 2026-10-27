@@ -45,6 +45,19 @@ class OutageCoordinator(object):
                 channels.append(runtime_device)
         return channels
 
+    def _connection_source(self, device, configured):
+        """Logical peripherals share their provider's network connection.
+
+        They need not implement PhidgetBase and an absent I2C board must not
+        prevent reporting recovery of its network server.
+        """
+        adapter_id = getattr(device, "adapterDeviceId", None)
+        if adapter_id is not None:
+            for provider in configured:
+                if provider.indigoDevice.id == adapter_id:
+                    return provider
+        return device
+
     def _schedule(self, kind, key, callback):
         timer_key = (kind, key)
         token = object()
@@ -217,10 +230,11 @@ class OutageCoordinator(object):
         pending = self._take_batch("detach", server_key, set(), token)
         configured = self._channels_for_server(server_key)
         affected = [phidget for phidget in configured
-                    if phidget._state == "detached" and
-                    phidget._detach_announced]
+                    if getattr(self._connection_source(phidget, configured), "_state", None) == "detached" and
+                    getattr(self._connection_source(phidget, configured), "_detach_announced", False)]
         if len(configured) > 1 and len(affected) == len(configured):
-            detached_at = min(phidget._detached_at for phidget in affected)
+            detached_at = min(self._connection_source(phidget, configured)._detached_at
+                              for phidget in affected)
             serials = {PortIdentity.from_wrapper(phidget) for phidget in affected}
             with self._lock:
                 self._server_outages[server_key] = {
@@ -251,11 +265,13 @@ class OutageCoordinator(object):
         configured = self._channels_for_server(server_key)
         if outage is not None:
             if configured and all(
-                    phidget._state == "attached" for phidget in configured):
+                    self._connection_source(phidget, configured)._state == "attached"
+                    for phidget in configured):
                 duration = self._clock() - outage["detachedAt"]
                 self.logger.info(
                     "Phidget server '%s' recovered after %.1f seconds; all %d "
-                    "configured Indigo devices across %d physical Phidgets reattached",
+                    "configured Indigo devices across %d physical Phidgets have their "
+                    "network connections restored; peripheral initialization is reported separately",
                     outage["displayName"], duration, outage["channelCount"],
                     outage["serialCount"])
                 with self._lock:

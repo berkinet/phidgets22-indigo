@@ -187,7 +187,7 @@ class PhidgetLifecycleTests(unittest.TestCase):
             self.phidget.device.states["connectionPath"],
             "Test-Server-C→VINT Hub→Port 2→Digital Input")
 
-    def test_brief_detach_is_logged_but_does_not_fire_events(self):
+    def test_brief_detach_is_debug_only_and_does_not_fire_events(self):
         self.phidget = TestPhidget()
         self.phidget.start()
         self.phidget.onAttachHandler(self.phidget.native)
@@ -198,7 +198,8 @@ class PhidgetLifecycleTests(unittest.TestCase):
         self.assertEqual(self.phidget.device.errors, [None])
         self.assertEqual(self.phidget.plugin.events, [])
         self.assertEqual(self.phidget._attach_count, 2)
-        self.phidget.test_logger.warning.assert_called_once_with(
+        self.phidget.test_logger.warning.assert_not_called()
+        self.phidget.test_logger.debug.assert_any_call(
             "Phidget detached; monitoring for automatic reattach: %s",
             self.phidget._identity())
 

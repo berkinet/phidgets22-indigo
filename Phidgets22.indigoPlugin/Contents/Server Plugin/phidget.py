@@ -1,5 +1,5 @@
 from error_reporting import runtime_boundary
-from error_reporting import log_error, concise_error, set_device_error, clear_faults
+from error_reporting import log_error, concise_error, set_device_error, clear_faults, reporter
 # -*- coding: utf-8 -*-
 #
 # Bulk of the code for actually interacting with the phidget devices.
@@ -136,7 +136,8 @@ class PhidgetBase(OutagePersistence):
         retry = ("bounded initialization retries remain active"
                  if self._initialization_retry_timer is not None else
                  "check configuration and restart this Indigo device after correcting it")
-        log_error(self, "Phidget is attached but initialization failed: %s; %s; %s",
+        reporter(self).report("error", ("initialization", self._initialization_retry_timer is None),
+                  "Phidget is attached but initialization failed: %s; %s; %s",
                   self._identity(), self._initialization_error, retry)
 
     def _cancel_initialization_retry(self):
@@ -605,7 +606,7 @@ class PhidgetBase(OutagePersistence):
                 self._detach_announced = False
                 previously_attached = self._attach_count > 0
             if previously_attached:
-                self.logger.warning(
+                self.logger.debug(
                     "Phidget detached; monitoring for automatic reattach: %s",
                     self._identity())
                 self._schedule_detach_error_timer()

@@ -1,5 +1,13 @@
 # Release notes
 
+## 2026.1.47 — 2026-10-27
+
+- Keep immediate channel detach details at DEBUG so the existing grace period and server summaries consolidate network outages.
+- Use the shared adapter connection when summarizing logical I2C peripherals; fix the BME280 lifecycle-field error that aborted server summaries. Report network recovery separately from peripheral initialization.
+- Treat adapter loss during LCD initialization as provider unavailability, awaiting automatic recovery rather than recommending configuration changes. Include adapter ID and I2C address in LCD initialization errors.
+- Bound repeated initialization reports to the first failure and retry exhaustion within the reminder interval; preserve bounded retries and report actual configuration failures.
+- Add regression coverage for logical-peripheral outage/recovery, LCD retry reporting, and transient detach logging.
+
 ## 2026.1.46 — 2026-10-16
 
 - Report digital/GPIO output Not Attached write failures as bounded warnings while waiting for first attachment within the existing startup grace period.

@@ -235,6 +235,24 @@ class ServerOutageTests(unittest.TestCase):
             "Phidget remains detached",
             self.plugin.logger.warning.call_args.args[0])
 
+    def test_logical_sensors_share_provider_outage_without_lifecycle_fields(self):
+        provider = self.plugin.activePhidgets[1]
+        sensor = types.SimpleNamespace(
+            adapterDeviceId=1, channelInfo=provider.channelInfo,
+            indigoDevice=types.SimpleNamespace(id=3), _state="detached")
+        self.plugin.activePhidgets[3] = sensor
+        self.coordinator._batches["detach"][self.server_key] = {provider}
+        self.coordinator.flush_detach(self.server_key)
+        self.plugin.logger.error.assert_not_called()
+        self.plugin.logger.warning.assert_called_once()
+        self.assertEqual(self.plugin.logger.warning.call_args.args[2], 3)
+        # An absent peripheral must not hide recovery of the server connection.
+        for device in (provider, self.plugin.activePhidgets[2]):
+            device._state = "attached"
+        self.coordinator.flush_recovery(self.server_key)
+        self.plugin.logger.info.assert_called_once()
+        self.assertNotIn(self.server_key, self.coordinator._server_outages)
+
     def test_startup_contention_is_grouped_by_physical_phidget(self):
         first = FakePhidget(1, 100, channel=0)
         second = FakePhidget(2, 100, channel=1)

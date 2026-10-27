@@ -250,6 +250,36 @@ class I2CLCDTests(unittest.TestCase):
                                  args=(lcd._lifecycle_epoch,))
         lcd.stop()
 
+    def test_initialization_failures_are_bounded_and_identify_i2c_address(self):
+        adapter = FakeAdapter()
+        plugin = types.SimpleNamespace(
+            activePhidgets={42: adapter}, pluginPrefs={},
+            triggerEvent=mock.Mock(), phidgetAttachCompleted=mock.Mock())
+        device = mock.Mock(id=102, pluginProps={})
+        lcd = i2c_lcd.I2CLCDPhidget(
+            adapterDeviceId=42, i2cAddress=0x26, screenSize=8,
+            backlight=1.0, contrast=0.5, restoreInitialText=False,
+            initialText="", initialLines=[], initialX=0, initialY=0,
+            indigo_plugin=plugin, channelInfo=ChannelInfo(),
+            indigoDevice=device, logger=mock.Mock())
+        lcd.phidget.adapter = adapter
+        lcd._state = "detached"
+        with mock.patch("threading.Timer"):
+            for attempt in range(6):
+                lcd._attachment_failed(lcd._lifecycle_epoch,
+                    i2c_lcd.PeripheralUnavailableError("No LCD at 0x26"))
+        # One initial failure, one exhausted-retry notice, no per-retry storm.
+        self.assertEqual(lcd.logger.error.call_count, 2)
+        self.assertIn("adapterId=42 i2cAddress=0x26", lcd._identity())
+        lcd.logger.reset_mock()
+        adapter._state = "detached"
+        lcd._attachment_failed(lcd._lifecycle_epoch, RuntimeError("adapter not attached"))
+        lcd.logger.error.assert_not_called()
+        self.assertIsNone(lcd._initialization_retry_timer)
+        self.assertIsNone(lcd._initialization_error)
+        device.setErrorStateOnServer.assert_called_with("Provider unavailable")
+        lcd.stop()
+
     def test_provider_detach_marks_lcd_detached_and_keeps_queued_request(self):
         adapter = FakeAdapter()
         plugin = types.SimpleNamespace(
